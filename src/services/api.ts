@@ -2,11 +2,8 @@ import { Platform } from 'react-native';
 
 // In Expo development, localhost doesn't work for physical devices.
 // We use the host IP running Metro or default to localhost for web/simulators.
-export const API_BASE_URL = Platform.select({
-  android: 'http://192.168.1.159:3000', // standard android emulator loopback
-  ios: 'http://192.168.1.159:3000',
-  default: 'http://192.168.1.159:3000', // Host Metro server IP
-});
+// Environment variables starting with EXPO_PUBLIC_ are automatically available.
+export const API_BASE_URL = process.env.EXPO_PUBLIC_API_URL;
 
 import { useAuthStore } from './authStore';
 
