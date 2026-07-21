@@ -116,12 +116,14 @@ const LoginScreen = ({ navigation }: any) => {
     <View style={styles.container}>
       <View style={styles.logoContainer}>
         <Text style={styles.logoText}>CRM</Text>
-        <Text style={styles.subtitle}>E2E Research Services</Text>
+        <Text style={styles.subtitle}>Niventra Capital Advisory
+          India Pvt. Ltd.</Text>
       </View>
 
       <View style={styles.formContainer}>
         <Text style={styles.title}>Welcome Back</Text>
-        <Text style={styles.label}>Login to your account</Text>
+        <Text style={styles.label}>Niventra Capital Advisory
+          India Pvt. Ltd.</Text>
 
         {errorMsg ? (
           <Text style={styles.errorText}>{errorMsg}</Text>
@@ -4403,17 +4405,17 @@ const EmployeeProfileView = () => {
       // Launch picker
       const result = source === 'camera'
         ? await ImagePicker.launchCameraAsync({
-            mediaTypes: ['images'],
-            allowsEditing: true,
-            aspect: [1, 1],
-            quality: 0.7,
-          })
+          mediaTypes: ['images'],
+          allowsEditing: true,
+          aspect: [1, 1],
+          quality: 0.7,
+        })
         : await ImagePicker.launchImageLibraryAsync({
-            mediaTypes: ['images'],
-            allowsEditing: true,
-            aspect: [1, 1],
-            quality: 0.7,
-          });
+          mediaTypes: ['images'],
+          allowsEditing: true,
+          aspect: [1, 1],
+          quality: 0.7,
+        });
 
       if (result.canceled || !result.assets || result.assets.length === 0) return;
 
