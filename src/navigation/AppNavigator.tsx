@@ -74,7 +74,6 @@ const Stack = createNativeStackNavigator<RootStackParamList>();
 
 // --- Login Screen ---
 const LoginScreen = ({ navigation }: any) => {
-  const insets = useSafeAreaInsets();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
@@ -114,12 +113,9 @@ const LoginScreen = ({ navigation }: any) => {
     }
   };
 
-  const topGap = Math.max(insets.top, Platform.OS === 'android' ? (StatusBar.currentHeight || 20) : 20);
-  const bottomGap = Math.max(insets.bottom, 20);
-
   return (
     <SafeAreaView style={styles.safeArea}>
-      <View style={[styles.container, { paddingTop: topGap, paddingBottom: bottomGap }]}>
+      <View style={styles.container}>
         <View style={styles.logoContainer}>
           <Text style={styles.logoText}>CRM</Text>
           <Text style={styles.subtitle}>Niventra Capital Advisory
@@ -4797,11 +4793,8 @@ const DashboardScreen = ({ navigation }: any) => {
     ? Math.round((k.wonLeads / (k.openLeads + k.wonLeads)) * 100)
     : 0;
 
-  const topPadding = Platform.OS === 'android' ? (StatusBar.currentHeight || 10) : 0;
-  const bottomPadding = Math.max(insets.bottom, 10);
-
   return (
-    <SafeAreaView style={[styles.safeArea, { paddingTop: topPadding, paddingBottom: bottomPadding }]}>
+    <SafeAreaView style={styles.safeArea}>
       {/* Header bar */}
       <View style={styles.header}>
         <TouchableOpacity style={styles.menuButton} onPress={() => setSidebarOpen(true)}>
