@@ -9,11 +9,12 @@ import {
   ActivityIndicator,
   Platform,
   ScrollView,
-  SafeAreaView,
   Modal,
   Image,
   ActionSheetIOS,
+  StatusBar,
 } from 'react-native';
+import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import * as ImagePicker from 'expo-image-picker';
 import { NavigationContainer } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
@@ -73,6 +74,7 @@ const Stack = createNativeStackNavigator<RootStackParamList>();
 
 // --- Login Screen ---
 const LoginScreen = ({ navigation }: any) => {
+  const insets = useSafeAreaInsets();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
@@ -112,58 +114,63 @@ const LoginScreen = ({ navigation }: any) => {
     }
   };
 
+  const topGap = Math.max(insets.top, Platform.OS === 'android' ? (StatusBar.currentHeight || 20) : 20);
+  const bottomGap = Math.max(insets.bottom, 20);
+
   return (
-    <View style={styles.container}>
-      <View style={styles.logoContainer}>
-        <Text style={styles.logoText}>CRM</Text>
-        <Text style={styles.subtitle}>Niventra Capital Advisory
-          India Pvt. Ltd.</Text>
+    <SafeAreaView style={styles.safeArea}>
+      <View style={[styles.container, { paddingTop: topGap, paddingBottom: bottomGap }]}>
+        <View style={styles.logoContainer}>
+          <Text style={styles.logoText}>CRM</Text>
+          <Text style={styles.subtitle}>Niventra Capital Advisory
+            India Pvt. Ltd.</Text>
+        </View>
+
+        <View style={styles.formContainer}>
+          <Text style={styles.title}>Welcome Back</Text>
+          <Text style={styles.label}>Niventra Capital Advisory
+            India Pvt. Ltd.</Text>
+
+          {errorMsg ? (
+            <Text style={styles.errorText}>{errorMsg}</Text>
+          ) : null}
+
+          <TextInput
+            style={styles.textInput}
+            placeholder="Email Address"
+            placeholderTextColor={colors.textMuted}
+            value={email}
+            onChangeText={setEmail}
+            autoCapitalize="none"
+            keyboardType="email-address"
+          />
+
+          <TextInput
+            style={styles.textInput}
+            placeholder="Password"
+            placeholderTextColor={colors.textMuted}
+            value={password}
+            onChangeText={setPassword}
+            secureTextEntry
+            autoCapitalize="none"
+            returnKeyType="go"
+            onSubmitEditing={handleLogin}
+          />
+
+          <TouchableOpacity
+            style={[styles.primaryButton, loading && styles.disabledButton]}
+            onPress={handleLogin}
+            disabled={loading}
+          >
+            {loading ? (
+              <ActivityIndicator color={colors.background} />
+            ) : (
+              <Text style={styles.buttonText}>Sign In</Text>
+            )}
+          </TouchableOpacity>
+        </View>
       </View>
-
-      <View style={styles.formContainer}>
-        <Text style={styles.title}>Welcome Back</Text>
-        <Text style={styles.label}>Niventra Capital Advisory
-          India Pvt. Ltd.</Text>
-
-        {errorMsg ? (
-          <Text style={styles.errorText}>{errorMsg}</Text>
-        ) : null}
-
-        <TextInput
-          style={styles.textInput}
-          placeholder="Email Address"
-          placeholderTextColor={colors.textMuted}
-          value={email}
-          onChangeText={setEmail}
-          autoCapitalize="none"
-          keyboardType="email-address"
-        />
-
-        <TextInput
-          style={styles.textInput}
-          placeholder="Password"
-          placeholderTextColor={colors.textMuted}
-          value={password}
-          onChangeText={setPassword}
-          secureTextEntry
-          autoCapitalize="none"
-          returnKeyType="go"
-          onSubmitEditing={handleLogin}
-        />
-
-        <TouchableOpacity
-          style={[styles.primaryButton, loading && styles.disabledButton]}
-          onPress={handleLogin}
-          disabled={loading}
-        >
-          {loading ? (
-            <ActivityIndicator color={colors.background} />
-          ) : (
-            <Text style={styles.buttonText}>Sign In</Text>
-          )}
-        </TouchableOpacity>
-      </View>
-    </View>
+    </SafeAreaView>
   );
 };
 
@@ -4692,6 +4699,7 @@ const EmployeeProfileView = () => {
 
 // --- Dashboard Screen ---
 const DashboardScreen = ({ navigation }: any) => {
+  const insets = useSafeAreaInsets();
   const [data, setData] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [sidebarOpen, setSidebarOpen] = useState(false);
@@ -4789,8 +4797,11 @@ const DashboardScreen = ({ navigation }: any) => {
     ? Math.round((k.wonLeads / (k.openLeads + k.wonLeads)) * 100)
     : 0;
 
+  const topPadding = Platform.OS === 'android' ? (StatusBar.currentHeight || 10) : 0;
+  const bottomPadding = Math.max(insets.bottom, 10);
+
   return (
-    <SafeAreaView style={styles.safeArea}>
+    <SafeAreaView style={[styles.safeArea, { paddingTop: topPadding, paddingBottom: bottomPadding }]}>
       {/* Header bar */}
       <View style={styles.header}>
         <TouchableOpacity style={styles.menuButton} onPress={() => setSidebarOpen(true)}>
