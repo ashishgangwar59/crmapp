@@ -2,7 +2,7 @@ export const colors = {
   // Brand Colors (Dark Blue & Gold Theme)
   primary: '#fff', // Dark Blue (Main Background)
   secondary: '#fff', // Lighter Dark Blue (Cards, Headers)
-  accent: '#D4AF37', // Gold (Buttons, Highlights, Icons)
+  accent: '#1147a5', // Gold (Buttons, Highlights, Icons)
   accentLight: '#F3E5AB', // Light Gold (Subtle highlights, text on gold)
 
   // Backgrounds

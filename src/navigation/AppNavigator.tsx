@@ -15,6 +15,7 @@ import {
   StatusBar,
 } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
+import DateTimePicker from '@react-native-community/datetimepicker';
 import * as ImagePicker from 'expo-image-picker';
 import { NavigationContainer } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
@@ -66,14 +67,111 @@ import {
 
 // Types
 type RootStackParamList = {
+  AboutCompany: undefined;
   Login: undefined;
   Dashboard: undefined;
 };
 
 const Stack = createNativeStackNavigator<RootStackParamList>();
 
+// --- About Company Screen (Landing Page) ---
+const AboutCompanyScreen = ({ navigation }: any) => {
+  const insets = useSafeAreaInsets();
+  const topGap = Platform.OS === 'android' ? (StatusBar.currentHeight || insets.top || 24) : 0;
+
+  return (
+    <SafeAreaView style={[styles.safeArea, { paddingTop: topGap }]}>
+      <ScrollView contentContainerStyle={styles.aboutScrollContent} showsVerticalScrollIndicator={false}>
+        {/* Top Bar with Login Action Link */}
+        <View style={styles.aboutHeaderBar}>
+          <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+            <Text style={styles.aboutHeaderLogo}>CRM</Text>
+            <Text style={styles.aboutHeaderSubLogo}>HUB</Text>
+          </View>
+
+          <TouchableOpacity
+            style={styles.aboutHeaderLoginBtn}
+            onPress={() => navigation.navigate('Login')}
+          >
+            <Text style={styles.aboutHeaderLoginText}>Login to Portal</Text>
+            <ArrowUpRight size={16} color={colors.accent} style={{ marginLeft: 4 }} />
+          </TouchableOpacity>
+        </View>
+
+        {/* Hero Section */}
+        <View style={styles.aboutHeroCard}>
+          <View style={styles.aboutHeroBadge}>
+            <Building size={16} color={colors.accent} style={{ marginRight: 6 }} />
+            <Text style={styles.aboutHeroBadgeText}>Official Enterprise Portal</Text>
+          </View>
+          <Text style={styles.aboutHeroTitle}>Niventra Capital Advisory</Text>
+          <Text style={styles.aboutHeroSubtitle}>India Pvt. Ltd.</Text>
+          <Text style={styles.aboutHeroDesc}>
+            Premier Enterprise CRM, HR Management, Payroll Research, and Real-Time Workforce Analytics.
+          </Text>
+        </View>
+
+        {/* Core Platform Services Grid */}
+        <Text style={styles.aboutSectionHeading}>Core Enterprise Services</Text>
+        <View style={styles.aboutServicesGrid}>
+          <View style={styles.aboutServiceCard}>
+            <TrendingUp size={24} color="#3b82f6" style={{ marginBottom: 8 }} />
+            <Text style={styles.aboutServiceTitle}>Capital Advisory</Text>
+            <Text style={styles.aboutServiceDesc}>Financial research & capital allocation solutions.</Text>
+          </View>
+
+          <View style={styles.aboutServiceCard}>
+            <Clock size={24} color="#10b981" style={{ marginBottom: 8 }} />
+            <Text style={styles.aboutServiceTitle}>Live Attendance</Text>
+            <Text style={styles.aboutServiceDesc}>Real-time punch-in, geo-logs & HR tracking.</Text>
+          </View>
+
+          <View style={styles.aboutServiceCard}>
+            <Wallet size={24} color="#f59e0b" style={{ marginBottom: 8 }} />
+            <Text style={styles.aboutServiceTitle}>Payroll & Wallet</Text>
+            <Text style={styles.aboutServiceDesc}>Automated salary processing & expense management.</Text>
+          </View>
+
+          <View style={styles.aboutServiceCard}>
+            <Target size={24} color="#a855f7" style={{ marginBottom: 8 }} />
+            <Text style={styles.aboutServiceTitle}>CRM & Leads</Text>
+            <Text style={styles.aboutServiceDesc}>Sales pipeline, lead conversion & reports.</Text>
+          </View>
+        </View>
+
+        {/* Company Contact Details Card */}
+        <View style={styles.aboutContactCard}>
+          <Text style={styles.aboutContactTitle}>Company Information</Text>
+          <View style={styles.aboutContactRow}>
+            <Building size={16} color={colors.textMuted} style={{ marginRight: 8 }} />
+            <Text style={styles.aboutContactText}>Sewak Park Near Dwarka Mor Metro Station</Text>
+          </View>
+          <View style={styles.aboutContactRow}>
+            <Mail size={16} color={colors.textMuted} style={{ marginRight: 8 }} />
+            <Text style={styles.aboutContactText}>Contact: info@niventracapitaladvisory.com</Text>
+          </View>
+          <View style={styles.aboutContactRow}>
+            <ShieldCheck size={16} color={colors.success} style={{ marginRight: 8 }} />
+            <Text style={styles.aboutContactText}>Secured Enterprise Infrastructure v1.0.4</Text>
+          </View>
+        </View>
+
+        {/* Bottom Login Button */}
+        <TouchableOpacity
+          style={styles.aboutCtaBtn}
+          onPress={() => navigation.navigate('Login')}
+        >
+          <Text style={styles.aboutCtaBtnText}>Sign In to Portal</Text>
+          <ArrowUpRight size={18} color={colors.background} style={{ marginLeft: 8 }} />
+        </TouchableOpacity>
+      </ScrollView>
+    </SafeAreaView>
+  );
+};
+
 // --- Login Screen ---
 const LoginScreen = ({ navigation }: any) => {
+  const insets = useSafeAreaInsets();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
@@ -113,9 +211,20 @@ const LoginScreen = ({ navigation }: any) => {
     }
   };
 
+  const topGap = Platform.OS === 'android' ? (StatusBar.currentHeight || insets.top || 24) : 0;
+
   return (
-    <SafeAreaView style={styles.safeArea}>
+    <SafeAreaView style={[styles.safeArea, { paddingTop: topGap }]}>
       <View style={styles.container}>
+        {/* Navigation link back to About Company */}
+        <TouchableOpacity
+          style={styles.loginBackToAboutBtn}
+          onPress={() => navigation.navigate('AboutCompany')}
+        >
+          <ArrowLeft size={16} color={colors.accent} style={{ marginRight: 6 }} />
+          <Text style={styles.loginBackToAboutText}>About Niventra Capital</Text>
+        </TouchableOpacity>
+
         <View style={styles.logoContainer}>
           <Text style={styles.logoText}>CRM</Text>
           <Text style={styles.subtitle}>Niventra Capital Advisory
@@ -190,8 +299,12 @@ const EmployeesView = () => {
   const [firstName, setFirstName] = useState('');
   const [lastName, setLastName] = useState('');
   const [email, setEmail] = useState('');
+  const [officeEmail, setOfficeEmail] = useState('');
   const [phone, setPhone] = useState('');
   const [dateOfBirth, setDateOfBirth] = useState('');
+  const [gender, setGender] = useState('');
+  const [bloodGroup, setBloodGroup] = useState('');
+  const [maritalStatus, setMaritalStatus] = useState('');
   const [profilePhotoUrl, setProfilePhotoUrl] = useState('');
   const [systemRole, setSystemRole] = useState('Employee');
 
@@ -200,17 +313,25 @@ const EmployeesView = () => {
   const [designation, setDesignation] = useState('Developer');
   const [workLocation, setWorkLocation] = useState('Noida');
   const [employeeType, setEmployeeType] = useState('Full-Time');
+  const [dateOfJoining, setDateOfJoining] = useState('');
+
+  // Date Picker visibility state
+  const [showDobPicker, setShowDobPicker] = useState(false);
+  const [showDojPicker, setShowDojPicker] = useState(false);
 
   // STEP 3: KYC
   const [aadharNumber, setAadharNumber] = useState('');
   const [panNumber, setPanNumber] = useState('');
   const [passportNumber, setPassportNumber] = useState('');
 
-  // STEP 4: Bank Details
+  // STEP 4: Bank & Emergency Details
   const [bankName, setBankName] = useState('');
   const [accountNumber, setAccountNumber] = useState('');
   const [ifscCode, setIfscCode] = useState('');
   const [branchName, setBranchName] = useState('');
+  const [emergencyName, setEmergencyName] = useState('');
+  const [emergencyRelation, setEmergencyRelation] = useState('');
+  const [emergencyPhone, setEmergencyPhone] = useState('');
 
   // STEP 5: Permissions & Login credentials
   const [password, setPassword] = useState('');
@@ -267,14 +388,19 @@ const EmployeesView = () => {
     setFirstName(emp.firstName || '');
     setLastName(emp.lastName || '');
     setEmail(emp.email || '');
+    setOfficeEmail(emp.officeEmail || '');
     setPhone(emp.phone || '');
     setDateOfBirth(emp.dateOfBirth ? emp.dateOfBirth.substring(0, 10) : '');
+    setGender(emp.gender || '');
+    setBloodGroup(emp.bloodGroup || '');
+    setMaritalStatus(emp.maritalStatus || '');
     setProfilePhotoUrl(emp.profilePhotoUrl || '');
     setSystemRole(emp.systemRole || 'Employee');
     setDepartment(emp.department || 'Engineering');
     setDesignation(emp.designation || 'Developer');
     setWorkLocation(emp.workLocation || 'Noida');
     setEmployeeType(emp.employeeType || 'Full-Time');
+    setDateOfJoining(emp.dateOfJoining ? emp.dateOfJoining.substring(0, 10) : '');
     setAadharNumber(emp.kyc?.aadharNumber || '');
     setPanNumber(emp.kyc?.panNumber || '');
     setPassportNumber(emp.kyc?.passportNumber || '');
@@ -282,6 +408,9 @@ const EmployeesView = () => {
     setAccountNumber(emp.bankDetails?.accountNumber || '');
     setIfscCode(emp.bankDetails?.ifscCode || '');
     setBranchName(emp.bankDetails?.branchName || '');
+    setEmergencyName(emp.emergencyContact?.name || '');
+    setEmergencyRelation(emp.emergencyContact?.relation || '');
+    setEmergencyPhone(emp.emergencyContact?.phone || '');
     setPassword('');
     setModuleAccess(emp.moduleAccess || ['Overview', 'Attendance', 'Leads', 'Reports', 'Profile']);
 
@@ -346,13 +475,18 @@ const EmployeesView = () => {
         firstName,
         lastName,
         email,
+        officeEmail,
         phone,
         dateOfBirth: dateOfBirth ? new Date(dateOfBirth) : undefined,
+        gender,
+        bloodGroup,
+        maritalStatus,
         profilePhotoUrl,
         department,
         designation,
         workLocation,
         employeeType,
+        dateOfJoining: dateOfJoining ? new Date(dateOfJoining) : undefined,
         kyc: {
           aadharNumber,
           panNumber,
@@ -363,6 +497,11 @@ const EmployeesView = () => {
           accountNumber,
           ifscCode,
           branchName,
+        },
+        emergencyContact: {
+          name: emergencyName,
+          relation: emergencyRelation,
+          phone: emergencyPhone,
         },
         systemRole,
         moduleAccess,
@@ -387,13 +526,18 @@ const EmployeesView = () => {
         setFirstName('');
         setLastName('');
         setEmail('');
+        setOfficeEmail('');
         setPhone('');
         setDateOfBirth('');
+        setGender('');
+        setBloodGroup('');
+        setMaritalStatus('');
         setProfilePhotoUrl('');
         setDepartment('Engineering');
         setDesignation('Developer');
         setWorkLocation('Noida');
         setEmployeeType('Full-Time');
+        setDateOfJoining('');
         setAadharNumber('');
         setPanNumber('');
         setPassportNumber('');
@@ -401,6 +545,9 @@ const EmployeesView = () => {
         setAccountNumber('');
         setIfscCode('');
         setBranchName('');
+        setEmergencyName('');
+        setEmergencyRelation('');
+        setEmergencyPhone('');
         setPassword('');
         setModuleAccess(['Overview', 'Attendance', 'Leads', 'Reports', 'Profile']);
         fetchEmployees();
@@ -497,10 +644,34 @@ const EmployeesView = () => {
                 <Text style={styles.detailLabel}>Email</Text>
                 <Text style={styles.detailVal}>{selectedEmployee.email}</Text>
               </View>
+              {selectedEmployee.officeEmail && (
+                <View style={styles.detailGridCol}>
+                  <Text style={styles.detailLabel}>Office Email</Text>
+                  <Text style={styles.detailVal}>{selectedEmployee.officeEmail}</Text>
+                </View>
+              )}
               <View style={styles.detailGridCol}>
                 <Text style={styles.detailLabel}>Phone</Text>
                 <Text style={styles.detailVal}>{selectedEmployee.phone || '-'}</Text>
               </View>
+              {selectedEmployee.gender && (
+                <View style={styles.detailGridCol}>
+                  <Text style={styles.detailLabel}>Gender</Text>
+                  <Text style={styles.detailVal}>{selectedEmployee.gender}</Text>
+                </View>
+              )}
+              {selectedEmployee.bloodGroup && (
+                <View style={styles.detailGridCol}>
+                  <Text style={styles.detailLabel}>Blood Group</Text>
+                  <Text style={styles.detailVal}>{selectedEmployee.bloodGroup}</Text>
+                </View>
+              )}
+              {selectedEmployee.maritalStatus && (
+                <View style={styles.detailGridCol}>
+                  <Text style={styles.detailLabel}>Marital Status</Text>
+                  <Text style={styles.detailVal}>{selectedEmployee.maritalStatus}</Text>
+                </View>
+              )}
               <View style={styles.detailGridCol}>
                 <Text style={styles.detailLabel}>Status</Text>
                 <Text style={styles.detailVal}>{selectedEmployee.status || 'Active'}</Text>
@@ -532,6 +703,14 @@ const EmployeesView = () => {
                 <Text style={styles.detailLabel}>Designation</Text>
                 <Text style={styles.detailVal}>{selectedEmployee.designation || 'N/A'}</Text>
               </View>
+              {selectedEmployee.dateOfJoining && (
+                <View style={styles.detailGridCol}>
+                  <Text style={styles.detailLabel}>Joined Date</Text>
+                  <Text style={styles.detailVal}>
+                    {new Date(selectedEmployee.dateOfJoining).toLocaleDateString()}
+                  </Text>
+                </View>
+              )}
               {selectedEmployee.workLocation && (
                 <View style={styles.detailGridCol}>
                   <Text style={styles.detailLabel}>Work Location</Text>
@@ -553,6 +732,12 @@ const EmployeesView = () => {
                 <Text style={styles.detailLabel}>PAN Number</Text>
                 <Text style={styles.detailVal}>{selectedEmployee.kyc?.panNumber || '-'}</Text>
               </View>
+              {selectedEmployee.kyc?.passportNumber && (
+                <View style={styles.detailGridCol}>
+                  <Text style={styles.detailLabel}>Passport Number</Text>
+                  <Text style={styles.detailVal}>{selectedEmployee.kyc.passportNumber}</Text>
+                </View>
+              )}
               {selectedEmployee.bankDetails?.bankName && (
                 <>
                   <View style={styles.detailGridCol}>
@@ -563,10 +748,43 @@ const EmployeesView = () => {
                     <Text style={styles.detailLabel}>Account Number</Text>
                     <Text style={styles.detailVal}>{selectedEmployee.bankDetails.accountNumber}</Text>
                   </View>
+                  {selectedEmployee.bankDetails?.ifscCode && (
+                    <View style={styles.detailGridCol}>
+                      <Text style={styles.detailLabel}>IFSC Code</Text>
+                      <Text style={styles.detailVal}>{selectedEmployee.bankDetails.ifscCode}</Text>
+                    </View>
+                  )}
+                  {selectedEmployee.bankDetails?.branchName && (
+                    <View style={styles.detailGridCol}>
+                      <Text style={styles.detailLabel}>Bank Branch</Text>
+                      <Text style={styles.detailVal}>{selectedEmployee.bankDetails.branchName}</Text>
+                    </View>
+                  )}
                 </>
               )}
             </View>
           </View>
+
+          {/* Emergency Contact Card */}
+          {selectedEmployee.emergencyContact?.name && (
+            <View style={styles.detailCard}>
+              <Text style={styles.detailCardTitle}>Emergency Contact Details</Text>
+              <View style={styles.detailGrid}>
+                <View style={styles.detailGridCol}>
+                  <Text style={styles.detailLabel}>Emergency Contact Name</Text>
+                  <Text style={styles.detailVal}>{selectedEmployee.emergencyContact.name}</Text>
+                </View>
+                <View style={styles.detailGridCol}>
+                  <Text style={styles.detailLabel}>Emergency Contact Relation</Text>
+                  <Text style={styles.detailVal}>{selectedEmployee.emergencyContact.relation || '-'}</Text>
+                </View>
+                <View style={styles.detailGridCol}>
+                  <Text style={styles.detailLabel}>Emergency Contact Number</Text>
+                  <Text style={styles.detailVal}>{selectedEmployee.emergencyContact.phone || '-'}</Text>
+                </View>
+              </View>
+            </View>
+          )}
 
           {/* Card 4: Administrative Actions (Password Force Reset) */}
           <View style={[styles.detailCard, styles.adminActionsCard]}>
@@ -774,14 +992,85 @@ const EmployeesView = () => {
                     keyboardType="phone-pad"
                   />
 
-                  <Text style={styles.formLabel}>Date of Birth (YYYY-MM-DD)</Text>
+                  <Text style={styles.formLabel}>Office Email</Text>
                   <TextInput
                     style={styles.modalTextInput}
-                    placeholder="e.g. 1995-10-15"
+                    placeholder="Enter Office Email"
                     placeholderTextColor={colors.textMuted}
-                    value={dateOfBirth}
-                    onChangeText={setDateOfBirth}
+                    value={officeEmail}
+                    onChangeText={setOfficeEmail}
+                    keyboardType="email-address"
+                    autoCapitalize="none"
                   />
+
+                  <Text style={styles.formLabel}>Gender</Text>
+                  <View style={styles.typeSelectionRow}>
+                    {['Male', 'Female', 'Other'].map((g) => (
+                      <TouchableOpacity
+                        key={g}
+                        style={[styles.typeSelectBtn, gender === g && styles.typeSelectBtnActive]}
+                        onPress={() => setGender(g)}
+                      >
+                        <Text style={[styles.typeSelectText, gender === g && styles.typeSelectTextActive]}>
+                          {g}
+                        </Text>
+                      </TouchableOpacity>
+                    ))}
+                  </View>
+
+                  <Text style={styles.formLabel}>Blood Group</Text>
+                  <TextInput
+                    style={styles.modalTextInput}
+                    placeholder="e.g. O+, A+, B+"
+                    placeholderTextColor={colors.textMuted}
+                    value={bloodGroup}
+                    onChangeText={setBloodGroup}
+                    autoCapitalize="characters"
+                  />
+
+                  <Text style={styles.formLabel}>Marital Status</Text>
+                  <View style={styles.typeSelectionRow}>
+                    {['Single', 'Married', 'Divorced', 'Widowed'].map((m) => (
+                      <TouchableOpacity
+                        key={m}
+                        style={[styles.typeSelectBtn, maritalStatus === m && styles.typeSelectBtnActive]}
+                        onPress={() => setMaritalStatus(m)}
+                      >
+                        <Text style={[styles.typeSelectText, maritalStatus === m && styles.typeSelectTextActive]}>
+                          {m}
+                        </Text>
+                      </TouchableOpacity>
+                    ))}
+                  </View>
+
+                  <Text style={styles.formLabel}>Date of Birth</Text>
+                  <TouchableOpacity
+                    style={[styles.modalTextInput, { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }]}
+                    onPress={() => setShowDobPicker(true)}
+                  >
+                    <Text style={{ color: dateOfBirth ? colors.text : colors.textMuted, fontSize: 15 }}>
+                      {dateOfBirth || 'Select Date of Birth (YYYY-MM-DD)'}
+                    </Text>
+                    <Calendar size={18} color={colors.accent} />
+                  </TouchableOpacity>
+
+                  {showDobPicker && (
+                    <DateTimePicker
+                      value={dateOfBirth && !isNaN(new Date(dateOfBirth).getTime()) ? new Date(dateOfBirth) : new Date(1995, 0, 1)}
+                      mode="date"
+                      display={Platform.OS === 'ios' ? 'spinner' : 'default'}
+                      maximumDate={new Date()}
+                      onChange={(event: any, selectedDate?: Date) => {
+                        setShowDobPicker(Platform.OS === 'ios');
+                        if (selectedDate) {
+                          const yyyy = selectedDate.getFullYear();
+                          const mm = String(selectedDate.getMonth() + 1).padStart(2, '0');
+                          const dd = String(selectedDate.getDate()).padStart(2, '0');
+                          setDateOfBirth(`${yyyy}-${mm}-${dd}`);
+                        }
+                      }}
+                    />
+                  )}
 
                   <Text style={styles.formLabel}>Profile Photo URL</Text>
                   <TextInput
@@ -799,6 +1088,34 @@ const EmployeesView = () => {
                 <View>
                   <Text style={styles.stepTitle}>Official Details</Text>
                   <Text style={styles.stepDesc}>Work location, department and role details.</Text>
+
+                  <Text style={styles.formLabel}>Joined Date</Text>
+                  <TouchableOpacity
+                    style={[styles.modalTextInput, { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }]}
+                    onPress={() => setShowDojPicker(true)}
+                  >
+                    <Text style={{ color: dateOfJoining ? colors.text : colors.textMuted, fontSize: 15 }}>
+                      {dateOfJoining || 'Select Joined Date (YYYY-MM-DD)'}
+                    </Text>
+                    <Calendar size={18} color={colors.accent} />
+                  </TouchableOpacity>
+
+                  {showDojPicker && (
+                    <DateTimePicker
+                      value={dateOfJoining && !isNaN(new Date(dateOfJoining).getTime()) ? new Date(dateOfJoining) : new Date()}
+                      mode="date"
+                      display={Platform.OS === 'ios' ? 'spinner' : 'default'}
+                      onChange={(event: any, selectedDate?: Date) => {
+                        setShowDojPicker(Platform.OS === 'ios');
+                        if (selectedDate) {
+                          const yyyy = selectedDate.getFullYear();
+                          const mm = String(selectedDate.getMonth() + 1).padStart(2, '0');
+                          const dd = String(selectedDate.getDate()).padStart(2, '0');
+                          setDateOfJoining(`${yyyy}-${mm}-${dd}`);
+                        }
+                      }}
+                    />
+                  )}
 
                   <Text style={styles.formLabel}>Department</Text>
                   <TextInput
@@ -850,7 +1167,7 @@ const EmployeesView = () => {
                   <Text style={styles.stepTitle}>KYC & Verification</Text>
                   <Text style={styles.stepDesc}>Government identification details.</Text>
 
-                  <Text style={styles.formLabel}>Aadhar Number</Text>
+                  <Text style={styles.formLabel}>Aadhar Number (Aadhar Num)</Text>
                   <TextInput
                     style={styles.modalTextInput}
                     placeholder="Enter 12-digit Aadhar Number"
@@ -860,7 +1177,7 @@ const EmployeesView = () => {
                     keyboardType="number-pad"
                   />
 
-                  <Text style={styles.formLabel}>PAN Number</Text>
+                  <Text style={styles.formLabel}>PAN Number (Pan)</Text>
                   <TextInput
                     style={styles.modalTextInput}
                     placeholder="Enter 10-digit PAN"
@@ -870,7 +1187,7 @@ const EmployeesView = () => {
                     autoCapitalize="characters"
                   />
 
-                  <Text style={styles.formLabel}>Passport Number</Text>
+                  <Text style={styles.formLabel}>Passport Number (Passport Num)</Text>
                   <TextInput
                     style={styles.modalTextInput}
                     placeholder="Enter Passport Number"
@@ -882,13 +1199,13 @@ const EmployeesView = () => {
                 </View>
               )}
 
-              {/* STEP 4: Bank Details */}
+              {/* STEP 4: Bank & Emergency Details */}
               {currentStep === 4 && (
                 <View>
-                  <Text style={styles.stepTitle}>Bank Details</Text>
-                  <Text style={styles.stepDesc}>Account info for payroll purposes.</Text>
+                  <Text style={styles.stepTitle}>Bank & Emergency Details</Text>
+                  <Text style={styles.stepDesc}>Bank account info & emergency contact details.</Text>
 
-                  <Text style={styles.formLabel}>Bank Name</Text>
+                  <Text style={styles.formLabel}>Bank Name / Bank Account</Text>
                   <TextInput
                     style={styles.modalTextInput}
                     placeholder="Enter Bank Name"
@@ -897,7 +1214,7 @@ const EmployeesView = () => {
                     onChangeText={setBankName}
                   />
 
-                  <Text style={styles.formLabel}>Account Number</Text>
+                  <Text style={styles.formLabel}>Account Number (Ac Num)</Text>
                   <TextInput
                     style={styles.modalTextInput}
                     placeholder="Enter Bank Account Number"
@@ -917,7 +1234,7 @@ const EmployeesView = () => {
                     autoCapitalize="characters"
                   />
 
-                  <Text style={styles.formLabel}>Branch Name</Text>
+                  <Text style={styles.formLabel}>Branch Name (Bank Branch)</Text>
                   <TextInput
                     style={styles.modalTextInput}
                     placeholder="Enter Branch Name"
@@ -925,6 +1242,36 @@ const EmployeesView = () => {
                     value={branchName}
                     onChangeText={setBranchName}
                   />
+
+                  <View style={{ marginTop: 12, paddingTop: 12, borderTopWidth: 1, borderTopColor: 'rgba(255,255,255,0.1)' }}>
+                    <Text style={[styles.formLabel, { color: colors.accent, fontWeight: '700' }]}>Emergency Contact Name</Text>
+                    <TextInput
+                      style={styles.modalTextInput}
+                      placeholder="Enter Emergency Contact Name"
+                      placeholderTextColor={colors.textMuted}
+                      value={emergencyName}
+                      onChangeText={setEmergencyName}
+                    />
+
+                    <Text style={[styles.formLabel, { color: colors.accent, fontWeight: '700' }]}>Emergency Contact Relation</Text>
+                    <TextInput
+                      style={styles.modalTextInput}
+                      placeholder="e.g. Spouse, Parent, Sibling"
+                      placeholderTextColor={colors.textMuted}
+                      value={emergencyRelation}
+                      onChangeText={setEmergencyRelation}
+                    />
+
+                    <Text style={[styles.formLabel, { color: colors.accent, fontWeight: '700' }]}>Emergency Contact Number</Text>
+                    <TextInput
+                      style={styles.modalTextInput}
+                      placeholder="Enter Emergency Contact Phone Number"
+                      placeholderTextColor={colors.textMuted}
+                      value={emergencyPhone}
+                      onChangeText={setEmergencyPhone}
+                      keyboardType="phone-pad"
+                    />
+                  </View>
                 </View>
               )}
 
@@ -4793,8 +5140,12 @@ const DashboardScreen = ({ navigation }: any) => {
     ? Math.round((k.wonLeads / (k.openLeads + k.wonLeads)) * 100)
     : 0;
 
+  const topGap = Platform.OS === 'android' ? (StatusBar.currentHeight || insets.top || 24) : 0;
+  const sidebarTopGap = Platform.OS === 'android' ? (StatusBar.currentHeight || insets.top || 24) : Math.max(insets.top, 16);
+  const sidebarBottomGap = Math.max(insets.bottom, 16);
+
   return (
-    <SafeAreaView style={styles.safeArea}>
+    <SafeAreaView style={[styles.safeArea, { paddingTop: topGap }]}>
       {/* Header bar */}
       <View style={styles.header}>
         <TouchableOpacity style={styles.menuButton} onPress={() => setSidebarOpen(true)}>
@@ -5160,7 +5511,7 @@ const DashboardScreen = ({ navigation }: any) => {
             onPress={() => setSidebarOpen(false)}
           />
           {/* Sidebar Drawer container */}
-          <View style={styles.sidebarContainer}>
+          <View style={[styles.sidebarContainer, { paddingTop: sidebarTopGap, paddingBottom: sidebarBottomGap }]}>
             <View style={styles.sidebarHeader}>
               <Text style={styles.sidebarLogoText}>CRM Hub</Text>
               <TouchableOpacity onPress={() => setSidebarOpen(false)}>
@@ -5246,11 +5597,18 @@ export const AppNavigator = () => {
         }}
       >
         {!isAuthenticated ? (
-          <Stack.Screen
-            name="Login"
-            component={LoginScreen}
-            options={{ headerShown: false }}
-          />
+          <>
+            <Stack.Screen
+              name="AboutCompany"
+              component={AboutCompanyScreen}
+              options={{ headerShown: false }}
+            />
+            <Stack.Screen
+              name="Login"
+              component={LoginScreen}
+              options={{ headerShown: false }}
+            />
+          </>
         ) : (
           <Stack.Screen
             name="Dashboard"
@@ -7481,6 +7839,167 @@ const styles = StyleSheet.create({
     fontWeight: 'bold',
     color: colors.text,
     marginTop: 2,
+  },
+  /* --- About Company Screen Styles --- */
+  aboutScrollContent: {
+    padding: spacing.m,
+    paddingBottom: 40,
+  },
+  aboutHeaderBar: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: spacing.l,
+    paddingBottom: spacing.s,
+    borderBottomWidth: 1,
+    borderBottomColor: colors.border,
+  },
+  aboutHeaderLogo: {
+    fontSize: 26,
+    fontWeight: 'bold',
+    color: colors.accent,
+    letterSpacing: 1.5,
+  },
+  aboutHeaderSubLogo: {
+    fontSize: 12,
+    fontWeight: '800',
+    color: colors.textMuted,
+    marginLeft: 6,
+    letterSpacing: 1,
+  },
+  aboutHeaderLoginBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: 'rgba(214, 175, 55, 0.12)',
+    paddingVertical: 6,
+    paddingHorizontal: 12,
+    borderRadius: borderRadius.round,
+    borderWidth: 1,
+    borderColor: colors.accent,
+  },
+  aboutHeaderLoginText: {
+    color: colors.accent,
+    fontSize: 13,
+    fontWeight: 'bold',
+  },
+  aboutHeroCard: {
+    backgroundColor: colors.surface,
+    borderRadius: borderRadius.xl,
+    padding: spacing.l,
+    marginBottom: spacing.l,
+    borderWidth: 1,
+    borderColor: colors.border,
+  },
+  aboutHeroBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    alignSelf: 'flex-start',
+    backgroundColor: 'rgba(214, 175, 55, 0.1)',
+    paddingVertical: 4,
+    paddingHorizontal: 10,
+    borderRadius: borderRadius.s,
+    marginBottom: spacing.m,
+  },
+  aboutHeroBadgeText: {
+    color: colors.accent,
+    fontSize: 11,
+    fontWeight: 'bold',
+  },
+  aboutHeroTitle: {
+    fontSize: 24,
+    fontWeight: 'bold',
+    color: colors.text,
+  },
+  aboutHeroSubtitle: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: colors.accent,
+    marginBottom: spacing.m,
+  },
+  aboutHeroDesc: {
+    fontSize: 14,
+    color: colors.textMuted,
+    lineHeight: 20,
+  },
+  aboutSectionHeading: {
+    fontSize: 16,
+    fontWeight: 'bold',
+    color: colors.text,
+    marginBottom: spacing.m,
+  },
+  aboutServicesGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    justifyContent: 'space-between',
+    marginBottom: spacing.l,
+  },
+  aboutServiceCard: {
+    width: '48%',
+    backgroundColor: colors.surface,
+    borderRadius: borderRadius.l,
+    padding: spacing.m,
+    marginBottom: spacing.m,
+    borderWidth: 1,
+    borderColor: colors.border,
+  },
+  aboutServiceTitle: {
+    fontSize: 14,
+    fontWeight: 'bold',
+    color: colors.text,
+    marginBottom: 4,
+  },
+  aboutServiceDesc: {
+    fontSize: 12,
+    color: colors.textMuted,
+    lineHeight: 16,
+  },
+  aboutContactCard: {
+    backgroundColor: colors.surfaceLight,
+    borderRadius: borderRadius.l,
+    padding: spacing.m,
+    marginBottom: spacing.l,
+    borderWidth: 1,
+    borderColor: colors.border,
+  },
+  aboutContactTitle: {
+    fontSize: 15,
+    fontWeight: 'bold',
+    color: colors.text,
+    marginBottom: spacing.m,
+  },
+  aboutContactRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 8,
+  },
+  aboutContactText: {
+    fontSize: 13,
+    color: colors.textMuted,
+  },
+  aboutCtaBtn: {
+    backgroundColor: colors.accent,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 14,
+    borderRadius: borderRadius.m,
+    marginBottom: spacing.m,
+  },
+  aboutCtaBtnText: {
+    color: colors.background,
+    fontSize: 16,
+    fontWeight: 'bold',
+  },
+  loginBackToAboutBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: spacing.l,
+    alignSelf: 'flex-start',
+  },
+  loginBackToAboutText: {
+    color: colors.accent,
+    fontSize: 13,
+    fontWeight: 'bold',
   },
 });
 
