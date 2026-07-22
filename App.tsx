@@ -7,7 +7,7 @@ import { colors } from './src/theme/colors';
 export default function App() {
   return (
     <SafeAreaProvider style={{ flex: 1, backgroundColor: colors.background }}>
-      <StatusBar style="light" backgroundColor={colors.background} />
+      <StatusBar style="light" />
       <AppNavigator />
     </SafeAreaProvider>
   );

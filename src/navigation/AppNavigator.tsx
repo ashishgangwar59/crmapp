@@ -4819,8 +4819,8 @@ const DashboardScreen = ({ navigation }: any) => {
         </View>
         <View style={styles.headerAvatarBadge}>
           <Text style={styles.headerAvatarText}>
-            {user?.firstName
-              ? `${user.firstName[0]}${user.lastName ? user.lastName[0] : ''}`.toUpperCase()
+            {(user as any)?.firstName
+              ? `${(user as any).firstName[0]}${(user as any).lastName ? (user as any).lastName[0] : ''}`.toUpperCase()
               : (user?.email ? user.email[0].toUpperCase() : 'U')}
           </Text>
         </View>
@@ -7421,25 +7421,19 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     marginBottom: spacing.m,
   },
+  empStatPill: {
+    padding: spacing.s,
+    borderRadius: borderRadius.m,
+    alignItems: 'center',
+  },
+  roleBadgeText: {
+    fontSize: 11,
+    fontWeight: 'bold',
+  },
   moduleCheckboxCol: {
     flex: 1,
     flexDirection: 'row',
     alignItems: 'center',
-  },
-  customCheckbox: {
-    width: 18,
-    height: 18,
-    borderRadius: 4,
-    borderWidth: 2,
-    borderColor: colors.textMuted,
-    backgroundColor: 'transparent',
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginRight: 8,
-  },
-  customCheckboxChecked: {
-    backgroundColor: '#3b82f6',
-    borderColor: '#3b82f6',
   },
   checkmarkIcon: {
     color: '#ffffff',
