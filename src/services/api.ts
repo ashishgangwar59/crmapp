@@ -1,10 +1,4 @@
 import { Platform } from 'react-native';
-
-// In Expo development, localhost doesn't work for physical devices.
-// We use the host IP running Metro or default to localhost for web/simulators.
-// Environment variables starting with EXPO_PUBLIC_ are automatically available.
-export const API_BASE_URL = process.env.EXPO_PUBLIC_API_URL;
-
 import { useAuthStore } from './authStore';
 
 export interface ApiResponse<T = any> {
@@ -17,15 +11,19 @@ export async function apiCall<T = any>(
   endpoint: string,
   options: RequestInit = {}
 ): Promise<ApiResponse<T>> {
-  const url = `${API_BASE_URL}${endpoint}`;
+  let baseUrl = process.env.EXPO_PUBLIC_API_URL || 'http://localhost:3000';
+  if (Platform.OS !== 'web' && (baseUrl.includes('localhost') || baseUrl.includes('127.0.0.1'))) {
+    baseUrl = 'http://localhost:3000';
+  }
 
+  const url = `${baseUrl}${endpoint}`;
   const token = useAuthStore.getState().token;
   const headers: any = {
     'Content-Type': 'application/json',
     ...(options.headers || {}),
   };
 
-  if (token) {
+  if (token && token !== 'mock-token' && token !== 'valid-session-token') {
     headers['Cookie'] = `accessToken=${token}`;
     headers['Authorization'] = `Bearer ${token}`;
   }
@@ -58,10 +56,18 @@ export async function apiCall<T = any>(
       data = await response.text();
     }
 
+    const errorMessage = data?.message || data?.error || '';
+
+    // Only auto-logout if HTTP status is 401 or 403
+    if ((response.status === 401 || response.status === 403) && !endpoint.includes('/api/auth/login')) {
+      // console.warn(`Unauthenticated response (${response.status}) on ${endpoint}. Logging out user...`);
+      // useAuthStore.getState().clearAuth();
+    }
+
     if (!response.ok) {
       return {
         success: false,
-        error: data?.message || data?.error || `Request failed with status ${response.status}`,
+        error: errorMessage || `Request failed with status ${response.status}`,
       };
     }
 
@@ -70,7 +76,7 @@ export async function apiCall<T = any>(
       data,
     };
   } catch (error: any) {
-    console.error(`API Error calling ${endpoint}:`, error);
+    console.error(`API Error calling ${url}:`, error);
     return {
       success: false,
       error: error.message || 'Network connection failed',

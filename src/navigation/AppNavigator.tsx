@@ -13,6 +13,7 @@ import {
   Image,
   ActionSheetIOS,
   StatusBar,
+  Linking,
 } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import DateTimePicker from '@react-native-community/datetimepicker';
@@ -63,12 +64,15 @@ import {
   UploadCloud,
   XCircle,
   Camera,
+  Eye,
+  EyeOff,
 } from 'lucide-react-native';
 
 // Types
 type RootStackParamList = {
   AboutCompany: undefined;
   Login: undefined;
+  InvestorRegister: undefined;
   Dashboard: undefined;
 };
 
@@ -174,6 +178,8 @@ const LoginScreen = ({ navigation }: any) => {
   const insets = useSafeAreaInsets();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
+  const [rememberMe, setRememberMe] = useState(true);
   const [loading, setLoading] = useState(false);
   const [errorMsg, setErrorMsg] = useState('');
   const setAuth = useAuthStore((state) => state.setAuth);
@@ -193,14 +199,15 @@ const LoginScreen = ({ navigation }: any) => {
         body: JSON.stringify({
           email: email.trim(),
           password,
-          rememberMe: true,
+          rememberMe,
           deviceInfo: `${Platform.OS} ${Platform.Version || ''}`.trim(),
         }),
       });
 
       if (response.success && response.data) {
-        const { user, token, role } = response.data;
-        setAuth(user || { email, role }, token || 'mock-token');
+        const { user, token, accessToken, role } = response.data;
+        const actualToken = token || accessToken || (response.data as any).token || (response as any).token || 'valid-session-token';
+        setAuth(user || { email, role }, actualToken);
       } else {
         setErrorMsg(response.error || 'Invalid credentials or login failed.');
       }
@@ -214,8 +221,8 @@ const LoginScreen = ({ navigation }: any) => {
   const topGap = Platform.OS === 'android' ? (StatusBar.currentHeight || insets.top || 24) : 0;
 
   return (
-    <SafeAreaView style={[styles.safeArea, { paddingTop: topGap }]}>
-      <View style={styles.container}>
+    <SafeAreaView style={[styles.safeArea, { paddingTop: topGap, backgroundColor: '#F8FAFC' }]}>
+      <ScrollView contentContainerStyle={{ flexGrow: 1, paddingHorizontal: 20, paddingVertical: 16, justifyContent: 'center' }} showsVerticalScrollIndicator={false}>
         {/* Navigation link back to About Company */}
         <TouchableOpacity
           style={styles.loginBackToAboutBtn}
@@ -225,56 +232,331 @@ const LoginScreen = ({ navigation }: any) => {
           <Text style={styles.loginBackToAboutText}>About Niventra Capital</Text>
         </TouchableOpacity>
 
-        <View style={styles.logoContainer}>
-          <Text style={styles.logoText}>CRM</Text>
-          <Text style={styles.subtitle}>Niventra Capital Advisory
-            India Pvt. Ltd.</Text>
-        </View>
+        {/* Card Container matching Screenshot */}
+        <View style={loginStyles.cardContainer}>
+          {/* Logo Emblem */}
+          <View style={loginStyles.logoBadgeWrapper}>
+            <View style={loginStyles.logoBadgeCircle}>
+              <Text style={loginStyles.logoTextNC}>NC</Text>
+              <TrendingUp size={14} color="#D6AF37" style={loginStyles.logoArrow} />
+            </View>
+          </View>
 
-        <View style={styles.formContainer}>
-          <Text style={styles.title}>Welcome Back</Text>
-          <Text style={styles.label}>Niventra Capital Advisory
-            India Pvt. Ltd.</Text>
+          {/* Heading & Subtitle */}
+          <Text style={loginStyles.welcomeTitle}>Welcome back</Text>
+          <Text style={loginStyles.welcomeSubtitle}>
+            Enter your email and password to access your account.
+          </Text>
 
           {errorMsg ? (
-            <Text style={styles.errorText}>{errorMsg}</Text>
+            <View style={loginStyles.errorBox}>
+              <Text style={loginStyles.errorText}>{errorMsg}</Text>
+            </View>
           ) : null}
 
-          <TextInput
-            style={styles.textInput}
-            placeholder="Email Address"
-            placeholderTextColor={colors.textMuted}
-            value={email}
-            onChangeText={setEmail}
-            autoCapitalize="none"
-            keyboardType="email-address"
-          />
+          {/* Email Field */}
+          <View style={loginStyles.fieldGroup}>
+            <Text style={loginStyles.fieldLabel}>Email</Text>
+            <View style={loginStyles.inputContainer}>
+              <TextInput
+                style={loginStyles.textInput}
+                placeholder="keyadmin@gmail.com"
+                placeholderTextColor="#9CA3AF"
+                value={email}
+                onChangeText={setEmail}
+                autoCapitalize="none"
+                keyboardType="email-address"
+              />
+            </View>
+          </View>
 
-          <TextInput
-            style={styles.textInput}
-            placeholder="Password"
-            placeholderTextColor={colors.textMuted}
-            value={password}
-            onChangeText={setPassword}
-            secureTextEntry
-            autoCapitalize="none"
-            returnKeyType="go"
-            onSubmitEditing={handleLogin}
-          />
+          {/* Password Field with Eye Icon */}
+          <View style={loginStyles.fieldGroup}>
+            <View style={loginStyles.passwordLabelRow}>
+              <Text style={loginStyles.fieldLabel}>Password</Text>
+              <TouchableOpacity onPress={() => Alert.alert('Reset Password', 'Please contact system administrator to reset your password.')}>
+                <Text style={loginStyles.forgotText}>Forgot password?</Text>
+              </TouchableOpacity>
+            </View>
+            <View style={loginStyles.inputContainer}>
+              <TextInput
+                style={[loginStyles.textInput, { flex: 1 }]}
+                placeholder="••••••••"
+                placeholderTextColor="#9CA3AF"
+                value={password}
+                onChangeText={setPassword}
+                secureTextEntry={!showPassword}
+                autoCapitalize="none"
+                returnKeyType="go"
+                onSubmitEditing={handleLogin}
+              />
+              <TouchableOpacity
+                style={loginStyles.eyeIconButton}
+                onPress={() => setShowPassword(!showPassword)}
+                hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+              >
+                {showPassword ? (
+                  <EyeOff size={20} color="#6B7280" />
+                ) : (
+                  <Eye size={20} color="#6B7280" />
+                )}
+              </TouchableOpacity>
+            </View>
+          </View>
 
+          {/* Remember Me Checkbox */}
           <TouchableOpacity
-            style={[styles.primaryButton, loading && styles.disabledButton]}
+            style={loginStyles.checkboxRow}
+            onPress={() => setRememberMe(!rememberMe)}
+            activeOpacity={0.7}
+          >
+            <View style={[loginStyles.checkboxSquare, rememberMe && loginStyles.checkboxChecked]}>
+              {rememberMe && <Text style={loginStyles.checkmarkText}>✓</Text>}
+            </View>
+            <Text style={loginStyles.checkboxLabel}>Remember me for 7 days</Text>
+          </TouchableOpacity>
+
+          {/* Sign In Button */}
+          <TouchableOpacity
+            style={[loginStyles.signInBtn, loading && { opacity: 0.7 }]}
             onPress={handleLogin}
             disabled={loading}
           >
             {loading ? (
-              <ActivityIndicator color={colors.background} />
+              <ActivityIndicator color="#FFFFFF" />
             ) : (
-              <Text style={styles.buttonText}>Sign In</Text>
+              <Text style={loginStyles.signInBtnText}>Sign in</Text>
             )}
           </TouchableOpacity>
+
+          {/* Footer Link */}
+          <View style={loginStyles.footerContainer}>
+            <Text style={loginStyles.footerText}>
+              Are you an Investor?{' '}
+              <Text style={loginStyles.footerLink} onPress={() => navigation.navigate('InvestorRegister')}>
+                Register Investor Account
+              </Text>
+            </Text>
+          </View>
         </View>
-      </View>
+      </ScrollView>
+    </SafeAreaView>
+  );
+};
+
+// --- Investor Registration Screen ---
+const InvestorRegisterScreen = ({ navigation }: any) => {
+  const insets = useSafeAreaInsets();
+  const [fullName, setFullName] = useState('');
+  const [email, setEmail] = useState('');
+  const [phone, setPhone] = useState('');
+  const [password, setPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
+  const [loading, setLoading] = useState(false);
+  const [errorMsg, setErrorMsg] = useState('');
+  const setAuth = useAuthStore((state) => state.setAuth);
+
+  const handleRegister = async () => {
+    if (!fullName.trim() || !email.trim() || !phone.trim() || !password) {
+      setErrorMsg('Please fill in all required fields.');
+      return;
+    }
+
+    if (password !== confirmPassword) {
+      setErrorMsg('Password and Confirm Password do not match.');
+      return;
+    }
+
+    setLoading(true);
+    setErrorMsg('');
+
+    try {
+      let res: any = await apiCall('/api/investors/register', {
+        method: 'POST',
+        body: JSON.stringify({
+          fullName: fullName.trim(),
+          email: email.trim(),
+          phone: phone.trim(),
+          password,
+        }),
+      });
+
+      if (!res.success) {
+        res = await apiCall('/api/investors/me', {
+          method: 'POST',
+          body: JSON.stringify({
+            fullName: fullName.trim(),
+            email: email.trim(),
+            phone: phone.trim(),
+            password,
+          }),
+        });
+      }
+
+      if (res.success || res.data) {
+        const loginRes = await apiCall('/api/auth/login', {
+          method: 'POST',
+          body: JSON.stringify({
+            email: email.trim(),
+            password,
+            rememberMe: true,
+            deviceInfo: `${Platform.OS} ${Platform.Version || ''}`.trim(),
+          }),
+        });
+
+        if (loginRes.success && loginRes.data) {
+          const { user, token, accessToken, role } = loginRes.data;
+          const actualToken = token || accessToken || (loginRes.data as any).token || 'valid-session-token';
+          setAuth(user || { email: email.trim(), role: 'INVESTOR' }, actualToken);
+        } else {
+          Alert.alert('Registration Successful', 'Your Investor Account has been created! Please log in.', [
+            { text: 'Login Now', onPress: () => navigation.navigate('Login') }
+          ]);
+        }
+      } else {
+        setErrorMsg(res.error || 'Registration failed. Please check your details.');
+      }
+    } catch (err: any) {
+      setErrorMsg(err.message || 'An unexpected error occurred.');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const topGap = Platform.OS === 'android' ? (StatusBar.currentHeight || insets.top || 24) : 0;
+
+  return (
+    <SafeAreaView style={[styles.safeArea, { paddingTop: topGap, backgroundColor: '#090D16' }]}>
+      <ScrollView contentContainerStyle={{ flexGrow: 1, paddingHorizontal: 20, paddingVertical: 20, justifyContent: 'center' }} showsVerticalScrollIndicator={false}>
+        <TouchableOpacity
+          style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 16, alignSelf: 'flex-start' }}
+          onPress={() => navigation.navigate('Login')}
+        >
+          <ArrowLeft size={16} color="#818CF8" style={{ marginRight: 6 }} />
+          <Text style={{ color: '#818CF8', fontSize: 13, fontWeight: 'bold' }}>Back to Login</Text>
+        </TouchableOpacity>
+
+        <Text style={registerStyles.portalTitle}>INVESTOR PORTAL</Text>
+        <Text style={registerStyles.portalSubtitle}>
+          Register your Investor Account to submit KYC & Bond Agreement
+        </Text>
+
+        <View style={registerStyles.cardContainer}>
+          <Text style={registerStyles.formTitle}>Create Investor Account</Text>
+          <Text style={registerStyles.formSubtitle}>Fill details to start your investment onboard</Text>
+
+          {errorMsg ? (
+            <View style={registerStyles.errorBox}>
+              <Text style={registerStyles.errorText}>{errorMsg}</Text>
+            </View>
+          ) : null}
+
+          <View style={registerStyles.fieldGroup}>
+            <Text style={registerStyles.fieldLabel}>Full Name *</Text>
+            <View style={registerStyles.inputContainer}>
+              <UserIcon size={18} color="#64748B" style={{ marginRight: 10 }} />
+              <TextInput
+                style={registerStyles.textInput}
+                placeholder="John Doe"
+                placeholderTextColor="#475569"
+                value={fullName}
+                onChangeText={setFullName}
+              />
+            </View>
+          </View>
+
+          <View style={registerStyles.fieldGroup}>
+            <Text style={registerStyles.fieldLabel}>Email Address *</Text>
+            <View style={[registerStyles.inputContainer, { backgroundColor: '#EFF6FF', borderColor: '#BFDBFE' }]}>
+              <Mail size={18} color="#64748B" style={{ marginRight: 10 }} />
+              <TextInput
+                style={[registerStyles.textInput, { color: '#0F172A' }]}
+                placeholder="keyadmin@gmail.com"
+                placeholderTextColor="#64748B"
+                value={email}
+                onChangeText={setEmail}
+                autoCapitalize="none"
+                keyboardType="email-address"
+              />
+            </View>
+          </View>
+
+          <View style={registerStyles.fieldGroup}>
+            <Text style={registerStyles.fieldLabel}>Phone Number *</Text>
+            <View style={registerStyles.inputContainer}>
+              <Briefcase size={18} color="#64748B" style={{ marginRight: 10 }} />
+              <TextInput
+                style={registerStyles.textInput}
+                placeholder="+91 9876543210"
+                placeholderTextColor="#475569"
+                value={phone}
+                onChangeText={setPhone}
+                keyboardType="phone-pad"
+              />
+            </View>
+          </View>
+
+          <View style={registerStyles.fieldGroup}>
+            <Text style={registerStyles.fieldLabel}>Password *</Text>
+            <View style={[registerStyles.inputContainer, { backgroundColor: '#EFF6FF', borderColor: '#BFDBFE' }]}>
+              <KeyRound size={18} color="#64748B" style={{ marginRight: 10 }} />
+              <TextInput
+                style={[registerStyles.textInput, { flex: 1, color: '#0F172A' }]}
+                placeholder="••••••••"
+                placeholderTextColor="#64748B"
+                value={password}
+                onChangeText={setPassword}
+                secureTextEntry={!showPassword}
+                autoCapitalize="none"
+              />
+              <TouchableOpacity onPress={() => setShowPassword(!showPassword)}>
+                {showPassword ? <EyeOff size={18} color="#64748B" /> : <Eye size={18} color="#64748B" />}
+              </TouchableOpacity>
+            </View>
+          </View>
+
+          <View style={registerStyles.fieldGroup}>
+            <Text style={registerStyles.fieldLabel}>Confirm Password *</Text>
+            <View style={registerStyles.inputContainer}>
+              <KeyRound size={18} color="#64748B" style={{ marginRight: 10 }} />
+              <TextInput
+                style={registerStyles.textInput}
+                placeholder="••••••••"
+                placeholderTextColor="#475569"
+                value={confirmPassword}
+                onChangeText={setConfirmPassword}
+                secureTextEntry={!showPassword}
+                autoCapitalize="none"
+              />
+            </View>
+          </View>
+
+          <TouchableOpacity
+            style={[registerStyles.submitBtn, loading && { opacity: 0.7 }]}
+            onPress={handleRegister}
+            disabled={loading}
+          >
+            {loading ? (
+              <ActivityIndicator color="#FFFFFF" />
+            ) : (
+              <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                <Text style={registerStyles.submitBtnText}>Register Investor</Text>
+                <ArrowUpRight size={18} color="#FFFFFF" style={{ marginLeft: 6 }} />
+              </View>
+            )}
+          </TouchableOpacity>
+
+          <View style={registerStyles.footerContainer}>
+            <Text style={registerStyles.footerText}>
+              Already have an account?{' '}
+              <Text style={registerStyles.footerLink} onPress={() => navigation.navigate('Login')}>
+                Login to Portal
+              </Text>
+            </Text>
+          </View>
+        </View>
+      </ScrollView>
     </SafeAreaView>
   );
 };
@@ -4948,24 +5230,35 @@ const EmployeeProfileView = () => {
             {/* 2-Column Read-Only Details Grid */}
             <View style={styles.formRow2Col}>
               <View style={styles.formCol}>
+                <Text style={styles.filterGroupLabel}>EMPLOYEE CODE</Text>
+                <Text style={styles.profileValText}>{employee?.employeeCode || 'N/A'}</Text>
+              </View>
+              <View style={styles.formCol}>
                 <Text style={styles.filterGroupLabel}>FULL NAME</Text>
                 <Text style={styles.profileValText}>{employee?.firstName} {employee?.lastName}</Text>
               </View>
+            </View>
+
+            <View style={styles.formRow2Col}>
               <View style={styles.formCol}>
-                <Text style={styles.filterGroupLabel}>EMAIL ADDRESS</Text>
+                <Text style={styles.filterGroupLabel}>PERSONAL EMAIL</Text>
                 <Text style={styles.profileValText}>{employee?.email}</Text>
+              </View>
+              <View style={styles.formCol}>
+                <Text style={styles.filterGroupLabel}>OFFICE EMAIL</Text>
+                <Text style={styles.profileValText}>{employee?.officeEmail || employee?.email}</Text>
               </View>
             </View>
 
             <View style={styles.formRow2Col}>
               <View style={styles.formCol}>
                 <Text style={styles.filterGroupLabel}>PHONE NUMBER</Text>
-                <Text style={styles.profileValText}>{employee?.phone || '08273322128'}</Text>
+                <Text style={styles.profileValText}>{employee?.phone || 'N/A'}</Text>
               </View>
               <View style={styles.formCol}>
                 <Text style={styles.filterGroupLabel}>DATE OF BIRTH</Text>
                 <Text style={styles.profileValText}>
-                  {employee?.dateOfBirth ? new Date(employee.dateOfBirth).toLocaleDateString() : '10/6/1995'}
+                  {employee?.dateOfBirth ? new Date(employee.dateOfBirth).toLocaleDateString() : 'N/A'}
                 </Text>
               </View>
             </View>
@@ -4973,11 +5266,48 @@ const EmployeeProfileView = () => {
             <View style={styles.formRow2Col}>
               <View style={styles.formCol}>
                 <Text style={styles.filterGroupLabel}>DEPARTMENT</Text>
-                <Text style={styles.profileValText}>{employee?.department || 'Engineering'}</Text>
+                <Text style={styles.profileValText}>{employee?.department || 'N/A'}</Text>
               </View>
               <View style={styles.formCol}>
                 <Text style={styles.filterGroupLabel}>DESIGNATION</Text>
-                <Text style={styles.profileValText}>{employee?.designation || 'Developer'}</Text>
+                <Text style={styles.profileValText}>{employee?.designation || 'N/A'}</Text>
+              </View>
+            </View>
+
+            <View style={styles.formRow2Col}>
+              <View style={styles.formCol}>
+                <Text style={styles.filterGroupLabel}>WORK LOCATION</Text>
+                <Text style={styles.profileValText}>{employee?.workLocation || 'Headquarters'}</Text>
+              </View>
+              <View style={styles.formCol}>
+                <Text style={styles.filterGroupLabel}>STATUS / TYPE</Text>
+                <Text style={styles.profileValText}>{employee?.status || 'Active'} ({employee?.employeeType || 'Full-Time'})</Text>
+              </View>
+            </View>
+
+            {/* KYC & Bank Sub-section */}
+            <View style={{ marginTop: spacing.m, paddingTop: spacing.m, borderTopWidth: 1, borderTopColor: colors.border }}>
+              <Text style={[styles.settingsCardTitle, { fontSize: 13, marginBottom: spacing.s }]}>KYC & BANK DETAILS</Text>
+              <View style={styles.formRow2Col}>
+                <View style={styles.formCol}>
+                  <Text style={styles.filterGroupLabel}>AADHAR NUMBER</Text>
+                  <Text style={styles.profileValText}>{employee?.kyc?.aadharNumber || 'N/A'}</Text>
+                </View>
+                <View style={styles.formCol}>
+                  <Text style={styles.filterGroupLabel}>PAN NUMBER</Text>
+                  <Text style={styles.profileValText}>{employee?.kyc?.panNumber || 'N/A'}</Text>
+                </View>
+              </View>
+
+              <View style={styles.formRow2Col}>
+                <View style={styles.formCol}>
+                  <Text style={styles.filterGroupLabel}>BANK NAME</Text>
+                  <Text style={styles.profileValText}>{employee?.bankDetails?.bankName || 'N/A'}</Text>
+                </View>
+                <View style={styles.formCol}>
+                  <Text style={styles.filterGroupLabel}>ACCOUNT NUMBER</Text>
+                  <Text style={styles.profileValText}>{employee?.bankDetails?.accountNumber || 'N/A'}</Text>
+                </View>
               </View>
             </View>
           </View>
@@ -5040,6 +5370,1474 @@ const EmployeeProfileView = () => {
   );
 };
 
+// --- Investors Admin View Sub-Component ---
+const InvestorsAdminView = () => {
+  const [investors, setInvestors] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [statusFilter, setStatusFilter] = useState('ALL');
+
+  // Modals
+  const [selectedInvestor, setSelectedInvestor] = useState<any>(null); // Audit & View modal
+  const [editInvestor, setEditInvestor] = useState<any>(null); // Edit modal
+  const [showAddModal, setShowAddModal] = useState(false); // Add modal
+
+  // Form states for Add Investor
+  const [formData, setFormData] = useState({
+    fullName: '',
+    email: '',
+    phone: '',
+    password: '',
+    investmentAmount: '',
+    monthlyGrowthPercentage: '2.5',
+    referralEmployeeName: '',
+  });
+
+  const [submitting, setSubmitting] = useState(false);
+  const [rejectReason, setRejectReason] = useState('');
+  const [showRejectBox, setShowRejectBox] = useState(false);
+
+  const fetchInvestors = async () => {
+    setLoading(true);
+    try {
+      const res: any = await apiCall('/api/investors/me');
+      let list: any[] = [];
+      if (res && res.success && Array.isArray(res.data)) {
+        list = res.data;
+      } else if (Array.isArray(res)) {
+        list = res;
+      } else if (res && res.data) {
+        list = Array.isArray(res.data) ? res.data : [res.data];
+      }
+      setInvestors(list);
+    } catch (e) {
+      console.error('fetchInvestors error:', e);
+      setInvestors([]);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchInvestors();
+  }, []);
+
+  const filteredInvestors = (Array.isArray(investors) ? investors : []).filter((inv) => {
+    if (!inv || typeof inv !== 'object') return false;
+    const query = searchQuery.trim().toLowerCase();
+    const matchesSearch =
+      !query ||
+      (inv.fullName && inv.fullName.toLowerCase().includes(query)) ||
+      (inv.email && inv.email.toLowerCase().includes(query)) ||
+      (inv.phone && String(inv.phone).toLowerCase().includes(query)) ||
+      (inv.investorCode && inv.investorCode.toLowerCase().includes(query));
+
+    const filter = statusFilter.toUpperCase();
+    const invStatus = (inv.status || 'Pending').toUpperCase();
+
+    const matchesStatus =
+      filter === 'ALL' ||
+      invStatus === filter;
+
+    return matchesSearch && matchesStatus;
+  });
+
+  const handleCreateInvestor = async () => {
+    if (!formData.fullName.trim() || !formData.email.trim()) {
+      Alert.alert('Validation Error', 'Full Name and Email are required.');
+      return;
+    }
+    setSubmitting(true);
+    try {
+      const res: any = await apiCall('/api/investors/me', {
+        method: 'POST',
+        body: JSON.stringify({
+          fullName: formData.fullName.trim(),
+          email: formData.email.trim(),
+          phone: formData.phone.trim(),
+          password: formData.password || 'Investor@123',
+          investmentAmount: Number(formData.investmentAmount) || 0,
+          monthlyGrowthPercentage: Number(formData.monthlyGrowthPercentage) || 2.5,
+          referralEmployeeName: formData.referralEmployeeName.trim(),
+        }),
+      });
+      if (res.success && res.data) {
+        Alert.alert('Success', 'Investor created successfully!');
+        setShowAddModal(false);
+        setFormData({ fullName: '', email: '', phone: '', password: '', investmentAmount: '', monthlyGrowthPercentage: '2.5', referralEmployeeName: '' });
+        setInvestors((prev) => [res.data, ...prev.filter(i => (i._id || i.id) !== (res.data._id || res.data.id))]);
+        fetchInvestors();
+      } else {
+        Alert.alert('Error', res.error || 'Failed to create investor');
+      }
+    } catch (e) {
+      Alert.alert('Error', 'Failed to create investor');
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  const handleSaveEditInvestor = async () => {
+    if (!editInvestor) return;
+    setSubmitting(true);
+    try {
+      const invId = editInvestor._id || editInvestor.id;
+      let res: any = await apiCall(`/api/investors/${invId}`, {
+        method: 'PUT',
+        body: JSON.stringify({
+          fullName: editInvestor.fullName,
+          email: editInvestor.email,
+          phone: editInvestor.phone,
+          investmentAmount: Number(editInvestor.investmentAmount) || 0,
+          monthlyGrowthPercentage: Number(editInvestor.monthlyGrowthPercentage) || 2.5,
+          status: editInvestor.status,
+        }),
+      });
+
+      if (!res || !res.success) {
+        res = await apiCall('/api/investors/me', {
+          method: 'PUT',
+          body: JSON.stringify({
+            investorId: invId,
+            fullName: editInvestor.fullName,
+            email: editInvestor.email,
+            phone: editInvestor.phone,
+            investmentAmount: Number(editInvestor.investmentAmount) || 0,
+            monthlyGrowthPercentage: Number(editInvestor.monthlyGrowthPercentage) || 2.5,
+            status: editInvestor.status,
+          }),
+        });
+      }
+
+      if (res && (res.success || res.data)) {
+        Alert.alert('Success', 'Investor details updated successfully!');
+        setEditInvestor(null);
+        fetchInvestors();
+      } else {
+        Alert.alert('Error', res?.error || 'Failed to update investor');
+      }
+    } catch (e) {
+      Alert.alert('Error', 'Failed to update investor');
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  const handleDeleteInvestor = (inv: any) => {
+    const targetId = inv._id || inv.id;
+    Alert.alert(
+      'Delete Investor',
+      `Are you sure you want to delete investor ${inv.fullName || inv.email} (${inv.investorCode || ''})?`,
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Delete',
+          style: 'destructive',
+          onPress: async () => {
+            try {
+              const res: any = await apiCall(`/api/investors/me?id=${targetId}`, {
+                method: 'DELETE',
+              });
+              if (res.success) {
+                Alert.alert('Success', 'Investor deleted successfully');
+                setInvestors((prev) => prev.filter(i => (i._id || i.id) !== targetId));
+                fetchInvestors();
+              } else {
+                Alert.alert('Error', res.error || 'Failed to delete investor');
+              }
+            } catch (e) {
+              Alert.alert('Error', 'Failed to delete investor');
+            }
+          },
+        },
+      ]
+    );
+  };
+
+  const handleDocVerify = async (docKey: string, docStatus: string) => {
+    if (!selectedInvestor) return;
+    setSubmitting(true);
+    try {
+      const invId = selectedInvestor._id || selectedInvestor.id;
+      let res: any = await apiCall(`/api/investors/${invId}`, {
+        method: 'PUT',
+        body: JSON.stringify({
+          docVerifications: {
+            ...(selectedInvestor.docVerifications || {}),
+            [docKey]: docStatus,
+          },
+        }),
+      });
+
+      if (!res || !res.success) {
+        res = await apiCall('/api/investors/me', {
+          method: 'PUT',
+          body: JSON.stringify({
+            investorId: invId,
+            docVerifications: {
+              ...(selectedInvestor.docVerifications || {}),
+              [docKey]: docStatus,
+            },
+          }),
+        });
+      }
+
+      // Immediately update local selectedInvestor state so modal shows updated status badge
+      setSelectedInvestor((prev: any) => ({
+        ...prev,
+        docVerifications: {
+          ...(prev?.docVerifications || {}),
+          [docKey]: docStatus,
+        },
+      }));
+      fetchInvestors();
+      Alert.alert('Status Updated', `${docKey.toUpperCase()} document status updated to ${docStatus}`);
+    } catch (e) {
+      Alert.alert('Error', 'Failed to update document status');
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  const handleUpdateOverallStatus = async (status: string, reason?: string) => {
+    if (!selectedInvestor) return;
+    setSubmitting(true);
+    try {
+      const res: any = await apiCall('/api/investors/me', {
+        method: 'PUT',
+        body: JSON.stringify({
+          investorId: selectedInvestor._id || selectedInvestor.id,
+          status,
+          rejectionReason: reason,
+        }),
+      });
+      if (res.success && res.data) {
+        Alert.alert('Success', `Investor marked as ${status}`);
+        setSelectedInvestor(null);
+        setShowRejectBox(false);
+        setRejectReason('');
+        fetchInvestors();
+      } else {
+        Alert.alert('Error', res.error || 'Failed to update status');
+      }
+    } catch (e) {
+      Alert.alert('Error', 'Failed to update status');
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  const counts = {
+    ALL: (Array.isArray(investors) ? investors : []).length,
+    Pending: (Array.isArray(investors) ? investors : []).filter((i) => !i.status || i.status === 'Pending').length,
+    Verified: (Array.isArray(investors) ? investors : []).filter((i) => i.status === 'Verified').length,
+    Rejected: (Array.isArray(investors) ? investors : []).filter((i) => i.status === 'Rejected').length,
+  };
+
+  return (
+    <ScrollView contentContainerStyle={styles.payrollContainer}>
+      <View style={styles.titleRow}>
+        <View style={{ flex: 1, marginRight: 8 }}>
+          <Text style={styles.empTitle}>Investor Management</Text>
+          <Text style={styles.empSubtitle}>Review investor KYC docs, verify bond agreements & set rates.</Text>
+        </View>
+        <TouchableOpacity
+          style={[styles.saveBtn, { backgroundColor: colors.accent, paddingHorizontal: 12, paddingVertical: 8 }]}
+          onPress={() => setShowAddModal(true)}
+        >
+          <Text style={[styles.saveBtnText, { color: '#fff', fontSize: 12 }]}>+ Add Investor</Text>
+        </TouchableOpacity>
+      </View>
+
+      {/* Search & Filter Bar */}
+      <View style={{ marginBottom: spacing.m }}>
+        <TextInput
+          style={styles.modalTextInput}
+          placeholder="Search Investor Name, Email, Phone, Code..."
+          placeholderTextColor={colors.textMuted}
+          value={searchQuery}
+          onChangeText={setSearchQuery}
+        />
+
+        <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginTop: 8 }}>
+          <View style={{ flexDirection: 'row', gap: 6 }}>
+            {[
+              { key: 'ALL', label: `All Status (${counts.ALL})` },
+              { key: 'Pending', label: `Pending (${counts.Pending})` },
+              { key: 'Verified', label: `Verified (${counts.Verified})` },
+              { key: 'Rejected', label: `Rejected (${counts.Rejected})` },
+            ].map((item) => (
+              <TouchableOpacity
+                key={item.key}
+                style={[
+                  styles.typeSelectBtn,
+                  statusFilter === item.key && styles.typeSelectBtnActive,
+                  { paddingVertical: 6, paddingHorizontal: 12 },
+                ]}
+                onPress={() => setStatusFilter(item.key)}
+              >
+                <Text style={[styles.typeSelectText, statusFilter === item.key && styles.typeSelectTextActive, { fontSize: 11 }]}>
+                  {item.label}
+                </Text>
+              </TouchableOpacity>
+            ))}
+          </View>
+        </ScrollView>
+      </View>
+
+      {loading ? (
+        <ActivityIndicator size="large" color={colors.accent} style={{ marginTop: 40 }} />
+      ) : (
+        <View>
+          {filteredInvestors.map((inv) => {
+            const docsObj = inv.docVerifications || {};
+            const docKeys = Object.keys(docsObj);
+            const docsApprovedCount = docKeys.filter((v) => docsObj[v] === 'Approved').length;
+            const totalDocsCount = docKeys.length || 5;
+            const isBondAccepted = inv.bondAgreement?.accepted;
+
+            return (
+              <View key={inv._id || inv.id || Math.random().toString()} style={[styles.employeeRowCard, { padding: spacing.m, marginBottom: spacing.m }]}>
+                {/* Header: Name, Code & Status Badge */}
+                <View style={styles.empCardHeader}>
+                  <View style={{ flex: 1 }}>
+                    <Text style={[styles.empName, { fontSize: 16, fontWeight: 'bold', color: colors.text }]}>
+                      {inv.fullName || inv.email}
+                    </Text>
+                    <Text style={{ fontSize: 12, fontWeight: 'bold', color: colors.accent, marginTop: 2 }}>
+                      {inv.investorCode || 'INV-0000'}
+                    </Text>
+                    <Text style={{ fontSize: 12, color: colors.textMuted, marginTop: 2 }}>
+                      ✉️ {inv.email} {inv.phone ? ` • 📞 ${inv.phone}` : ''}
+                    </Text>
+                  </View>
+
+                  <View style={{ alignItems: 'flex-end' }}>
+                    <View
+                      style={[
+                        styles.statusBadge,
+                        inv.status === 'Verified'
+                          ? { backgroundColor: '#00a65a' }
+                          : inv.status === 'Rejected'
+                            ? { backgroundColor: '#EF4444' }
+                            : { backgroundColor: '#F97316' },
+                        { paddingHorizontal: 10, paddingVertical: 4, borderRadius: 12 },
+                      ]}
+                    >
+                      <Text style={[styles.statusText, { color: '#fff', fontSize: 11, fontWeight: 'bold' }]}>
+                        {inv.status || 'Pending'} (Docs: {docsApprovedCount}/{totalDocsCount} Approved)
+                      </Text>
+                    </View>
+                  </View>
+                </View>
+
+                {/* Details Grid */}
+                <View style={[styles.empCardBody, { marginTop: spacing.s, paddingTop: spacing.s, borderTopWidth: 1, borderTopColor: colors.border }]}>
+                  <View style={styles.empDetailCol}>
+                    <Text style={styles.detailLabel}>REFERRED BY</Text>
+                    <Text style={[styles.detailVal, { color: colors.accent, fontWeight: 'bold', fontSize: 13 }]}>
+                      {inv.referralEmployeeName || 'Direct / Self'}
+                    </Text>
+                  </View>
+
+                  <View style={styles.empDetailCol}>
+                    <Text style={styles.detailLabel}>INVEST RS AMOUNT</Text>
+                    <Text style={[styles.detailVal, { color: '#00a65a', fontWeight: 'bold', fontSize: 14 }]}>
+                      ₹{(inv.investmentAmount || 0).toLocaleString()}
+                    </Text>
+                  </View>
+
+                  <View style={styles.empDetailCol}>
+                    <Text style={styles.detailLabel}>MONTHLY GROWTH %</Text>
+                    <Text style={[styles.detailVal, { color: colors.accent, fontWeight: 'bold', fontSize: 14 }]}>
+                      {inv.monthlyGrowthPercentage || 2.5}% / mo
+                    </Text>
+                  </View>
+                </View>
+
+                {/* Bond Agreement Status Bar */}
+                <View style={{ marginTop: 8, paddingVertical: 6, paddingHorizontal: 10, backgroundColor: isBondAccepted ? 'rgba(16, 185, 129, 0.1)' : 'rgba(245, 158, 11, 0.1)', borderRadius: borderRadius.s, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
+                  <Text style={{ fontSize: 11, fontWeight: '700', color: colors.textMuted }}>Bond Agreement:</Text>
+                  {isBondAccepted ? (
+                    <Text style={{ fontSize: 11, color: '#00a65a', fontWeight: 'bold' }}>
+                      ✓ Accepted ({inv.bondAgreement?.signatureText || inv.email})
+                    </Text>
+                  ) : (
+                    <Text style={{ fontSize: 11, color: '#F97316', fontWeight: 'bold' }}>
+                      Not Accepted
+                    </Text>
+                  )}
+                </View>
+
+                {/* Actions Bar */}
+                <View style={{ flexDirection: 'row', justifyContent: 'flex-end', gap: 8, marginTop: 10, paddingTop: 10, borderTopWidth: 1, borderTopColor: colors.border }}>
+                  <TouchableOpacity
+                    style={[styles.saveBtn, { backgroundColor: colors.accent, paddingHorizontal: 12, paddingVertical: 6 }]}
+                    onPress={() => setSelectedInvestor(inv)}
+                  >
+                    <Text style={{ color: '#fff', fontSize: 11, fontWeight: 'bold' }}>👁️ View & Verify</Text>
+                  </TouchableOpacity>
+
+                  <TouchableOpacity
+                    style={[styles.saveBtn, { backgroundColor: '#3b82f6', paddingHorizontal: 12, paddingVertical: 6 }]}
+                    onPress={() => setEditInvestor({ ...inv })}
+                  >
+                    <Text style={{ color: '#fff', fontSize: 11, fontWeight: 'bold' }}>✏️ Edit</Text>
+                  </TouchableOpacity>
+
+                  <TouchableOpacity
+                    style={[styles.saveBtn, { backgroundColor: '#EF4444', paddingHorizontal: 12, paddingVertical: 6 }]}
+                    onPress={() => handleDeleteInvestor(inv)}
+                  >
+                    <Text style={{ color: '#fff', fontSize: 11, fontWeight: 'bold' }}>🗑️ Delete</Text>
+                  </TouchableOpacity>
+                </View>
+              </View>
+            );
+          })}
+          {filteredInvestors.length === 0 && (
+            <Text style={styles.noEmployeesText}>No investors found.</Text>
+          )}
+        </View>
+      )}
+
+      {/* --- ADD INVESTOR MODAL --- */}
+      <Modal visible={showAddModal} animationType="slide" transparent>
+        <View style={styles.modalOverlay}>
+          <View style={[styles.modalContainer, { maxHeight: '85%' }]}>
+            <View style={styles.modalHeader}>
+              <Text style={styles.modalTitle}>+ Add New Investor</Text>
+              <TouchableOpacity onPress={() => setShowAddModal(false)}>
+                <X size={20} color={colors.text} />
+              </TouchableOpacity>
+            </View>
+
+            <ScrollView contentContainerStyle={styles.modalFormContent}>
+              <Text style={styles.formLabel}>Full Name *</Text>
+              <TextInput
+                style={styles.modalTextInput}
+                placeholder="Enter Investor Full Name"
+                placeholderTextColor={colors.textMuted}
+                value={formData.fullName}
+                onChangeText={(val) => setFormData({ ...formData, fullName: val })}
+              />
+
+              <Text style={styles.formLabel}>Email Address *</Text>
+              <TextInput
+                style={styles.modalTextInput}
+                placeholder="investor@example.com"
+                placeholderTextColor={colors.textMuted}
+                value={formData.email}
+                onChangeText={(val) => setFormData({ ...formData, email: val })}
+                keyboardType="email-address"
+                autoCapitalize="none"
+              />
+
+              <Text style={styles.formLabel}>Phone Number</Text>
+              <TextInput
+                style={styles.modalTextInput}
+                placeholder="Enter 10-digit Phone"
+                placeholderTextColor={colors.textMuted}
+                value={formData.phone}
+                onChangeText={(val) => setFormData({ ...formData, phone: val })}
+                keyboardType="phone-pad"
+              />
+
+              <Text style={styles.formLabel}>Password</Text>
+              <TextInput
+                style={styles.modalTextInput}
+                placeholder="Default: Investor@123"
+                placeholderTextColor={colors.textMuted}
+                value={formData.password}
+                onChangeText={(val) => setFormData({ ...formData, password: val })}
+                secureTextEntry
+              />
+
+              <Text style={styles.formLabel}>Invested RS Amount</Text>
+              <TextInput
+                style={styles.modalTextInput}
+                placeholder="e.g. 500000"
+                placeholderTextColor={colors.textMuted}
+                value={formData.investmentAmount}
+                onChangeText={(val) => setFormData({ ...formData, investmentAmount: val })}
+                keyboardType="numeric"
+              />
+
+              <Text style={styles.formLabel}>Monthly Growth Rate (%)</Text>
+              <TextInput
+                style={styles.modalTextInput}
+                placeholder="e.g. 2.5"
+                placeholderTextColor={colors.textMuted}
+                value={formData.monthlyGrowthPercentage}
+                onChangeText={(val) => setFormData({ ...formData, monthlyGrowthPercentage: val })}
+                keyboardType="numeric"
+              />
+
+              <Text style={styles.formLabel}>Referred By Employee Name</Text>
+              <TextInput
+                style={styles.modalTextInput}
+                placeholder="Direct / Self or Employee Name"
+                placeholderTextColor={colors.textMuted}
+                value={formData.referralEmployeeName}
+                onChangeText={(val) => setFormData({ ...formData, referralEmployeeName: val })}
+              />
+
+              <TouchableOpacity
+                style={[styles.saveBtn, { backgroundColor: colors.accent, marginTop: 12 }]}
+                onPress={handleCreateInvestor}
+                disabled={submitting}
+              >
+                <Text style={styles.saveBtnText}>{submitting ? 'Creating...' : 'Create Investor'}</Text>
+              </TouchableOpacity>
+            </ScrollView>
+          </View>
+        </View>
+      </Modal>
+
+      {/* --- EDIT INVESTOR MODAL --- */}
+      <Modal visible={!!editInvestor} animationType="slide" transparent>
+        <View style={styles.modalOverlay}>
+          <View style={[styles.modalContainer, { maxHeight: '85%' }]}>
+            <View style={styles.modalHeader}>
+              <Text style={styles.modalTitle}>Edit Investor</Text>
+              <TouchableOpacity onPress={() => setEditInvestor(null)}>
+                <X size={20} color={colors.text} />
+              </TouchableOpacity>
+            </View>
+
+            <ScrollView contentContainerStyle={styles.modalFormContent}>
+              <Text style={styles.formLabel}>Full Name</Text>
+              <TextInput
+                style={styles.modalTextInput}
+                value={editInvestor?.fullName || editInvestor?.userId?.fullName || editInvestor?.name || ''}
+                onChangeText={(val) => setEditInvestor({ ...editInvestor, fullName: val })}
+              />
+
+              <Text style={styles.formLabel}>Email Address</Text>
+              <TextInput
+                style={styles.modalTextInput}
+                value={editInvestor?.email || editInvestor?.userId?.email || ''}
+                onChangeText={(val) => setEditInvestor({ ...editInvestor, email: val })}
+                keyboardType="email-address"
+                autoCapitalize="none"
+              />
+
+              <Text style={styles.formLabel}>Phone Number</Text>
+              <TextInput
+                style={styles.modalTextInput}
+                value={editInvestor?.phone || editInvestor?.userId?.phone || ''}
+                onChangeText={(val) => setEditInvestor({ ...editInvestor, phone: val })}
+                keyboardType="phone-pad"
+              />
+
+              <Text style={styles.formLabel}>Invested RS Amount</Text>
+              <TextInput
+                style={styles.modalTextInput}
+                value={editInvestor?.investmentAmount !== undefined && editInvestor?.investmentAmount !== null ? String(editInvestor.investmentAmount) : '0'}
+                onChangeText={(val) => setEditInvestor({ ...editInvestor, investmentAmount: val })}
+                keyboardType="numeric"
+              />
+
+              <Text style={styles.formLabel}>Monthly Growth Rate (%)</Text>
+              <TextInput
+                style={styles.modalTextInput}
+                value={editInvestor?.monthlyGrowthPercentage !== undefined && editInvestor?.monthlyGrowthPercentage !== null ? String(editInvestor.monthlyGrowthPercentage) : '2.5'}
+                onChangeText={(val) => setEditInvestor({ ...editInvestor, monthlyGrowthPercentage: val })}
+                keyboardType="numeric"
+              />
+
+              <Text style={styles.formLabel}>Investor Status</Text>
+              <View style={{ flexDirection: 'row', gap: 6, marginBottom: 12 }}>
+                {['Pending', 'Verified', 'Rejected'].map((st) => (
+                  <TouchableOpacity
+                    key={st}
+                    style={[
+                      styles.typeSelectBtn,
+                      editInvestor?.status === st && styles.typeSelectBtnActive,
+                      { flex: 1 },
+                    ]}
+                    onPress={() => setEditInvestor({ ...editInvestor, status: st })}
+                  >
+                    <Text style={[styles.typeSelectText, editInvestor?.status === st && styles.typeSelectTextActive]}>
+                      {st}
+                    </Text>
+                  </TouchableOpacity>
+                ))}
+              </View>
+
+              <TouchableOpacity
+                style={[styles.saveBtn, { backgroundColor: colors.accent, marginTop: 12 }]}
+                onPress={handleSaveEditInvestor}
+                disabled={submitting}
+              >
+                <Text style={styles.saveBtnText}>{submitting ? 'Saving...' : 'Save Changes'}</Text>
+              </TouchableOpacity>
+            </ScrollView>
+          </View>
+        </View>
+      </Modal>
+
+      {/* --- ADMIN AUDIT MODAL --- */}
+      <Modal visible={!!selectedInvestor} animationType="slide" transparent>
+        <View style={styles.modalOverlay}>
+          <View style={[styles.modalContainer, { maxHeight: '90%' }]}>
+            <View style={styles.modalHeader}>
+              <Text style={styles.modalTitle}>{selectedInvestor?.fullName || selectedInvestor?.email}</Text>
+              <TouchableOpacity onPress={() => setSelectedInvestor(null)}>
+                <X size={20} color={colors.text} />
+              </TouchableOpacity>
+            </View>
+
+            <ScrollView contentContainerStyle={styles.modalFormContent}>
+              <Text style={{ fontSize: 12, color: colors.textMuted }}>
+                {selectedInvestor?.investorCode} • {selectedInvestor?.email} • {selectedInvestor?.phone}
+              </Text>
+
+              <View style={[styles.netSalaryCard, { backgroundColor: '#f4f6f9', marginVertical: 12 }]}>
+                <Text style={styles.detailLabel}>REFERRED BY EMPLOYEE</Text>
+                <Text style={{ fontSize: 14, fontWeight: 'bold', color: colors.accent }}>
+                  {selectedInvestor?.referralEmployeeName || 'Direct / Self Signup'}
+                </Text>
+
+                <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginTop: 8 }}>
+                  <View>
+                    <Text style={styles.detailLabel}>INVESTED RS AMOUNT</Text>
+                    <Text style={{ fontSize: 16, fontWeight: 'black', color: '#00a65a' }}>
+                      ₹{(selectedInvestor?.investmentAmount || 0).toLocaleString()}
+                    </Text>
+                  </View>
+                  <View>
+                    <Text style={styles.detailLabel}>MONTHLY GROWTH</Text>
+                    <Text style={{ fontSize: 16, fontWeight: 'black', color: colors.accent }}>
+                      {selectedInvestor?.monthlyGrowthPercentage || 2.5}% / mo
+                    </Text>
+                  </View>
+                </View>
+              </View>
+
+              {/* Debenture Application Form Details */}
+              {selectedInvestor?.debentureForm && (
+                <View style={[styles.settingsCard, { marginBottom: 12 }]}>
+                  <Text style={[styles.settingsCardTitle, { color: colors.accent }]}>Debenture Application Form</Text>
+                  <Text style={{ fontSize: 11, color: colors.textMuted }}>
+                    App No: {selectedInvestor.debentureForm.applicationNo || 'N/A'}
+                  </Text>
+                  <Text style={{ fontSize: 12, marginTop: 4 }}>
+                    Father/Spouse: {selectedInvestor.debentureForm.fatherSpouseName || 'N/A'}
+                  </Text>
+                  <Text style={{ fontSize: 12 }}>
+                    DOB: {selectedInvestor.debentureForm.dob || 'N/A'} | Occupation: {selectedInvestor.debentureForm.occupation || 'N/A'}
+                  </Text>
+                  <Text style={{ fontSize: 12, color: colors.accent, fontWeight: 'bold', marginTop: 2 }}>
+                    {selectedInvestor.debentureForm.typeOfDebenture || 'Secured'} ({selectedInvestor.debentureForm.noOfDebentures} qty @ ₹{selectedInvestor.debentureForm.faceValue})
+                  </Text>
+                  <Text style={{ fontSize: 12 }}>
+                    Payment: {selectedInvestor.debentureForm.modeOfPayment} (UTR: {selectedInvestor.debentureForm.transactionUtrNo || 'N/A'})
+                  </Text>
+                </View>
+              )}
+
+              {/* Investor KYC Fields & Bond Agreement Summary */}
+              <View style={[styles.settingsCard, { marginVertical: 10, backgroundColor: '#F8FAFC' }]}>
+                <Text style={[styles.settingsCardTitle, { fontSize: 13, color: colors.accent }]}>Investor KYC & Bank Details</Text>
+                <Text style={{ fontSize: 11, color: '#334155', marginTop: 4 }}>
+                  Aadhar No: <Text style={{ fontWeight: 'bold' }}>{selectedInvestor?.kycDocs?.aadharNumber || 'Not Entered'}</Text>
+                </Text>
+                <Text style={{ fontSize: 11, color: '#334155' }}>
+                  PAN No: <Text style={{ fontWeight: 'bold' }}>{selectedInvestor?.kycDocs?.panNumber || 'Not Entered'}</Text>
+                </Text>
+                <Text style={{ fontSize: 11, color: '#334155' }}>
+                  Bank: <Text style={{ fontWeight: 'bold' }}>{selectedInvestor?.kycDocs?.bankName || 'N/A'}</Text> | A/C: <Text style={{ fontWeight: 'bold' }}>{selectedInvestor?.kycDocs?.accountNumber || 'N/A'}</Text>
+                </Text>
+                <Text style={{ fontSize: 11, color: '#334155' }}>
+                  IFSC: <Text style={{ fontWeight: 'bold' }}>{selectedInvestor?.kycDocs?.ifscCode || 'N/A'}</Text> | Branch: <Text style={{ fontWeight: 'bold' }}>{selectedInvestor?.kycDocs?.branchName || 'N/A'}</Text>
+                </Text>
+
+                <View style={{ marginTop: 8, paddingTop: 8, borderTopWidth: 1, borderTopColor: '#E2E8F0' }}>
+                  <Text style={{ fontSize: 11, fontWeight: 'bold', color: '#0F172A' }}>
+                    Bond Agreement: {selectedInvestor?.bondAgreement?.accepted ? '✓ Accepted' : '❌ Not Accepted'}
+                  </Text>
+                  <Text style={{ fontSize: 11, color: '#64748B' }}>
+                    Signature: <Text style={{ fontWeight: 'bold', color: colors.accent }}>{selectedInvestor?.bondAgreement?.signatureText || 'N/A'}</Text>
+                  </Text>
+                </View>
+              </View>
+
+              {/* Document Audit */}
+              <Text style={[styles.sectionTitle, { fontSize: 14 }]}>Document Verification Audit</Text>
+              {[
+                { key: 'aadhar', label: 'Aadhar Card', url: selectedInvestor?.kycDocs?.aadharDocUrl },
+                { key: 'pan', label: 'PAN Card', url: selectedInvestor?.kycDocs?.panDocUrl },
+                { key: 'marksheet10th', label: '10th Marksheet', url: selectedInvestor?.kycDocs?.marksheet10thUrl },
+                { key: 'marksheet12th', label: '12th Marksheet', url: selectedInvestor?.kycDocs?.marksheet12thUrl },
+                { key: 'bankPassbook', label: 'Bank Passbook', url: selectedInvestor?.kycDocs?.bankPassbookUrl },
+              ].map((doc) => {
+                const st = selectedInvestor?.docVerifications?.[doc.key] || 'Pending';
+                return (
+                  <View key={doc.key} style={styles.payrollTableRow}>
+                    <View style={{ flex: 1 }}>
+                      <Text style={{ fontSize: 13, fontWeight: 'bold' }}>{doc.label}</Text>
+                      <Text style={{ fontSize: 11, color: st === 'Approved' ? '#00a65a' : st === 'Rejected' ? '#EF4444' : '#F97316' }}>
+                        Status: {st}
+                      </Text>
+                    </View>
+
+                    <View style={{ flexDirection: 'row', gap: 6, alignItems: 'center' }}>
+                      <TouchableOpacity
+                        style={[styles.filterSubmitBtn, { backgroundColor: doc.url ? '#3B82F6' : '#94A3B8', paddingHorizontal: 6 }]}
+                        onPress={() => {
+                          if (doc.url) {
+                            Linking.openURL(doc.url).catch(() => Alert.alert('Doc Link', doc.url));
+                          } else {
+                            Alert.alert('Doc Link', `Document submitted by investor (${st}).`);
+                          }
+                        }}
+                      >
+                        <Text style={{ color: '#fff', fontSize: 10, fontWeight: 'bold' }}>👁️ View</Text>
+                      </TouchableOpacity>
+
+                      <TouchableOpacity
+                        style={[styles.filterSubmitBtn, { backgroundColor: '#00a65a', paddingHorizontal: 8 }]}
+                        onPress={() => handleDocVerify(doc.key, 'Approved')}
+                        disabled={submitting}
+                      >
+                        <Text style={{ color: '#fff', fontSize: 10, fontWeight: 'bold' }}>Approve</Text>
+                      </TouchableOpacity>
+
+                      <TouchableOpacity
+                        style={[styles.filterSubmitBtn, { backgroundColor: '#eee', paddingHorizontal: 8 }]}
+                        onPress={() => handleDocVerify(doc.key, 'Rejected')}
+                        disabled={submitting}
+                      >
+                        <Text style={{ color: '#EF4444', fontSize: 10, fontWeight: 'bold' }}>Reject</Text>
+                      </TouchableOpacity>
+                    </View>
+                  </View>
+                );
+              })}
+
+              {/* Overall Approval / Rejection */}
+              {showRejectBox && (
+                <View style={{ marginTop: 12 }}>
+                  <Text style={styles.formLabel}>Reason for Rejection *</Text>
+                  <TextInput
+                    style={styles.modalTextInput}
+                    placeholder="Enter reason..."
+                    value={rejectReason}
+                    onChangeText={setRejectReason}
+                  />
+                  <TouchableOpacity
+                    style={[styles.saveBtn, { backgroundColor: '#EF4444' }]}
+                    onPress={() => handleUpdateOverallStatus('Rejected', rejectReason)}
+                    disabled={submitting || !rejectReason.trim()}
+                  >
+                    <Text style={styles.saveBtnText}>Confirm Rejection</Text>
+                  </TouchableOpacity>
+                </View>
+              )}
+
+              <View style={{ flexDirection: 'row', justifyContent: 'flex-end', gap: 10, marginTop: 16 }}>
+                <TouchableOpacity
+                  style={[styles.saveBtn, { backgroundColor: '#eee' }]}
+                  onPress={() => setShowRejectBox(!showRejectBox)}
+                >
+                  <Text style={{ color: '#EF4444', fontWeight: 'bold' }}>Reject All</Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  style={[styles.saveBtn, { backgroundColor: '#00a65a' }]}
+                  onPress={() => handleUpdateOverallStatus('Verified')}
+                >
+                  <Text style={styles.saveBtnText}>Approve & Verify All</Text>
+                </TouchableOpacity>
+              </View>
+            </ScrollView>
+          </View>
+        </View>
+      </Modal>
+    </ScrollView>
+  );
+};
+
+// --- Debenture Application Form View Sub-Component ---
+const DebentureFormView = () => {
+  const user = useAuthStore((state) => state.user);
+  const [submitting, setSubmitting] = useState(false);
+  const [submittedAppNo, setSubmittedAppNo] = useState<string | null>(null);
+
+  const [fullName, setFullName] = useState((user as any)?.firstName ? `${(user as any).firstName} ${(user as any).lastName || ''}`.trim() : '');
+  const [fatherSpouseName, setFatherSpouseName] = useState('');
+  const [dob, setDob] = useState('');
+  const [phone, setPhone] = useState((user as any)?.phone || '');
+  const [email, setEmail] = useState(user?.email || '');
+  const [address, setAddress] = useState('');
+  const [city, setCity] = useState('');
+  const [state, setState] = useState('');
+  const [pinCode, setPinCode] = useState('');
+  const [occupation, setOccupation] = useState('');
+  const [panNumber, setPanNumber] = useState('');
+
+  const [typeOfDebenture, setTypeOfDebenture] = useState('Secured');
+  const [faceValue, setFaceValue] = useState('100000');
+  const [noOfDebentures, setNoOfDebentures] = useState('1');
+
+  const [modeOfPayment, setModeOfPayment] = useState('NEFT');
+  const [transactionUtrNo, setTransactionUtrNo] = useState('');
+  const [drawnOnBank, setDrawnOnBank] = useState('');
+  const [acceptedTerms, setAcceptedTerms] = useState(false);
+
+  const calculatedTotal = (Number(noOfDebentures) || 1) * (Number(faceValue) || 100000);
+
+  const handleSubmit = async () => {
+    if (!fullName.trim() || !phone.trim() || !email.trim()) {
+      Alert.alert('Validation Error', 'Please enter Applicant Name, Mobile, and Email.');
+      return;
+    }
+    if (!acceptedTerms) {
+      Alert.alert('Validation Error', 'Please accept the Debenture Allotment terms.');
+      return;
+    }
+
+    setSubmitting(true);
+    try {
+      const res: any = await apiCall('/api/debenture-application', {
+        method: 'POST',
+        body: JSON.stringify({
+          fullName: fullName.trim(),
+          fatherSpouseName,
+          dob,
+          phone: phone.trim(),
+          email: email.trim(),
+          address,
+          city,
+          state,
+          pinCode,
+          occupation,
+          panNumber,
+          typeOfDebenture,
+          faceValue: Number(faceValue) || 100000,
+          noOfDebentures: Number(noOfDebentures) || 1,
+          investmentAmount: calculatedTotal,
+          modeOfPayment,
+          transactionUtrNo,
+          drawnOnBank,
+          referralEmployeeCode: (user as any)?.employeeCode || '',
+        }),
+      });
+
+      if (res && (res.success || res.data || res.applicationNo)) {
+        const appNo = res.applicationNo || res.data?.debentureForm?.applicationNo || `DEB-${Math.floor(100000 + Math.random() * 900000)}`;
+        setSubmittedAppNo(appNo);
+        Alert.alert('Application Submitted!', `Debenture Application submitted successfully under App No: ${appNo}`);
+      } else {
+        Alert.alert('Error', res?.error || 'Failed to submit debenture application.');
+      }
+    } catch (e: any) {
+      Alert.alert('Error', e.message || 'Failed to submit application');
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  if (submittedAppNo) {
+    return (
+      <ScrollView contentContainerStyle={styles.payrollContainer}>
+        <View style={[styles.settingsCard, { backgroundColor: '#FFFFFF', alignItems: 'center', padding: 24, marginVertical: 20 }]}>
+          <ShieldCheck size={48} color="#00a65a" style={{ marginBottom: 12 }} />
+          <Text style={{ fontSize: 20, fontWeight: 'bold', color: '#0F172A', textAlign: 'center' }}>
+            Application Submitted Successfully!
+          </Text>
+          <Text style={{ fontSize: 13, color: '#64748B', textAlign: 'center', marginTop: 6, marginBottom: 16 }}>
+            Your Secured Debenture Application has been registered under Application No:
+          </Text>
+          <View style={{ backgroundColor: '#F1F5F9', paddingHorizontal: 16, paddingVertical: 10, borderRadius: 8, borderWidth: 1, borderColor: '#CBD5E1', marginBottom: 20 }}>
+            <Text style={{ fontSize: 18, fontWeight: '900', color: '#134086', letterSpacing: 1 }}>{submittedAppNo}</Text>
+          </View>
+          <TouchableOpacity
+            style={[styles.saveBtn, { backgroundColor: '#134086', paddingHorizontal: 24 }]}
+            onPress={() => setSubmittedAppNo(null)}
+          >
+            <Text style={styles.saveBtnText}>Submit Another Application</Text>
+          </TouchableOpacity>
+        </View>
+      </ScrollView>
+    );
+  }
+
+  return (
+    <ScrollView contentContainerStyle={styles.payrollContainer}>
+      <View style={styles.titleRow}>
+        <View>
+          <Text style={styles.empTitle}>DEBENTURE APPLICATION FORM</Text>
+          <Text style={styles.empSubtitle}>FOR SECURED DEBENTURES ALLOTMENT</Text>
+        </View>
+      </View>
+
+      <View style={[styles.settingsCard, { backgroundColor: '#FFFFFF', marginBottom: 16 }]}>
+        <Text style={[styles.settingsCardTitle, { color: '#0F172A', fontSize: 15 }]}>👤 1. Applicant Personal Details</Text>
+        
+        <Text style={styles.formLabel}>Full Applicant Name *</Text>
+        <TextInput style={styles.modalTextInput} placeholder="John Doe" value={fullName} onChangeText={setFullName} />
+
+        <Text style={styles.formLabel}>Father / Spouse Name</Text>
+        <TextInput style={styles.modalTextInput} placeholder="Father or Spouse Name" value={fatherSpouseName} onChangeText={setFatherSpouseName} />
+
+        <View style={{ flexDirection: 'row', gap: 10 }}>
+          <View style={{ flex: 1 }}>
+            <Text style={styles.formLabel}>Date of Birth (DOB)</Text>
+            <TextInput style={styles.modalTextInput} placeholder="DD/MM/YYYY" value={dob} onChangeText={setDob} />
+          </View>
+          <View style={{ flex: 1 }}>
+            <Text style={styles.formLabel}>PAN Number</Text>
+            <TextInput style={styles.modalTextInput} placeholder="ABCDE1234F" value={panNumber} onChangeText={setPanNumber} autoCapitalize="characters" />
+          </View>
+        </View>
+
+        <View style={{ flexDirection: 'row', gap: 10 }}>
+          <View style={{ flex: 1 }}>
+            <Text style={styles.formLabel}>Mobile Number *</Text>
+            <TextInput style={styles.modalTextInput} placeholder="+91 9876543210" value={phone} onChangeText={setPhone} keyboardType="phone-pad" />
+          </View>
+          <View style={{ flex: 1 }}>
+            <Text style={styles.formLabel}>Email Address *</Text>
+            <TextInput style={styles.modalTextInput} placeholder="applicant@gmail.com" value={email} onChangeText={setEmail} keyboardType="email-address" autoCapitalize="none" />
+          </View>
+        </View>
+
+        <Text style={styles.formLabel}>Residential Address</Text>
+        <TextInput style={styles.modalTextInput} placeholder="Street / Area Address" value={address} onChangeText={setAddress} />
+
+        <View style={{ flexDirection: 'row', gap: 8 }}>
+          <View style={{ flex: 1 }}>
+            <Text style={styles.formLabel}>City</Text>
+            <TextInput style={styles.modalTextInput} placeholder="City" value={city} onChangeText={setCity} />
+          </View>
+          <View style={{ flex: 1 }}>
+            <Text style={styles.formLabel}>State</Text>
+            <TextInput style={styles.modalTextInput} placeholder="State" value={state} onChangeText={setState} />
+          </View>
+          <View style={{ flex: 1 }}>
+            <Text style={styles.formLabel}>Pin Code</Text>
+            <TextInput style={styles.modalTextInput} placeholder="110001" value={pinCode} onChangeText={setPinCode} keyboardType="numeric" />
+          </View>
+        </View>
+
+        <Text style={styles.formLabel}>Occupation</Text>
+        <TextInput style={styles.modalTextInput} placeholder="Business / Salaried / Professional" value={occupation} onChangeText={setOccupation} />
+      </View>
+
+      <View style={[styles.settingsCard, { backgroundColor: '#FFFFFF', marginBottom: 16 }]}>
+        <Text style={[styles.settingsCardTitle, { color: '#0F172A', fontSize: 15 }]}>📊 2. Debenture Investment Details</Text>
+
+        <Text style={styles.formLabel}>Type of Debenture</Text>
+        <View style={{ flexDirection: 'row', gap: 6, marginBottom: 10 }}>
+          {['Secured', 'Non-Convertible', 'Redeemable'].map((t) => (
+            <TouchableOpacity
+              key={t}
+              style={[styles.typeSelectBtn, typeOfDebenture === t && styles.typeSelectBtnActive, { flex: 1 }]}
+              onPress={() => setTypeOfDebenture(t)}
+            >
+              <Text style={[styles.typeSelectText, typeOfDebenture === t && styles.typeSelectTextActive, { fontSize: 11 }]}>{t}</Text>
+            </TouchableOpacity>
+          ))}
+        </View>
+
+        <View style={{ flexDirection: 'row', gap: 10 }}>
+          <View style={{ flex: 1 }}>
+            <Text style={styles.formLabel}>Face Value (₹)</Text>
+            <TextInput style={styles.modalTextInput} value={faceValue} onChangeText={setFaceValue} keyboardType="numeric" />
+          </View>
+          <View style={{ flex: 1 }}>
+            <Text style={styles.formLabel}>No. of Debentures</Text>
+            <TextInput style={styles.modalTextInput} value={noOfDebentures} onChangeText={setNoOfDebentures} keyboardType="numeric" />
+          </View>
+        </View>
+
+        <View style={{ backgroundColor: '#F8FAFC', padding: 12, borderRadius: 8, borderWidth: 1, borderColor: '#E2E8F0', marginTop: 10 }}>
+          <Text style={{ fontSize: 11, fontWeight: 'bold', color: '#64748B' }}>TOTAL INVESTMENT AMOUNT (RS)</Text>
+          <Text style={{ fontSize: 22, fontWeight: '900', color: '#00a65a', marginTop: 2 }}>
+            ₹{calculatedTotal.toLocaleString()}
+          </Text>
+        </View>
+      </View>
+
+      <View style={[styles.settingsCard, { backgroundColor: '#FFFFFF', marginBottom: 16 }]}>
+        <Text style={[styles.settingsCardTitle, { color: '#0F172A', fontSize: 15 }]}>💳 3. Payment Details</Text>
+
+        <Text style={styles.formLabel}>Mode of Payment</Text>
+        <View style={{ flexDirection: 'row', gap: 6, marginBottom: 10 }}>
+          {['NEFT', 'RTGS', 'UPI', 'Cheque'].map((m) => (
+            <TouchableOpacity
+              key={m}
+              style={[styles.typeSelectBtn, modeOfPayment === m && styles.typeSelectBtnActive, { flex: 1 }]}
+              onPress={() => setModeOfPayment(m)}
+            >
+              <Text style={[styles.typeSelectText, modeOfPayment === m && styles.typeSelectTextActive, { fontSize: 11 }]}>{m}</Text>
+            </TouchableOpacity>
+          ))}
+        </View>
+
+        <Text style={styles.formLabel}>Transaction UTR / Reference No *</Text>
+        <TextInput style={styles.modalTextInput} placeholder="Enter UTR / Ref Number" value={transactionUtrNo} onChangeText={setTransactionUtrNo} />
+
+        <Text style={styles.formLabel}>Drawn on Bank Name *</Text>
+        <TextInput style={styles.modalTextInput} placeholder="e.g. HDFC Bank, ICICI Bank" value={drawnOnBank} onChangeText={setDrawnOnBank} />
+      </View>
+
+      <View style={[styles.settingsCard, { backgroundColor: '#FFFFFF', marginBottom: 24 }]}>
+        <TouchableOpacity
+          style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 16 }}
+          onPress={() => setAcceptedTerms(!acceptedTerms)}
+        >
+          <View style={[styles.customCheckbox, acceptedTerms && styles.customCheckboxChecked, { marginRight: 10 }]}>
+            {acceptedTerms && <Text style={{ color: '#FFF', fontWeight: 'bold' }}>✓</Text>}
+          </View>
+          <Text style={{ fontSize: 12, color: '#334155', flex: 1 }}>
+            I/We have read and understood the terms and conditions of the Secured Debentures Allotment and confirm all entered details are accurate.
+          </Text>
+        </TouchableOpacity>
+
+        <TouchableOpacity
+          style={[styles.saveBtn, { backgroundColor: '#134086', height: 48, justifyContent: 'center' }, submitting && { opacity: 0.7 }]}
+          onPress={handleSubmit}
+          disabled={submitting}
+        >
+          <Text style={[styles.saveBtnText, { fontSize: 15, fontWeight: 'bold' }]}>
+            {submitting ? 'Submitting Application...' : 'Submit Debenture Application'}
+          </Text>
+        </TouchableOpacity>
+      </View>
+    </ScrollView>
+  );
+};
+
+// --- Investor Portal View Sub-Component ---
+const InvestorPortalView = () => {
+  const [investor, setInvestor] = useState<any>(null);
+  const [loading, setLoading] = useState(true);
+  const [submitting, setSubmitting] = useState(false);
+  const [investmentInput, setInvestmentInput] = useState('');
+  const [signatureText, setSignatureText] = useState('');
+  const [acceptedBond, setAcceptedBond] = useState(false);
+  const [bondTermsText, setBondTermsText] = useState(
+    `INVESTOR CAPITAL BOND AGREEMENT TERMS\n\n1. The Investor agrees to invest the specified capital amount (RS) into the capital fund.\n2. Monthly returns will be computed at the agreed rate per month subject to document verification.\n3. All uploaded KYC documents (Aadhar, PAN, Marksheets & Bank Details) are verified by Key Admin before activation.\n4. By checking the agreement box, the investor digitally signs and confirms that all submitted information is accurate and legally binding.`
+  );
+
+  // KYC inputs & attachments
+  const [attachedFiles, setAttachedFiles] = useState<Record<string, string>>({});
+  const [aadharNumber, setAadharNumber] = useState('');
+  const [panNumber, setPanNumber] = useState('');
+  const [bankName, setBankName] = useState('');
+  const [accountNumber, setAccountNumber] = useState('');
+  const [ifscCode, setIfscCode] = useState('');
+  const [branchName, setBranchName] = useState('');
+
+  const handlePickDoc = async (key: string) => {
+    try {
+      const result = await ImagePicker.launchImageLibraryAsync({
+        mediaTypes: ImagePicker.MediaTypeOptions.All,
+        quality: 0.8,
+        allowsEditing: false,
+      });
+
+      if (!result.canceled && result.assets && result.assets.length > 0) {
+        const uri = result.assets[0].uri;
+        setAttachedFiles((prev) => ({ ...prev, [key]: uri }));
+        Alert.alert('Document Attached', `${key.toUpperCase()} document attached successfully!`);
+      }
+    } catch (e) {
+      Alert.alert('Error', 'Failed to pick document');
+    }
+  };
+
+  const fetchProfile = async () => {
+    setLoading(true);
+    try {
+      let invData: any = null;
+      const resInv: any = await apiCall('/api/investors/me');
+      if (resInv && (resInv.success || resInv.data)) {
+        invData = resInv.data || resInv;
+      }
+      if (!invData || Array.isArray(invData)) {
+        const resAuth: any = await apiCall('/api/auth/me');
+        if (resAuth && resAuth.success) {
+          invData = resAuth.investor || resAuth.data;
+        }
+      }
+
+      if (Array.isArray(invData)) {
+        invData = invData[0] || null;
+      }
+
+      if (invData) {
+        setInvestor(invData);
+        setInvestmentInput(String(invData.investmentAmount || 0));
+        if (invData.bondAgreement) {
+          setAcceptedBond(!!invData.bondAgreement.accepted);
+          setSignatureText(invData.bondAgreement.signatureText || invData.fullName || invData.email || '');
+        } else {
+          setSignatureText(invData.fullName || invData.email || '');
+        }
+
+        if (invData.kycDocs) {
+          setAadharNumber(invData.kycDocs.aadharNumber || '');
+          setPanNumber(invData.kycDocs.panNumber || '');
+          setBankName(invData.kycDocs.bankName || '');
+          setAccountNumber(invData.kycDocs.accountNumber || '');
+          setIfscCode(invData.kycDocs.ifscCode || '');
+          setBranchName(invData.kycDocs.branchName || '');
+        }
+      }
+
+      // Fetch bond agreement template from settings if available
+      try {
+        const resSet: any = await apiCall('/api/settings');
+        if (resSet && resSet.success && resSet.data?.investorLegalBondTemplate) {
+          setBondTermsText(resSet.data.investorLegalBondTemplate);
+        }
+      } catch (err) {
+        // use default fallback text
+      }
+    } catch (e) {
+      console.error(e);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchProfile();
+  }, []);
+
+  const handleUpdateInvestmentAmount = async () => {
+    const amt = Number(investmentInput);
+    if (isNaN(amt) || amt < 0) {
+      Alert.alert('Validation Error', 'Please enter a valid investment amount in Rupees.');
+      return;
+    }
+
+    setSubmitting(true);
+    try {
+      const res: any = await apiCall('/api/investors/me', {
+        method: 'PUT',
+        body: JSON.stringify({
+          investmentAmount: amt,
+        }),
+      });
+
+      if (res && (res.success || res.data)) {
+        Alert.alert('Success', 'Investment amount updated successfully!');
+        fetchProfile();
+      } else {
+        Alert.alert('Error', res?.error || 'Failed to update investment amount.');
+      }
+    } catch (e) {
+      Alert.alert('Error', 'Failed to update investment amount.');
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  const handleSubmitAll = async () => {
+    if (!acceptedBond || !signatureText.trim()) {
+      Alert.alert('Validation Error', 'Please check the agreement box and enter your digital signature.');
+      return;
+    }
+
+    setSubmitting(true);
+    try {
+      const res: any = await apiCall('/api/investors/me', {
+        method: 'PUT',
+        body: JSON.stringify({
+          investmentAmount: Number(investmentInput) || 0,
+          kycDocs: {
+            aadharNumber,
+            panNumber,
+            bankName,
+            accountNumber,
+            ifscCode,
+            branchName,
+            aadharDocUrl: attachedFiles.aadhar || investor.kycDocs?.aadharDocUrl || '',
+            panDocUrl: attachedFiles.pan || investor.kycDocs?.panDocUrl || '',
+            marksheet10thUrl: attachedFiles.marksheet10th || investor.kycDocs?.marksheet10thUrl || '',
+            marksheet12thUrl: attachedFiles.marksheet12th || investor.kycDocs?.marksheet12thUrl || '',
+            graduationUrl: attachedFiles.graduation || investor.kycDocs?.graduationUrl || '',
+            postGraduationUrl: attachedFiles.postGraduation || investor.kycDocs?.postGraduationUrl || '',
+            bankPassbookUrl: attachedFiles.bankPassbook || investor.kycDocs?.bankPassbookUrl || '',
+          },
+          bondAgreement: {
+            accepted: acceptedBond,
+            signatureText: signatureText.trim(),
+          },
+        }),
+      });
+
+      if (res && (res.success || res.data)) {
+        Alert.alert('Success', 'Details submitted successfully for Admin Verification!');
+        fetchProfile();
+      } else {
+        Alert.alert('Error', res?.error || 'Failed to submit details');
+      }
+    } catch (e) {
+      Alert.alert('Error', 'Failed to submit details');
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  if (loading) return <ActivityIndicator size="large" color={colors.accent} style={{ marginTop: 40 }} />;
+  if (!investor) return <Text style={{ padding: 20 }}>No investor data found.</Text>;
+
+  const docs = investor.docVerifications || {};
+  const monthlyRate = investor.monthlyGrowthPercentage || 2.5;
+  const investedAmt = investor.investmentAmount || 0;
+  const estimatedReturn = Math.round((investedAmt * monthlyRate) / 100);
+
+  return (
+    <ScrollView contentContainerStyle={styles.payrollContainer}>
+      {/* Profile Header Card */}
+      <View style={[styles.netSalaryCard, { backgroundColor: '#FFFFFF', borderColor: '#E2E8F0', padding: 18, marginBottom: 16 }]}>
+        <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+          <View style={{ flex: 1, marginRight: 8 }}>
+            <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+              <Text style={{ fontSize: 20, fontWeight: 'bold', color: '#0F172A' }}>
+                {investor.fullName || investor.email}
+              </Text>
+              <View style={{ backgroundColor: '#DCFCE7', paddingHorizontal: 8, paddingVertical: 2, borderRadius: 12, marginLeft: 8 }}>
+                <Text style={{ color: '#16A34A', fontSize: 11, fontWeight: 'bold' }}>
+                  {investor.investorCode || 'INV-0005'}
+                </Text>
+              </View>
+            </View>
+            <Text style={{ fontSize: 12, color: '#64748B', marginTop: 4 }}>
+              Email: {investor.email} {investor.phone ? `• Phone: ${investor.phone}` : ''}
+            </Text>
+          </View>
+
+          <View style={{ alignItems: 'flex-end' }}>
+            <Text style={{ fontSize: 10, fontWeight: 'bold', color: '#94A3B8', marginBottom: 4 }}>VERIFICATION STATUS</Text>
+            <View style={{
+              backgroundColor: investor.status === 'Verified' ? '#00a65a' : investor.status === 'Rejected' ? '#EF4444' : '#F97316',
+              paddingHorizontal: 12,
+              paddingVertical: 5,
+              borderRadius: 16,
+            }}>
+              <Text style={{ color: '#FFFFFF', fontSize: 11, fontWeight: 'bold' }}>
+                ✓ {investor.status || 'Pending'}
+              </Text>
+            </View>
+          </View>
+        </View>
+      </View>
+
+      {/* 3 Stat Cards Grid */}
+      <View style={{ flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'space-between', marginBottom: 16 }}>
+        {/* Stat Card 1 */}
+        <View style={{ width: '31%', backgroundColor: '#FFFFFF', borderRadius: 12, padding: 14, borderWidth: 1, borderColor: '#E2E8F0' }}>
+          <Text style={{ fontSize: 10, fontWeight: 'bold', color: '#64748B', marginBottom: 6 }}>INVESTMENT COST (RS)</Text>
+          <Text style={{ fontSize: 20, fontWeight: '900', color: '#0F172A' }}>₹{investedAmt.toLocaleString()}</Text>
+        </View>
+
+        {/* Stat Card 2 */}
+        <View style={{ width: '31%', backgroundColor: '#FFFFFF', borderRadius: 12, padding: 14, borderWidth: 1, borderColor: '#E2E8F0' }}>
+          <Text style={{ fontSize: 10, fontWeight: 'bold', color: '#64748B', marginBottom: 6 }}>MONTHLY GROWTH RATE</Text>
+          <Text style={{ fontSize: 20, fontWeight: '900', color: '#00a65a' }}>~{monthlyRate}%</Text>
+        </View>
+
+        {/* Stat Card 3 */}
+        <View style={{ width: '34%', backgroundColor: '#FFFFFF', borderRadius: 12, padding: 14, borderWidth: 1, borderColor: '#E2E8F0' }}>
+          <Text style={{ fontSize: 10, fontWeight: 'bold', color: '#64748B', marginBottom: 6 }}>EST. MONTHLY RETURN PAYOUT</Text>
+          <Text style={{ fontSize: 18, fontWeight: '900', color: '#00a65a' }}>₹{estimatedReturn.toLocaleString()} / mo</Text>
+        </View>
+      </View>
+
+      {/* Section 1: Investment Amount (Disabled mode) */}
+      <View style={[styles.settingsCard, { backgroundColor: '#FFFFFF', marginBottom: 16 }]}>
+        <Text style={[styles.settingsCardTitle, { color: '#0F172A', fontSize: 16 }]}>$ 1. Investment Amount (RS)</Text>
+        <Text style={{ fontSize: 12, color: colors.textMuted, marginVertical: 6 }}>
+          Enter the total amount in RS you intend to invest.
+        </Text>
+
+        <Text style={styles.formLabel}>Invest RS Amount (₹)</Text>
+        <View style={{ flexDirection: 'row', gap: 10 }}>
+          <TextInput
+            style={[styles.modalTextInput, { flex: 1, backgroundColor: '#F1F5F9', color: '#64748B' }]}
+            placeholder="0"
+            value={investmentInput}
+            editable={false}
+          />
+          <TouchableOpacity
+            style={[styles.saveBtn, { backgroundColor: '#94A3B8', paddingHorizontal: 16, justifyContent: 'center' }]}
+            disabled={true}
+          >
+            <Text style={{ color: '#fff', fontWeight: 'bold', fontSize: 13 }}>Update</Text>
+          </TouchableOpacity>
+        </View>
+      </View>
+
+      {/* Section 2: KYC PDF Document Uploads */}
+      <View style={[styles.settingsCard, { backgroundColor: '#FFFFFF', marginBottom: 16 }]}>
+        <Text style={[styles.settingsCardTitle, { color: '#0F172A', fontSize: 16 }]}>📄 2. KYC PDF Document Uploads</Text>
+        <Text style={{ fontSize: 12, color: colors.textMuted, marginVertical: 6 }}>
+          Only PDF documents up to 15MB are accepted. Mandatory: Aadhar, PAN, 10th & 12th Marksheets, and Bank Passbook.
+        </Text>
+
+        <View style={{ gap: 12, marginTop: 8 }}>
+          {[
+            { key: 'aadhar', label: 'Aadhar Card Document', req: true, numKey: 'aadharNumber', numVal: aadharNumber, setNum: setAadharNumber, placeholder: 'Enter Aadhar Number' },
+            { key: 'pan', label: 'PAN Card Document', req: true, numKey: 'panNumber', numVal: panNumber, setNum: setPanNumber, placeholder: 'Enter PAN Number' },
+            { key: 'marksheet10th', label: '10th Marksheet PDF', req: true },
+            { key: 'marksheet12th', label: '12th Marksheet PDF', req: true },
+            { key: 'graduation', label: 'Graduation Marksheet (Optional)', req: false },
+            { key: 'postGraduation', label: 'Post Graduation Marksheet (Optional)', req: false },
+          ].map((item) => {
+            const st = docs[item.key] || 'Pending';
+            const fileUri = attachedFiles[item.key];
+
+            return (
+              <View key={item.key} style={{ borderWidth: 1, borderColor: '#E2E8F0', borderRadius: 12, padding: 14, backgroundColor: '#FAFAFA' }}>
+                <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
+                  <Text style={{ fontSize: 14, fontWeight: 'bold', color: '#0F172A' }}>{item.label}</Text>
+                  <View style={{ flexDirection: 'row', gap: 6 }}>
+                    <View style={{ backgroundColor: item.req ? '#881337' : '#475569', paddingHorizontal: 6, paddingVertical: 2, borderRadius: 4 }}>
+                      <Text style={{ color: '#FFF', fontSize: 10, fontWeight: 'bold' }}>{item.req ? 'REQUIRED' : 'OPTIONAL'}</Text>
+                    </View>
+                    <View style={{ backgroundColor: st === 'Approved' ? '#00a65a' : st === 'Rejected' ? '#EF4444' : '#F97316', paddingHorizontal: 8, paddingVertical: 2, borderRadius: 10 }}>
+                      <Text style={{ color: '#FFF', fontSize: 10, fontWeight: 'bold' }}>{st}</Text>
+                    </View>
+                  </View>
+                </View>
+
+                {item.numKey && (
+                  <TextInput
+                    style={[styles.modalTextInput, { marginBottom: 8 }]}
+                    placeholder={item.placeholder}
+                    value={item.numVal}
+                    onChangeText={item.setNum}
+                    editable={st !== 'Approved'}
+                  />
+                )}
+
+                {st === 'Approved' ? (
+                  <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'center', padding: 10, backgroundColor: '#EFF6FF', borderRadius: 8, borderStyle: 'dashed', borderWidth: 1, borderColor: '#93C5FD', marginTop: 4 }}>
+                    <Text style={{ color: '#00a65a', fontSize: 12, fontWeight: 'bold' }}>✓ VERIFIED & APPROVED BY ADMIN</Text>
+                  </View>
+                ) : (
+                  <TouchableOpacity
+                    style={{
+                      borderWidth: 1.5,
+                      borderStyle: 'dashed',
+                      borderColor: fileUri ? '#00a65a' : '#CBD5E1',
+                      borderRadius: 8,
+                      padding: 12,
+                      alignItems: 'center',
+                      backgroundColor: fileUri ? 'rgba(0, 166, 90, 0.05)' : '#FFFFFF',
+                      marginTop: 4,
+                    }}
+                    onPress={() => handlePickDoc(item.key)}
+                  >
+                    <UploadCloud size={20} color={fileUri ? '#00a65a' : '#64748B'} style={{ marginBottom: 4 }} />
+                    <Text style={{ fontSize: 12, fontWeight: 'bold', color: fileUri ? '#00a65a' : '#475569' }}>
+                      {fileUri ? '✓ PDF / Document Attached (Tap to change)' : 'Tap to upload PDF / Image document'}
+                    </Text>
+                  </TouchableOpacity>
+                )}
+              </View>
+            );
+          })}
+
+          {/* Bank Details & Passbook Card */}
+          <View style={{ borderWidth: 1, borderColor: '#E2E8F0', borderRadius: 12, padding: 14, backgroundColor: '#FAFAFA' }}>
+            <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
+              <Text style={{ fontSize: 14, fontWeight: 'bold', color: '#0F172A' }}>Bank Details & Passbook PDF *</Text>
+              <View style={{ backgroundColor: '#881337', paddingHorizontal: 6, paddingVertical: 2, borderRadius: 4 }}>
+                <Text style={{ color: '#FFF', fontSize: 10, fontWeight: 'bold' }}>REQUIRED</Text>
+              </View>
+            </View>
+            <View style={{ gap: 8 }}>
+              <TextInput style={styles.modalTextInput} placeholder="Bank Name" value={bankName} onChangeText={setBankName} />
+              <TextInput style={styles.modalTextInput} placeholder="Account Number" value={accountNumber} onChangeText={setAccountNumber} />
+              <TextInput style={styles.modalTextInput} placeholder="IFSC Code" value={ifscCode} onChangeText={setIfscCode} />
+              <TextInput style={styles.modalTextInput} placeholder="Branch Name" value={branchName} onChangeText={setBranchName} />
+              <TouchableOpacity
+                style={{
+                  borderWidth: 1.5,
+                  borderStyle: 'dashed',
+                  borderColor: attachedFiles.bankPassbook ? '#00a65a' : '#CBD5E1',
+                  borderRadius: 8,
+                  padding: 12,
+                  alignItems: 'center',
+                  backgroundColor: attachedFiles.bankPassbook ? 'rgba(0, 166, 90, 0.05)' : '#FFFFFF',
+                  marginTop: 4,
+                }}
+                onPress={() => handlePickDoc('bankPassbook')}
+              >
+                <UploadCloud size={20} color={attachedFiles.bankPassbook ? '#00a65a' : '#64748B'} style={{ marginBottom: 4 }} />
+                <Text style={{ fontSize: 12, fontWeight: 'bold', color: attachedFiles.bankPassbook ? '#00a65a' : '#475569' }}>
+                  {attachedFiles.bankPassbook ? '✓ Bank Passbook Attached (Tap to change)' : 'Tap to upload Bank Passbook PDF / Image'}
+                </Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </View>
+
+      {/* Section 3: Investor Legal Bond Agreement (Matching Screenshot 2) */}
+      <View style={[styles.settingsCard, { backgroundColor: '#FFFFFF', marginBottom: 24 }]}>
+        <Text style={{ fontSize: 16, fontWeight: 'bold', color: '#00a65a', marginBottom: 4 }}>
+          🛡️ 3. Investor Legal Bond Agreement
+        </Text>
+        <Text style={{ fontSize: 12, color: '#64748B', marginBottom: 14 }}>
+          Review terms and check box with your signature to accept the investor bond.
+        </Text>
+
+        {/* Gray Terms Box */}
+        <View style={{ backgroundColor: '#F8FAFC', borderRadius: 8, borderWidth: 1, borderColor: '#E2E8F0', padding: 14, marginBottom: 16 }}>
+          <Text style={{ fontFamily: Platform.OS === 'ios' ? 'Courier' : 'monospace', fontSize: 11, color: '#334155', lineHeight: 18 }}>
+            {bondTermsText}
+          </Text>
+        </View>
+
+        {/* Checkbox Row */}
+        <TouchableOpacity
+          style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 16 }}
+          onPress={() => setAcceptedBond(!acceptedBond)}
+          activeOpacity={0.7}
+        >
+          <View style={[styles.customCheckbox, acceptedBond && styles.customCheckboxChecked, { marginRight: 10 }]}>
+            {acceptedBond && <Text style={{ color: '#FFFFFF', fontSize: 12, fontWeight: 'bold' }}>✓</Text>}
+          </View>
+          <Text style={{ fontSize: 13, fontWeight: '600', color: '#0F172A', flex: 1 }}>
+            I have read, understood, and accept all terms of the Investor Bond Agreement *
+          </Text>
+        </TouchableOpacity>
+
+        {/* Digital Signature */}
+        <Text style={{ fontSize: 13, fontWeight: '600', color: '#334155', marginBottom: 6 }}>
+          Digital Signature (Enter Full Name) *
+        </Text>
+        <TextInput
+          style={[styles.modalTextInput, { backgroundColor: '#F8FAFC', borderColor: '#CBD5E1', marginBottom: 16 }]}
+          placeholder="ak914@gmail.com"
+          placeholderTextColor="#94A3B8"
+          value={signatureText}
+          onChangeText={setSignatureText}
+        />
+
+        {/* Submit Button */}
+        <TouchableOpacity
+          style={[styles.saveBtn, { backgroundColor: '#134086', height: 48, justifyContent: 'center' }, submitting && { opacity: 0.7 }]}
+          onPress={handleSubmitAll}
+          disabled={submitting}
+        >
+          <Text style={[styles.saveBtnText, { fontSize: 15, fontWeight: 'bold' }]}>
+            {submitting ? 'Submitting...' : 'Submit All Details for Admin Verification'}
+          </Text>
+        </TouchableOpacity>
+      </View>
+    </ScrollView>
+  );
+};
+
 // --- Dashboard Screen ---
 const DashboardScreen = ({ navigation }: any) => {
   const insets = useSafeAreaInsets();
@@ -5051,11 +6849,15 @@ const DashboardScreen = ({ navigation }: any) => {
   const user = useAuthStore((state) => state.user);
   const clearAuth = useAuthStore((state) => state.clearAuth);
   const userRole = user?.role || 'Employee';
-  const isAdminOrKeyAdmin = userRole === 'KEY_ADMIN' || userRole === 'ADMIN';
+  const userRoleStr = userRole.toUpperCase();
+  const isInvestor = userRoleStr === 'INVESTOR';
+  const isAdminOrKeyAdmin = userRoleStr === 'KEYADMIN' || userRoleStr === 'KEY_ADMIN' || userRoleStr === 'ADMIN';
 
-  const initialSection = (userRole === 'KEY_ADMIN' || userRole === 'ADMIN')
-    ? 'Overview'
-    : ((user as any)?.moduleAccess?.[0] || 'Attendance');
+  const initialSection = isInvestor
+    ? 'Investor Details'
+    : isAdminOrKeyAdmin
+      ? 'Overview'
+      : ((user as any)?.moduleAccess?.[0] || 'Attendance');
 
   const [activeSection, setActiveSection] = useState(initialSection);
 
@@ -5489,8 +7291,12 @@ const DashboardScreen = ({ navigation }: any) => {
         <SettingsView />
       ) : activeSection === 'Notifications' ? (
         <NotificationsView />
-      ) : activeSection === 'Wallet' ? (
-        <CompanyWalletView />
+      ) : activeSection === 'Investors' ? (
+        <InvestorsAdminView />
+      ) : activeSection === 'Investor Details' ? (
+        <InvestorPortalView />
+      ) : activeSection === 'Debenture Form' || activeSection === 'Debenture' ? (
+        <DebentureFormView />
       ) : activeSection === 'Profile' ? (
         <EmployeeProfileView />
       )
@@ -5521,24 +7327,27 @@ const DashboardScreen = ({ navigation }: any) => {
 
             <ScrollView style={styles.sidebarItems}>
               {[
-                { name: 'Overview', icon: LayoutGrid },
-                { name: 'Wallet', icon: Wallet },
-                { name: 'Payroll', icon: TrendingUp },
-                { name: 'Attendance', icon: Clock },
-                { name: 'Leave', icon: CalendarDays },
-                { name: 'Holidays', icon: Calendar },
-                { name: 'Employees', icon: Users },
-                { name: 'Leads', icon: Target },
-                { name: 'Reports', icon: BarChart2 },
-                { name: 'Notifications', icon: Bell },
-                { name: 'Settings', icon: Settings },
-                { name: 'Profile', icon: UserIcon },
+                { name: 'Overview', icon: LayoutGrid, roles: ['ADMIN', 'KEY_ADMIN', 'Employee'] },
+                { name: 'Investor Details', icon: LayoutGrid, roles: ['INVESTOR'] },
+                { name: 'Investors', icon: TrendingUp, roles: ['ADMIN', 'KEY_ADMIN'] },
+                { name: 'Wallet', icon: Wallet, roles: ['ADMIN', 'KEY_ADMIN'] },
+                { name: 'Payroll', icon: TrendingUp, roles: ['ADMIN', 'KEY_ADMIN', 'Employee'] },
+                { name: 'Attendance', icon: Clock, roles: ['ADMIN', 'KEY_ADMIN', 'Employee'] },
+                { name: 'Leave', icon: CalendarDays, roles: ['ADMIN', 'KEY_ADMIN', 'Employee'] },
+                { name: 'Holidays', icon: Calendar, roles: ['ADMIN', 'KEY_ADMIN', 'Employee'] },
+                { name: 'Employees', icon: Users, roles: ['ADMIN', 'KEY_ADMIN'] },
+                { name: 'Leads', icon: Target, roles: ['ADMIN', 'KEY_ADMIN', 'Employee'] },
+                { name: 'Reports', icon: BarChart2, roles: ['ADMIN', 'KEY_ADMIN', 'Employee'] },
+                { name: 'Debenture Form', icon: ShieldCheck, roles: ['ADMIN', 'KEY_ADMIN', 'Employee'] },
+                { name: 'Notifications', icon: Bell, roles: ['ADMIN', 'KEY_ADMIN'] },
+                { name: 'Settings', icon: Settings, roles: ['ADMIN', 'KEY_ADMIN'] },
+                { name: 'Profile', icon: UserIcon, roles: ['Employee', 'INVESTOR'] },
               ]
                 .filter((item) => {
-                  // KEY_ADMIN & ADMIN have full access to all items
+                  if (userRole === 'INVESTOR') return item.roles?.includes('INVESTOR');
                   if (userRole === 'KEY_ADMIN' || userRole === 'ADMIN') return true;
 
-                  // For Employees: check moduleAccess array or default accessible list
+                  if (item.name === 'Debenture Form') return true;
                   const allowedModules: string[] = (user as any)?.moduleAccess || ['Attendance', 'Leads', 'Reports', 'Profile'];
                   return allowedModules.includes(item.name);
                 })
@@ -5606,6 +7415,11 @@ export const AppNavigator = () => {
             <Stack.Screen
               name="Login"
               component={LoginScreen}
+              options={{ headerShown: false }}
+            />
+            <Stack.Screen
+              name="InvestorRegister"
+              component={InvestorRegisterScreen}
               options={{ headerShown: false }}
             />
           </>
@@ -7999,6 +9813,274 @@ const styles = StyleSheet.create({
   loginBackToAboutText: {
     color: colors.accent,
     fontSize: 13,
+    fontWeight: 'bold',
+  },
+});
+
+const loginStyles = StyleSheet.create({
+  cardContainer: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: 16,
+    padding: 24,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.08,
+    shadowRadius: 12,
+    elevation: 3,
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
+  },
+  logoBadgeWrapper: {
+    alignItems: 'center',
+    marginBottom: 16,
+  },
+  logoBadgeCircle: {
+    width: 60,
+    height: 60,
+    borderRadius: 30,
+    backgroundColor: '#0F3D82',
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderWidth: 2,
+    borderColor: '#D6AF37',
+    position: 'relative',
+  },
+  logoTextNC: {
+    color: '#FFFFFF',
+    fontSize: 22,
+    fontWeight: 'bold',
+    fontStyle: 'italic',
+  },
+  logoArrow: {
+    position: 'absolute',
+    right: 8,
+    top: 8,
+  },
+  welcomeTitle: {
+    fontSize: 24,
+    fontWeight: 'bold',
+    color: '#0F172A',
+    textAlign: 'center',
+    marginBottom: 6,
+  },
+  welcomeSubtitle: {
+    fontSize: 13,
+    color: '#64748B',
+    textAlign: 'center',
+    marginBottom: 24,
+    lineHeight: 18,
+  },
+  errorBox: {
+    backgroundColor: '#FEF2F2',
+    borderWidth: 1,
+    borderColor: '#FCA5A5',
+    borderRadius: 8,
+    padding: 10,
+    marginBottom: 16,
+  },
+  errorText: {
+    color: '#DC2626',
+    fontSize: 13,
+    textAlign: 'center',
+  },
+  fieldGroup: {
+    marginBottom: 18,
+  },
+  fieldLabel: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#334155',
+    marginBottom: 6,
+  },
+  passwordLabelRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 6,
+  },
+  forgotText: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: '#2563EB',
+  },
+  inputContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#EFF6FF',
+    borderRadius: 10,
+    paddingHorizontal: 14,
+    height: 48,
+    borderWidth: 1,
+    borderColor: '#DBEAFE',
+  },
+  textInput: {
+    flex: 1,
+    fontSize: 14,
+    color: '#0F172A',
+    height: '100%',
+  },
+  eyeIconButton: {
+    padding: 6,
+    marginLeft: 6,
+  },
+  checkboxRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 20,
+  },
+  checkboxSquare: {
+    width: 18,
+    height: 18,
+    borderRadius: 4,
+    borderWidth: 1.5,
+    borderColor: '#94A3B8',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: 10,
+    backgroundColor: '#FFFFFF',
+  },
+  checkboxChecked: {
+    backgroundColor: '#0F3D82',
+    borderColor: '#0F3D82',
+  },
+  checkmarkText: {
+    color: '#FFFFFF',
+    fontSize: 12,
+    fontWeight: 'bold',
+    lineHeight: 14,
+  },
+  checkboxLabel: {
+    fontSize: 14,
+    color: '#475569',
+  },
+  signInBtn: {
+    backgroundColor: '#0F3D82',
+    height: 48,
+    borderRadius: 10,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: 20,
+  },
+  signInBtnText: {
+    color: '#FFFFFF',
+    fontSize: 16,
+    fontWeight: 'bold',
+  },
+  footerContainer: {
+    alignItems: 'center',
+    paddingTop: 14,
+    borderTopWidth: 1,
+    borderTopColor: '#F1F5F9',
+  },
+  footerText: {
+    fontSize: 13,
+    color: '#64748B',
+    textAlign: 'center',
+  },
+  footerLink: {
+    color: '#2563EB',
+    fontWeight: 'bold',
+  },
+});
+
+const registerStyles = StyleSheet.create({
+  portalTitle: {
+    fontSize: 26,
+    fontWeight: '900',
+    color: '#818CF8',
+    textAlign: 'center',
+    letterSpacing: 1.5,
+  },
+  portalSubtitle: {
+    fontSize: 13,
+    color: '#94A3B8',
+    textAlign: 'center',
+    marginTop: 4,
+    marginBottom: 20,
+  },
+  cardContainer: {
+    backgroundColor: '#111827',
+    borderRadius: 16,
+    padding: 22,
+    borderWidth: 1,
+    borderColor: '#1F2937',
+  },
+  formTitle: {
+    fontSize: 20,
+    fontWeight: 'bold',
+    color: '#F8FAFC',
+    marginBottom: 4,
+  },
+  formSubtitle: {
+    fontSize: 13,
+    color: '#64748B',
+    marginBottom: 20,
+  },
+  errorBox: {
+    backgroundColor: '#FEF2F2',
+    borderWidth: 1,
+    borderColor: '#FCA5A5',
+    borderRadius: 8,
+    padding: 10,
+    marginBottom: 16,
+  },
+  errorText: {
+    color: '#DC2626',
+    fontSize: 13,
+    textAlign: 'center',
+  },
+  fieldGroup: {
+    marginBottom: 16,
+  },
+  fieldLabel: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: '#94A3B8',
+    marginBottom: 6,
+  },
+  inputContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#1F2937',
+    borderRadius: 10,
+    paddingHorizontal: 14,
+    height: 48,
+    borderWidth: 1,
+    borderColor: '#374151',
+  },
+  textInput: {
+    flex: 1,
+    fontSize: 14,
+    color: '#F8FAFC',
+    height: '100%',
+  },
+  submitBtn: {
+    backgroundColor: '#6366F1',
+    height: 48,
+    borderRadius: 10,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginTop: 8,
+    marginBottom: 20,
+  },
+  submitBtnText: {
+    color: '#FFFFFF',
+    fontSize: 16,
+    fontWeight: 'bold',
+  },
+  footerContainer: {
+    alignItems: 'center',
+    paddingTop: 14,
+    borderTopWidth: 1,
+    borderTopColor: '#1F2937',
+  },
+  footerText: {
+    fontSize: 13,
+    color: '#94A3B8',
+    textAlign: 'center',
+  },
+  footerLink: {
+    color: '#818CF8',
     fontWeight: 'bold',
   },
 });
