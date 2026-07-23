@@ -1,14 +1,15 @@
 {
   "expo": {
-    "name": "mobileapp",
-    "slug": "mobileapp",
+    "name": "CRMNiventra",
+    "slug": "crmniventra",
+    "owner": "ashish7869s-team",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "light",
     "ios": {
       "supportsTablet": true,
-      "bundleIdentifier": "com.ashish.kumar786.mobileapp",
+      "bundleIdentifier": "com.niventra.crm",
       "infoPlist": {
         "ITSAppUsesNonExemptEncryption": false
       }
@@ -21,14 +22,14 @@
         "monochromeImage": "./assets/android-icon-monochrome.png"
       },
       "predictiveBackGestureEnabled": false,
-      "package": "com.ashish.kumar786.mobileapp"
+      "package": "com.niventra.crm"
     },
     "web": {
       "favicon": "./assets/favicon.png"
     },
     "extra": {
       "eas": {
-        "projectId": "dcef2b30-ec49-4006-8a63-4c9ca76a2266"
+        "projectId": "87157252-0a43-40db-bd9a-c593b220ae8f"
       }
     }
   }
