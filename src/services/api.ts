@@ -61,7 +61,7 @@ export async function apiCall<T = any>(
     // Only auto-logout if HTTP status is 401 or 403
     if ((response.status === 401 || response.status === 403) && !endpoint.includes('/api/auth/login')) {
       // console.warn(`Unauthenticated response (${response.status}) on ${endpoint}. Logging out user...`);
-      // useAuthStore.getState().clearAuth();
+      useAuthStore.getState().clearAuth();
     }
 
     if (!response.ok) {
