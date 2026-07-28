@@ -1,30 +1,67 @@
-export const colors = {
-  // Brand Colors (Dark Blue & Gold Theme)
-  primary: '#fff', // Dark Blue (Main Background)
-  secondary: '#fff', // Lighter Dark Blue (Cards, Headers)
-  accent: '#1147a5', // Gold (Buttons, Highlights, Icons)
-  accentLight: '#F3E5AB', // Light Gold (Subtle highlights, text on gold)
+import { Appearance } from 'react-native';
+import { useAuthStore } from '../services/authStore';
 
-  // Backgrounds
+const lightColors = {
+  primary: '#fff',
+  secondary: '#fff',
+  accent: '#1147a5',
+  accentLight: '#F3E5AB',
   background: '#fff',
   surface: '#f6f6f6ff',
   surfaceLight: '#efefefff',
-
-  // Text
-  text: '#184683', // White text on dark backgrounds
-  textMuted: '#184683', // Gray for secondary text
+  text: '#184683',
+  textMuted: '#587399',
   textGold: '#D4AF37',
-
-  // Status Colors
   success: '#10B981',
   danger: '#EF4444',
   warning: '#F59E0B',
   info: '#3B82F6',
-
-  // Borders & Dividers
   border: '#c8c8c8ff',
   borderGold: 'rgba(212, 175, 55, 0.3)',
 };
+
+const darkColors = {
+  primary: '#090D16',
+  secondary: '#111827',
+  accent: '#818CF8',
+  accentLight: '#1f2937',
+  background: '#090D16',
+  surface: '#111827',
+  surfaceLight: '#1F2937',
+  text: '#FFFFFF',
+  textMuted: '#94A3B8',
+  textGold: '#FBBF24',
+  success: '#10B981',
+  danger: '#EF4444',
+  warning: '#F59E0B',
+  info: '#3B82F6',
+  border: '#374151',
+  borderGold: 'rgba(212, 175, 55, 0.3)',
+};
+
+let forcedScheme: 'light' | 'dark' | null = null;
+
+export const setForcedScheme = (scheme: 'light' | 'dark' | null) => {
+  forcedScheme = scheme;
+};
+
+export const colors = new Proxy({}, {
+  get(target, prop) {
+    let isDark = false;
+    if (forcedScheme) {
+      isDark = forcedScheme === 'dark';
+    } else {
+      const mode = useAuthStore.getState().themeMode || 'system';
+      if (mode === 'system') {
+        isDark = Appearance.getColorScheme() === 'dark';
+      } else {
+        isDark = mode === 'dark';
+      }
+    }
+    const scheme = isDark ? darkColors : lightColors;
+    return scheme[prop as keyof typeof lightColors];
+  }
+}) as typeof lightColors;
 
 export const spacing = {
   xs: 4,

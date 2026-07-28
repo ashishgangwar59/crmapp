@@ -14,15 +14,50 @@ import {
   ActionSheetIOS,
   StatusBar,
   Linking,
+  Appearance,
+  useColorScheme,
 } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import DateTimePicker from '@react-native-community/datetimepicker';
 import * as ImagePicker from 'expo-image-picker';
 import { NavigationContainer } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
-import { colors, spacing, borderRadius } from '../theme/colors';
+import { colors, spacing, borderRadius, setForcedScheme } from '../theme/colors';
 import { apiCall } from '../services/api';
 import { useAuthStore } from '../services/authStore';
+
+const createDynamicStyleSheet = <T extends Record<string, any>>(styleBuilder: () => T): T => {
+  let lightCache: any = null;
+  let darkCache: any = null;
+
+  return new Proxy({}, {
+    get(target, prop) {
+      const isDark = Appearance.getColorScheme() === 'dark';
+      if (isDark) {
+        if (!darkCache) {
+          setForcedScheme('dark');
+          try {
+            darkCache = StyleSheet.create(styleBuilder() as any);
+          } finally {
+            setForcedScheme(null);
+          }
+        }
+        return darkCache[prop];
+      } else {
+        if (!lightCache) {
+          setForcedScheme('light');
+          try {
+            lightCache = StyleSheet.create(styleBuilder() as any);
+          } finally {
+            setForcedScheme(null);
+          }
+        }
+        return lightCache[prop];
+      }
+    }
+  }) as any;
+};
+
 import {
   Users,
   Clock,
@@ -82,6 +117,19 @@ const Stack = createNativeStackNavigator<RootStackParamList>();
 const AboutCompanyScreen = ({ navigation }: any) => {
   const insets = useSafeAreaInsets();
   const topGap = Platform.OS === 'android' ? (StatusBar.currentHeight || insets.top || 24) : 0;
+  
+  const themeMode = useAuthStore((state) => state.themeMode);
+  const setThemeMode = useAuthStore((state) => state.setThemeMode);
+
+  const toggleTheme = () => {
+    let currentIsDark = false;
+    if (themeMode === 'system') {
+      currentIsDark = Appearance.getColorScheme() === 'dark';
+    } else {
+      currentIsDark = themeMode === 'dark';
+    }
+    setThemeMode(currentIsDark ? 'light' : 'dark');
+  };
 
   return (
     <SafeAreaView style={[styles.safeArea, { paddingTop: topGap }]}>
@@ -89,17 +137,28 @@ const AboutCompanyScreen = ({ navigation }: any) => {
         {/* Top Bar with Login Action Link */}
         <View style={styles.aboutHeaderBar}>
           <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+            <Image
+              source={require('../../assets/icon.png')}
+              style={{ width: 35, height: 53, marginRight: 2, borderRadius: 2 }}
+              resizeMode="contain"
+            />
             <Text style={styles.aboutHeaderLogo}>CRM</Text>
-            <Text style={styles.aboutHeaderSubLogo}>HUB</Text>
+            {/* <Text style={styles.aboutHeaderSubLogo}>HUB</Text> */}
           </View>
 
-          <TouchableOpacity
-            style={styles.aboutHeaderLoginBtn}
-            onPress={() => navigation.navigate('Login')}
-          >
-            <Text style={styles.aboutHeaderLoginText}>Login to Portal</Text>
-            <ArrowUpRight size={16} color={colors.accent} style={{ marginLeft: 4 }} />
-          </TouchableOpacity>
+          <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+            <TouchableOpacity style={{ marginRight: 12, padding: 6 }} onPress={toggleTheme}>
+              <Eye size={20} color={colors.accent} />
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              style={styles.aboutHeaderLoginBtn}
+              onPress={() => navigation.navigate('Login')}
+            >
+              <Text style={styles.aboutHeaderLoginText}>Login to Portal</Text>
+              <ArrowUpRight size={16} color={colors.accent} style={{ marginLeft: 4 }} />
+            </TouchableOpacity>
+          </View>
         </View>
 
         {/* Hero Section */}
@@ -427,14 +486,14 @@ const InvestorRegisterScreen = ({ navigation }: any) => {
   const topGap = Platform.OS === 'android' ? (StatusBar.currentHeight || insets.top || 24) : 0;
 
   return (
-    <SafeAreaView style={[styles.safeArea, { paddingTop: topGap, backgroundColor: '#090D16' }]}>
+    <SafeAreaView style={[styles.safeArea, { paddingTop: topGap, backgroundColor: '#fff' }]}>
       <ScrollView contentContainerStyle={{ flexGrow: 1, paddingHorizontal: 20, paddingVertical: 20, justifyContent: 'center' }} showsVerticalScrollIndicator={false}>
         <TouchableOpacity
           style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 16, alignSelf: 'flex-start' }}
           onPress={() => navigation.navigate('Login')}
         >
-          <ArrowLeft size={16} color="#818CF8" style={{ marginRight: 6 }} />
-          <Text style={{ color: '#818CF8', fontSize: 13, fontWeight: 'bold' }}>Back to Login</Text>
+          <ArrowLeft size={16} color="#0f3d82" style={{ marginRight: 6 }} />
+          <Text style={{ color: '#0f3d82', fontSize: 13, fontWeight: 'bold' }}>Back to Login</Text>
         </TouchableOpacity>
 
         <Text style={registerStyles.portalTitle}>INVESTOR PORTAL</Text>
@@ -459,7 +518,7 @@ const InvestorRegisterScreen = ({ navigation }: any) => {
               <TextInput
                 style={registerStyles.textInput}
                 placeholder="John Doe"
-                placeholderTextColor="#475569"
+                placeholderTextColor="#000"
                 value={fullName}
                 onChangeText={setFullName}
               />
@@ -489,7 +548,7 @@ const InvestorRegisterScreen = ({ navigation }: any) => {
               <TextInput
                 style={registerStyles.textInput}
                 placeholder="+91 9876543210"
-                placeholderTextColor="#475569"
+                placeholderTextColor="#fff"
                 value={phone}
                 onChangeText={setPhone}
                 keyboardType="phone-pad"
@@ -523,7 +582,7 @@ const InvestorRegisterScreen = ({ navigation }: any) => {
               <TextInput
                 style={registerStyles.textInput}
                 placeholder="••••••••"
-                placeholderTextColor="#475569"
+                placeholderTextColor="#fff"
                 value={confirmPassword}
                 onChangeText={setConfirmPassword}
                 secureTextEntry={!showPassword}
@@ -4639,7 +4698,7 @@ const NotificationsView = () => {
     <ScrollView contentContainerStyle={styles.notificationsContainer}>
       {/* Title Row matching screenshot */}
       <View style={styles.notificationHeaderRow}>
-        <RadioTower size={28} color="#6366f1" style={{ marginRight: 10 }} />
+        <RadioTower size={28} color="#0f3d82" style={{ marginRight: 10 }} />
         <View style={{ flex: 1 }}>
           <Text style={styles.empTitle}>Notification Engine Logs</Text>
           <Text style={styles.empSubtitle}>
@@ -4755,7 +4814,7 @@ const CompanyWalletView = () => {
     try {
       const res = await apiCall('/api/wallet');
       if (res.success && res.data) {
-        setWallet(res.data);
+        setWallet(res.data.data || res.data);
       }
     } catch (e) {
       console.error(e);
@@ -4832,7 +4891,7 @@ const CompanyWalletView = () => {
       {/* Available Balance Black Banner Card matching user screenshot */}
       <View style={styles.walletBalanceCard}>
         <View style={styles.walletIconBackground}>
-          <Wallet size={160} color="rgba(255, 255, 255, 0.06)" />
+          <Wallet size={160} color="#fff" />
         </View>
         <Text style={styles.walletBalanceLabel}>AVAILABLE BALANCE</Text>
         <Text style={styles.walletBalanceValue}>
@@ -5635,7 +5694,7 @@ const InvestorsAdminView = () => {
   };
 
   return (
-    <ScrollView contentContainerStyle={styles.payrollContainer}>
+    <ScrollView style={{ flex: 1 }} contentContainerStyle={{ padding: spacing.m }}>
       <View style={styles.titleRow}>
         <View style={{ flex: 1, marginRight: 8 }}>
           <Text style={styles.empTitle}>Investor Management</Text>
@@ -6240,7 +6299,7 @@ const DebentureFormView = () => {
 
   if (submittedAppNo) {
     return (
-      <ScrollView contentContainerStyle={styles.payrollContainer}>
+      <ScrollView style={{ flex: 1 }} contentContainerStyle={{ padding: spacing.m }}>
         <View style={[styles.settingsCard, { backgroundColor: '#FFFFFF', alignItems: 'center', padding: 24, marginVertical: 20 }]}>
           <ShieldCheck size={48} color="#00a65a" style={{ marginBottom: 12 }} />
           <Text style={{ fontSize: 20, fontWeight: 'bold', color: '#0F172A', textAlign: 'center' }}>
@@ -6264,7 +6323,7 @@ const DebentureFormView = () => {
   }
 
   return (
-    <ScrollView contentContainerStyle={styles.payrollContainer}>
+    <ScrollView style={{ flex: 1 }} contentContainerStyle={{ padding: spacing.m }}>
       <View style={styles.titleRow}>
         <View>
           <Text style={styles.empTitle}>DEBENTURE APPLICATION FORM</Text>
@@ -6274,7 +6333,7 @@ const DebentureFormView = () => {
 
       <View style={[styles.settingsCard, { backgroundColor: '#FFFFFF', marginBottom: 16 }]}>
         <Text style={[styles.settingsCardTitle, { color: '#0F172A', fontSize: 15 }]}>👤 1. Applicant Personal Details</Text>
-        
+
         <Text style={styles.formLabel}>Full Applicant Name *</Text>
         <TextInput style={styles.modalTextInput} placeholder="John Doe" value={fullName} onChangeText={setFullName} />
 
@@ -6593,7 +6652,7 @@ const InvestorPortalView = () => {
   const estimatedReturn = Math.round((investedAmt * monthlyRate) / 100);
 
   return (
-    <ScrollView contentContainerStyle={styles.payrollContainer}>
+    <ScrollView style={{ flex: 1 }} contentContainerStyle={{ padding: spacing.m }}>
       {/* Profile Header Card */}
       <View style={[styles.netSalaryCard, { backgroundColor: '#FFFFFF', borderColor: '#E2E8F0', padding: 18, marginBottom: 16 }]}>
         <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start' }}>
@@ -6698,7 +6757,7 @@ const InvestorPortalView = () => {
                 <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
                   <Text style={{ fontSize: 14, fontWeight: 'bold', color: '#0F172A' }}>{item.label}</Text>
                   <View style={{ flexDirection: 'row', gap: 6 }}>
-                    <View style={{ backgroundColor: item.req ? '#881337' : '#475569', paddingHorizontal: 6, paddingVertical: 2, borderRadius: 4 }}>
+                    <View style={{ backgroundColor: item.req ? '#881337' : '#fff', paddingHorizontal: 6, paddingVertical: 2, borderRadius: 4 }}>
                       <Text style={{ color: '#FFF', fontSize: 10, fontWeight: 'bold' }}>{item.req ? 'REQUIRED' : 'OPTIONAL'}</Text>
                     </View>
                     <View style={{ backgroundColor: st === 'Approved' ? '#00a65a' : st === 'Rejected' ? '#EF4444' : '#F97316', paddingHorizontal: 8, paddingVertical: 2, borderRadius: 10 }}>
@@ -6736,7 +6795,7 @@ const InvestorPortalView = () => {
                     onPress={() => handlePickDoc(item.key)}
                   >
                     <UploadCloud size={20} color={fileUri ? '#00a65a' : '#64748B'} style={{ marginBottom: 4 }} />
-                    <Text style={{ fontSize: 12, fontWeight: 'bold', color: fileUri ? '#00a65a' : '#475569' }}>
+                    <Text style={{ fontSize: 12, fontWeight: 'bold', color: fileUri ? '#00a65a' : '#fff' }}>
                       {fileUri ? '✓ PDF / Document Attached (Tap to change)' : 'Tap to upload PDF / Image document'}
                     </Text>
                   </TouchableOpacity>
@@ -6772,7 +6831,7 @@ const InvestorPortalView = () => {
                 onPress={() => handlePickDoc('bankPassbook')}
               >
                 <UploadCloud size={20} color={attachedFiles.bankPassbook ? '#00a65a' : '#64748B'} style={{ marginBottom: 4 }} />
-                <Text style={{ fontSize: 12, fontWeight: 'bold', color: attachedFiles.bankPassbook ? '#00a65a' : '#475569' }}>
+                <Text style={{ fontSize: 12, fontWeight: 'bold', color: attachedFiles.bankPassbook ? '#00a65a' : '#fff' }}>
                   {attachedFiles.bankPassbook ? '✓ Bank Passbook Attached (Tap to change)' : 'Tap to upload Bank Passbook PDF / Image'}
                 </Text>
               </TouchableOpacity>
@@ -6848,6 +6907,18 @@ const DashboardScreen = ({ navigation }: any) => {
   const [overviewAttLoading, setOverviewAttLoading] = useState(false);
   const user = useAuthStore((state) => state.user);
   const clearAuth = useAuthStore((state) => state.clearAuth);
+  const themeMode = useAuthStore((state) => state.themeMode);
+  const setThemeMode = useAuthStore((state) => state.setThemeMode);
+
+  const toggleTheme = () => {
+    let currentIsDark = false;
+    if (themeMode === 'system') {
+      currentIsDark = Appearance.getColorScheme() === 'dark';
+    } else {
+      currentIsDark = themeMode === 'dark';
+    }
+    setThemeMode(currentIsDark ? 'light' : 'dark');
+  };
   const userRole = user?.role || 'Employee';
   const userRoleStr = userRole.toUpperCase();
   const isInvestor = userRoleStr === 'INVESTOR';
@@ -6862,11 +6933,21 @@ const DashboardScreen = ({ navigation }: any) => {
   const [activeSection, setActiveSection] = useState(initialSection);
 
   const fetchDashboardData = async () => {
+    if (!isAdminOrKeyAdmin) {
+      setLoading(false);
+      setOverviewAttLoading(false);
+      return;
+    }
     setLoading(true);
+    setOverviewAttLoading(true);
     try {
       const response = await apiCall('/api/dashboard/admin');
       if (response.success && response.data) {
-        setData(response.data.data || response.data);
+        const dData = response.data.data || response.data;
+        setData(dData);
+        if (dData && Array.isArray(dData.todaysAttendanceList)) {
+          setOverviewAttRecords(dData.todaysAttendanceList);
+        }
       } else {
         Alert.alert('Error', response.error || 'Failed to fetch dashboard data.');
       }
@@ -6874,25 +6955,13 @@ const DashboardScreen = ({ navigation }: any) => {
       console.error(e);
     } finally {
       setLoading(false);
+      setOverviewAttLoading(false);
     }
   };
 
   // Fetch attendance records for admin/keyadmin overview
   const fetchOverviewAttendance = async () => {
-    if (!isAdminOrKeyAdmin) return;
-    setOverviewAttLoading(true);
-    try {
-      const today = new Date().toISOString().slice(0, 10);
-      const res: any = await apiCall(`/api/attendance/manager?date=${today}`);
-      if (res.success && res.data) {
-        const list = Array.isArray(res.data) ? res.data : [];
-        setOverviewAttRecords(list);
-      }
-    } catch (e) {
-      console.error(e);
-    } finally {
-      setOverviewAttLoading(false);
-    }
+    await fetchDashboardData();
   };
 
   const formatOverviewPunchTime = (punchVal: any) => {
@@ -6911,8 +6980,7 @@ const DashboardScreen = ({ navigation }: any) => {
 
   useEffect(() => {
     fetchDashboardData();
-    fetchOverviewAttendance();
-  }, []);
+  }, [isAdminOrKeyAdmin]);
 
   const handleLogout = () => {
     clearAuth();
@@ -6953,11 +7021,17 @@ const DashboardScreen = ({ navigation }: any) => {
         <TouchableOpacity style={styles.menuButton} onPress={() => setSidebarOpen(true)}>
           <Menu size={24} color={colors.text} />
         </TouchableOpacity>
-        <View style={{ flex: 1, marginLeft: spacing.m }}>
+        <Image
+          source={require('../../assets/icon.png')}
+          style={{ width: 28, height: 28, marginLeft: spacing.s, borderRadius: 4 }}
+          resizeMode="contain"
+        />
+        <View style={{ flex: 1, marginLeft: spacing.s }}>
           <Text style={styles.headerTitle}>
             {activeSection === 'Overview' ? 'Command Center' : activeSection}
           </Text>
           <Text style={styles.headerSubtitle}>
+
             {activeSection === 'Overview'
               ? 'Overview of financials, HR, and sales'
               : `CRM Hub - ${activeSection} panel`}
@@ -6970,6 +7044,9 @@ const DashboardScreen = ({ navigation }: any) => {
               : (user?.email ? user.email[0].toUpperCase() : 'U')}
           </Text>
         </View>
+        <TouchableOpacity style={{ marginRight: 12, padding: 6, justifyContent: 'center', alignItems: 'center' }} onPress={toggleTheme}>
+          <Eye size={20} color={colors.textMuted} />
+        </TouchableOpacity>
         <TouchableOpacity style={styles.logoutButton} onPress={handleLogout}>
           <LogOut size={20} color={colors.textMuted} />
         </TouchableOpacity>
@@ -6981,19 +7058,19 @@ const DashboardScreen = ({ navigation }: any) => {
           {/* Row 1: Global KPIs */}
           <View style={styles.kpiGrid}>
             {/* Card 1: Total Employees */}
-            <View style={[styles.dashboardCard, { backgroundColor: '#111' }]}>
+            <View style={[styles.dashboardCard, { backgroundColor: colors.surface }]}>
               <View style={styles.cardHeader}>
                 <Text style={styles.cardLabel}>Total Employees</Text>
-                <Users size={20} color="#9BA3AF" />
+                <Users size={20} color="#0f3d82" />
               </View>
               <Text style={styles.cardValueLarge}>{k.totalEmployees}</Text>
             </View>
 
             {/* Card 2: Wallet Balance */}
-            <View style={[styles.dashboardCard, { backgroundColor: '#1a1f3c' }]}>
+            <View style={[styles.dashboardCard, { backgroundColor: colors.surface }]}>
               <View style={styles.cardHeader}>
-                <Text style={[styles.cardLabel, { color: '#c7d2fe' }]}>Wallet Balance</Text>
-                <Wallet size={20} color="#818cf8" />
+                <Text style={[styles.cardLabel, { color: '#0f3d82' }]}>Wallet Balance</Text>
+                <Wallet size={20} color="#0f3d82" />
               </View>
               <Text style={styles.cardValueLarge}>₹{k.walletBalance.toLocaleString()}</Text>
             </View>
@@ -7116,24 +7193,44 @@ const DashboardScreen = ({ navigation }: any) => {
                       paddingHorizontal: 6,
                       marginBottom: 4,
                     }}>
-                      <Text style={{ width: 150, fontSize: 11, fontWeight: '700', color: colors.accent, textTransform: 'uppercase' }}>Employee</Text>
-                      <Text style={{ width: 90, fontSize: 11, fontWeight: '700', color: colors.accent, textTransform: 'uppercase' }}>Dept</Text>
-                      <Text style={{ width: 90, fontSize: 11, fontWeight: '700', color: colors.accent, textTransform: 'uppercase' }}>Status</Text>
+                      <Text style={{ width: 140, fontSize: 11, fontWeight: '700', color: colors.accent, textTransform: 'uppercase' }}>Employee</Text>
+                      <Text style={{ width: 90, fontSize: 11, fontWeight: '700', color: colors.accent, textTransform: 'uppercase' }}>Department</Text>
+                      <Text style={{ width: 80, fontSize: 11, fontWeight: '700', color: colors.accent, textTransform: 'uppercase' }}>Status</Text>
                       <Text style={{ width: 80, fontSize: 11, fontWeight: '700', color: colors.accent, textTransform: 'uppercase', textAlign: 'center' }}>Punch In</Text>
                       <Text style={{ width: 80, fontSize: 11, fontWeight: '700', color: colors.accent, textTransform: 'uppercase', textAlign: 'center' }}>Punch Out</Text>
+                      <Text style={{ width: 100, fontSize: 11, fontWeight: '700', color: colors.accent, textTransform: 'uppercase' }}>Location / IP</Text>
+                      <Text style={{ width: 60, fontSize: 11, fontWeight: '700', color: colors.accent, textTransform: 'uppercase', textAlign: 'center' }}>Hours</Text>
                     </View>
 
                     {/* Table Rows */}
                     {overviewAttRecords.map((record: any, index: number) => {
-                      const emp = record.employeeId || {};
-                      const empName = emp.firstName ? `${emp.firstName} ${emp.lastName || ''}`.trim() : 'Unknown';
-                      const empDept = emp.department || emp.designation || '-';
-                      const isPunched = !!(record.punchIn || record.status === 'Present' || record.status === 'Half-Day');
-                      const isLate = record.metrics?.isLate || record.isLate || record.status === 'Late';
+                      const empName = record.name || 'Unknown';
+                      const empCode = record.employeeCode || '-';
+                      const empDept = record.department || '-';
+                      const status = record.status || 'Absent';
+                      const punchInTime = record.punchIn || '-';
+                      const punchOutTime = record.punchOut || '-';
+                      const location = record.location || '-';
+                      const hours = record.workingHours || '-';
+
+                      const isPresent = status.toLowerCase() === 'present';
+                      const isAbsent = status.toLowerCase() === 'absent';
+                      const isLate = record.isLate || status.toLowerCase() === 'late';
+
+                      let badgeBg = 'rgba(239,68,68,0.15)';
+                      let badgeTextColor = '#ef4444';
+
+                      if (isPresent) {
+                        badgeBg = 'rgba(16,185,129,0.15)';
+                        badgeTextColor = '#10b981';
+                      } else if (status.toLowerCase().includes('half') || isLate) {
+                        badgeBg = 'rgba(245,158,11,0.15)';
+                        badgeTextColor = '#f59e0b';
+                      }
 
                       return (
                         <View
-                          key={record._id || index}
+                          key={record.id || index}
                           style={{
                             flexDirection: 'row',
                             paddingVertical: 10,
@@ -7143,38 +7240,47 @@ const DashboardScreen = ({ navigation }: any) => {
                             alignItems: 'center',
                           }}
                         >
-                          <View style={{ width: 150 }}>
+                          <View style={{ width: 140 }}>
                             <Text style={{ fontSize: 13, fontWeight: '600', color: colors.text }} numberOfLines={1}>
                               {empName}
                             </Text>
+                            <Text style={{ fontSize: 11, color: colors.textMuted, marginTop: 2 }}>
+                              {empCode}
+                            </Text>
                           </View>
+
                           <Text style={{ width: 90, fontSize: 12, color: colors.textMuted }} numberOfLines={1}>
                             {empDept}
                           </Text>
-                          <View style={{ width: 90, flexDirection: 'row', alignItems: 'center' }}>
+
+                          <View style={{ width: 80, flexDirection: 'row', alignItems: 'center' }}>
                             <View style={{
                               paddingHorizontal: 8,
                               paddingVertical: 3,
                               borderRadius: 10,
-                              backgroundColor: isPunched ? 'rgba(16,185,129,0.15)' : 'rgba(239,68,68,0.15)',
+                              backgroundColor: badgeBg,
                             }}>
                               <Text style={{
                                 fontSize: 11,
                                 fontWeight: '600',
-                                color: isPunched ? '#10b981' : '#ef4444',
+                                color: badgeTextColor,
                               }}>
-                                {record.punchIn ? 'Present' : record.status || 'Absent'}
+                                {status}
                               </Text>
                             </View>
-                            {isLate && (
-                              <Text style={{ fontSize: 10, fontWeight: '700', color: '#f59e0b', marginLeft: 4 }}>LATE</Text>
-                            )}
                           </View>
+
                           <Text style={{ width: 80, fontSize: 12, color: colors.textMuted, textAlign: 'center', fontWeight: '500' }}>
-                            {formatOverviewPunchTime(record.punchIn || record.inTime || record.punchInTime)}
+                            {punchInTime}
                           </Text>
                           <Text style={{ width: 80, fontSize: 12, color: colors.textMuted, textAlign: 'center', fontWeight: '500' }}>
-                            {formatOverviewPunchTime(record.punchOut || record.outTime || record.punchOutTime)}
+                            {punchOutTime}
+                          </Text>
+                          <Text style={{ width: 100, fontSize: 12, color: colors.textMuted }} numberOfLines={1}>
+                            {location}
+                          </Text>
+                          <Text style={{ width: 60, fontSize: 12, color: colors.textMuted, textAlign: 'center', fontWeight: '500' }}>
+                            {hours}
                           </Text>
                         </View>
                       );
@@ -7215,7 +7321,7 @@ const DashboardScreen = ({ navigation }: any) => {
               </View>
               <View style={styles.chartLegend}>
                 <View style={styles.legendItem}>
-                  <View style={[styles.legendColor, { backgroundColor: '#6366f1' }]} />
+                  <View style={[styles.legendColor, { backgroundColor: '#0f3d82' }]} />
                   <Text style={styles.legendText}>Avg Present</Text>
                 </View>
                 <View style={styles.legendItem}>
@@ -7275,6 +7381,8 @@ const DashboardScreen = ({ navigation }: any) => {
         </ScrollView>
       ) : activeSection === 'Employees' ? (
         <EmployeesView />
+      ) : activeSection === 'Wallet' ? (
+        <CompanyWalletView />
       ) : activeSection === 'Payroll' ? (
         <PayrollView />
       ) : activeSection === 'Attendance' ? (
@@ -7318,6 +7426,7 @@ const DashboardScreen = ({ navigation }: any) => {
           />
           {/* Sidebar Drawer container */}
           <View style={[styles.sidebarContainer, { paddingTop: sidebarTopGap, paddingBottom: sidebarBottomGap }]}>
+
             <View style={styles.sidebarHeader}>
               <Text style={styles.sidebarLogoText}>CRM Hub</Text>
               <TouchableOpacity onPress={() => setSidebarOpen(false)}>
@@ -7390,9 +7499,14 @@ const DashboardScreen = ({ navigation }: any) => {
 // --- Navigation Configuration ---
 export const AppNavigator = () => {
   const isAuthenticated = useAuthStore((state) => state.isAuthenticated);
+  const colorScheme = useColorScheme(); // Subscribes the navigation component to system theme updates
+  const themeMode = useAuthStore((state) => state.themeMode);
+
+  const isDark = themeMode === 'system' ? colorScheme === 'dark' : themeMode === 'dark';
+  const themeKey = isDark ? 'dark' : 'light';
 
   return (
-    <NavigationContainer>
+    <NavigationContainer key={themeKey}>
       <Stack.Navigator
         screenOptions={{
           headerStyle: {
@@ -7438,7 +7552,7 @@ export const AppNavigator = () => {
 
 
 // --- Styles ---
-const styles = StyleSheet.create({
+const styles = createDynamicStyleSheet(() => ({
   safeArea: {
     flex: 1,
     backgroundColor: colors.background,
@@ -7721,7 +7835,7 @@ const styles = StyleSheet.create({
   },
   attendanceBar: {
     width: 14,
-    backgroundColor: '#6366f1',
+    backgroundColor: '#0f3d82',
     borderRadius: 3,
     position: 'absolute',
     bottom: 0,
@@ -9401,7 +9515,7 @@ const styles = StyleSheet.create({
     marginBottom: spacing.s,
   },
   templateBadgeText: {
-    color: '#6366f1',
+    color: '#0f3d82',
     fontSize: 12,
     fontWeight: 'bold',
   },
@@ -9461,7 +9575,7 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(99, 102, 241, 0.15)',
   },
   roleAdminText: {
-    color: '#6366f1',
+    color: '#0f3d82',
     fontSize: 11,
     fontWeight: 'bold',
   },
@@ -9547,7 +9661,7 @@ const styles = StyleSheet.create({
     fontWeight: 'bold',
   },
   walletBalanceCard: {
-    backgroundColor: '#09090b', // Dark black card matching user screenshot
+    backgroundColor: '#134086', // Dark black card matching user screenshot
     borderRadius: borderRadius.l,
     padding: spacing.xl,
     marginBottom: spacing.m,
@@ -9815,9 +9929,9 @@ const styles = StyleSheet.create({
     fontSize: 13,
     fontWeight: 'bold',
   },
-});
+}));
 
-const loginStyles = StyleSheet.create({
+const loginStyles = createDynamicStyleSheet(() => ({
   cardContainer: {
     backgroundColor: '#FFFFFF',
     borderRadius: 16,
@@ -9951,7 +10065,7 @@ const loginStyles = StyleSheet.create({
   },
   checkboxLabel: {
     fontSize: 14,
-    color: '#475569',
+    color: '#000000',
   },
   signInBtn: {
     backgroundColor: '#0F3D82',
@@ -9978,16 +10092,16 @@ const loginStyles = StyleSheet.create({
     textAlign: 'center',
   },
   footerLink: {
-    color: '#2563EB',
+    color: '#0f3d82',
     fontWeight: 'bold',
   },
-});
+}));
 
-const registerStyles = StyleSheet.create({
+const registerStyles = createDynamicStyleSheet(() => ({
   portalTitle: {
     fontSize: 26,
     fontWeight: '900',
-    color: '#818CF8',
+    color: '#0f3d82',
     textAlign: 'center',
     letterSpacing: 1.5,
   },
@@ -9999,11 +10113,11 @@ const registerStyles = StyleSheet.create({
     marginBottom: 20,
   },
   cardContainer: {
-    backgroundColor: '#111827',
+    backgroundColor: '#fff',
     borderRadius: 16,
     padding: 22,
     borderWidth: 1,
-    borderColor: '#1F2937',
+    borderColor: '#eee',
   },
   formTitle: {
     fontSize: 20,
@@ -10041,12 +10155,12 @@ const registerStyles = StyleSheet.create({
   inputContainer: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#1F2937',
+    backgroundColor: '#fff',
     borderRadius: 10,
     paddingHorizontal: 14,
     height: 48,
     borderWidth: 1,
-    borderColor: '#374151',
+    borderColor: '#eee',
   },
   textInput: {
     flex: 1,
@@ -10055,7 +10169,7 @@ const registerStyles = StyleSheet.create({
     height: '100%',
   },
   submitBtn: {
-    backgroundColor: '#6366F1',
+    backgroundColor: '#0f3d82',
     height: 48,
     borderRadius: 10,
     justifyContent: 'center',
@@ -10072,7 +10186,7 @@ const registerStyles = StyleSheet.create({
     alignItems: 'center',
     paddingTop: 14,
     borderTopWidth: 1,
-    borderTopColor: '#1F2937',
+    borderTopColor: '#fff',
   },
   footerText: {
     fontSize: 13,
@@ -10080,10 +10194,10 @@ const registerStyles = StyleSheet.create({
     textAlign: 'center',
   },
   footerLink: {
-    color: '#818CF8',
+    color: '#0f3d82',
     fontWeight: 'bold',
   },
-});
+}));
 
 
 
