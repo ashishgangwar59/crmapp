@@ -2,7 +2,8 @@ import { Appearance } from 'react-native';
 import { useAuthStore } from '../services/authStore';
 
 const lightColors = {
-  primary: '#fff',
+  primary: '#0c1c3d',
+  navy: '#0c1c3d',
   secondary: '#fff',
   accent: '#1147a5',
   accentLight: '#F3E5AB',
@@ -12,18 +13,21 @@ const lightColors = {
   text: '#184683',
   textMuted: '#587399',
   textGold: '#D4AF37',
+  gold: '#c9972f',
+  goldLight: '#e8b84b',
   success: '#10B981',
   danger: '#EF4444',
   warning: '#F59E0B',
   info: '#3B82F6',
   border: '#c8c8c8ff',
-  borderGold: 'rgba(212, 175, 55, 0.3)',
+  borderGold: 'rgba(201, 151, 47, 0.4)',
 };
 
 const darkColors = {
-  primary: '#090D16',
+  primary: '#0c1c3d',
+  navy: '#0c1c3d',
   secondary: '#111827',
-  accent: '#818CF8',
+  accent: '#ffd339',
   accentLight: '#1f2937',
   background: '#090D16',
   surface: '#111827',
@@ -31,12 +35,14 @@ const darkColors = {
   text: '#FFFFFF',
   textMuted: '#94A3B8',
   textGold: '#FBBF24',
+  gold: '#c9972f',
+  goldLight: '#e8b84b',
   success: '#10B981',
   danger: '#EF4444',
   warning: '#F59E0B',
   info: '#3B82F6',
   border: '#374151',
-  borderGold: 'rgba(212, 175, 55, 0.3)',
+  borderGold: 'rgba(201, 151, 47, 0.4)',
 };
 
 let forcedScheme: 'light' | 'dark' | null = null;

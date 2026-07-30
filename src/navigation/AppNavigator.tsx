@@ -20,6 +20,10 @@ import {
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import DateTimePicker from '@react-native-community/datetimepicker';
 import * as ImagePicker from 'expo-image-picker';
+import * as Print from 'expo-print';
+import * as Sharing from 'expo-sharing';
+import * as MailComposer from 'expo-mail-composer';
+import { WebView } from 'react-native-webview';
 import { NavigationContainer } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { colors, spacing, borderRadius, setForcedScheme } from '../theme/colors';
@@ -32,7 +36,8 @@ const createDynamicStyleSheet = <T extends Record<string, any>>(styleBuilder: ()
 
   return new Proxy({}, {
     get(target, prop) {
-      const isDark = Appearance.getColorScheme() === 'dark';
+      const themeMode = useAuthStore.getState().themeMode || 'system';
+      const isDark = themeMode === 'system' ? Appearance.getColorScheme() === 'dark' : themeMode === 'dark';
       if (isDark) {
         if (!darkCache) {
           setForcedScheme('dark');
@@ -101,6 +106,7 @@ import {
   Camera,
   Eye,
   EyeOff,
+  FileText,
 } from 'lucide-react-native';
 
 // Types
@@ -117,9 +123,10 @@ const Stack = createNativeStackNavigator<RootStackParamList>();
 const AboutCompanyScreen = ({ navigation }: any) => {
   const insets = useSafeAreaInsets();
   const topGap = Platform.OS === 'android' ? (StatusBar.currentHeight || insets.top || 24) : 0;
-  
+
   const themeMode = useAuthStore((state) => state.themeMode);
   const setThemeMode = useAuthStore((state) => state.setThemeMode);
+  const [activeTab, setActiveTab] = useState<'corporate' | 'investment' | 'services' | 'features'>('corporate');
 
   const toggleTheme = () => {
     let currentIsDark = false;
@@ -129,6 +136,48 @@ const AboutCompanyScreen = ({ navigation }: any) => {
       currentIsDark = themeMode === 'dark';
     }
     setThemeMode(currentIsDark ? 'light' : 'dark');
+  };
+
+  const handleCta = (action: string) => {
+    switch (action) {
+      case 'invest':
+        navigation.navigate('Login');
+        break;
+      case 'consult':
+        Linking.openURL('https://niventracapitaladvisory.com/contact/').catch(() => {
+          Alert.alert('Book Consultation', 'Please visit our website at https://niventracapitaladvisory.com/contact/ to schedule a consultation.');
+        });
+        break;
+      case 'profile':
+        if (Platform.OS === 'web') {
+          try {
+            const assetUri = require('../../assets/profile.pdf');
+            const link = document.createElement('a');
+            link.href = assetUri;
+            link.download = 'Niventra_Capital_Advisory_Company_Profile.pdf';
+            link.target = '_blank';
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+          } catch (e) {
+            Linking.openURL('/assets/profile.pdf').catch(() => {
+              Alert.alert('Download Profile', 'Unable to download the PDF. Please check C:/Ashish/Niventra Capital Advisory India Pvt Ltd.pdf');
+            });
+          }
+        } else {
+          Linking.openURL('file:///C:/Ashish/Niventra%20Capital%20Advisory%20India%20Pvt%20Ltd.pdf').catch(() => {
+            Alert.alert('Download Profile', 'Unable to open PDF. Please copy the profile brochure from C:/Ashish/Niventra Capital Advisory India Pvt Ltd.pdf');
+          });
+        }
+        break;
+      case 'talk':
+        Linking.openURL('https://niventracapitaladvisory.com/contact/').catch(() => {
+          Alert.alert('Contact Expert', 'Please visit our contact page at https://niventracapitaladvisory.com/contact/ to speak with an advisory expert.');
+        });
+        break;
+      default:
+        break;
+    }
   };
 
   return (
@@ -142,8 +191,9 @@ const AboutCompanyScreen = ({ navigation }: any) => {
               style={{ width: 35, height: 53, marginRight: 2, borderRadius: 2 }}
               resizeMode="contain"
             />
-            <Text style={styles.aboutHeaderLogo}>CRM</Text>
-            {/* <Text style={styles.aboutHeaderSubLogo}>HUB</Text> */}
+            <Text style={styles.aboutHeaderLogo}>
+              Niventra
+            </Text>
           </View>
 
           <View style={{ flexDirection: 'row', alignItems: 'center' }}>
@@ -170,36 +220,185 @@ const AboutCompanyScreen = ({ navigation }: any) => {
           <Text style={styles.aboutHeroTitle}>Niventra Capital Advisory</Text>
           <Text style={styles.aboutHeroSubtitle}>India Pvt. Ltd.</Text>
           <Text style={styles.aboutHeroDesc}>
-            Premier Enterprise CRM, HR Management, Payroll Research, and Real-Time Workforce Analytics.
+            Smart Investments for a Better Tomorrow{'\n'}
+            Build long-term wealth with personalized investment strategies, expert financial guidance, and transparent advisory services. Start your journey towards financial freedom today.
           </Text>
         </View>
 
-        {/* Core Platform Services Grid */}
-        <Text style={styles.aboutSectionHeading}>Core Enterprise Services</Text>
+        {/* Horizontal Scrollable Tabs */}
+        <ScrollView
+          horizontal
+          showsHorizontalScrollIndicator={false}
+          style={{ marginBottom: spacing.m, maxHeight: 48 }}
+          contentContainerStyle={{ paddingHorizontal: 2 }}
+        >
+          <TouchableOpacity
+            style={[styles.settingsTabPill, activeTab === 'corporate' && styles.settingsTabPillActive]}
+            onPress={() => setActiveTab('corporate')}
+          >
+            <Text style={[styles.settingsTabText, activeTab === 'corporate' && styles.settingsTabTextActive]}>🏢 Corporate Profile</Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            style={[styles.settingsTabPill, activeTab === 'investment' && styles.settingsTabPillActive]}
+            onPress={() => setActiveTab('investment')}
+          >
+            <Text style={[styles.settingsTabText, activeTab === 'investment' && styles.settingsTabTextActive]}>💰 Investment Hub</Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            style={[styles.settingsTabPill, activeTab === 'services' && styles.settingsTabPillActive]}
+            onPress={() => setActiveTab('services')}
+          >
+            <Text style={[styles.settingsTabText, activeTab === 'services' && styles.settingsTabTextActive]}>💼 Services & Flow</Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            style={[styles.settingsTabPill, activeTab === 'features' && styles.settingsTabPillActive]}
+            onPress={() => setActiveTab('features')}
+          >
+            <Text style={[styles.settingsTabText, activeTab === 'features' && styles.settingsTabTextActive]}>🔒 Tech & Security</Text>
+          </TouchableOpacity>
+        </ScrollView>
+
+        {/* Dynamic Service Grid rendering based on activeTab */}
+        <Text style={styles.aboutSectionHeading}>
+          {activeTab === 'corporate' && 'Corporate & Values'}
+          {activeTab === 'investment' && 'Advisory & Investment Benefits'}
+          {activeTab === 'services' && 'Ecosystem Services & Flows'}
+          {activeTab === 'features' && 'Compliance, App & Tech Features'}
+        </Text>
+
         <View style={styles.aboutServicesGrid}>
-          <View style={styles.aboutServiceCard}>
-            <TrendingUp size={24} color="#3b82f6" style={{ marginBottom: 8 }} />
-            <Text style={styles.aboutServiceTitle}>Capital Advisory</Text>
-            <Text style={styles.aboutServiceDesc}>Financial research & capital allocation solutions.</Text>
-          </View>
+          {activeTab === 'corporate' && (
+            <>
+              <View style={styles.aboutServiceCard}>
+                <Building size={24} color={colors.info} style={{ marginBottom: 8 }} />
+                <Text style={styles.aboutServiceTitle}>Company Overview</Text>
+                <Text style={styles.aboutServiceDesc}>Professionally managed Real Estate Investment Advisory Company. Trusted partner for residential & commercial real estate investments with focus on long-term wealth creation & transparent services.</Text>
+              </View>
 
-          <View style={styles.aboutServiceCard}>
-            <Clock size={24} color="#10b981" style={{ marginBottom: 8 }} />
-            <Text style={styles.aboutServiceTitle}>Live Attendance</Text>
-            <Text style={styles.aboutServiceDesc}>Real-time punch-in, geo-logs & HR tracking.</Text>
-          </View>
+              <View style={styles.aboutServiceCard}>
+                <Target size={24} color={colors.success} style={{ marginBottom: 8 }} />
+                <Text style={styles.aboutServiceTitle}>Vision & Mission</Text>
+                <Text style={styles.aboutServiceDesc}>Become one of India's most trusted real estate investment advisory companies. Create sustainable wealth, expand opportunities, maintain transparency, and ensure high standards of ethics and compliance.</Text>
+              </View>
 
-          <View style={styles.aboutServiceCard}>
-            <Wallet size={24} color="#f59e0b" style={{ marginBottom: 8 }} />
-            <Text style={styles.aboutServiceTitle}>Payroll & Wallet</Text>
-            <Text style={styles.aboutServiceDesc}>Automated salary processing & expense management.</Text>
-          </View>
+              <View style={[styles.aboutServiceCard, { width: '100%' }]}>
+                <ShieldCheck size={24} color={colors.accent} style={{ marginBottom: 8 }} />
+                <Text style={styles.aboutServiceTitle}>Core Corporate Values</Text>
+                <Text style={styles.aboutServiceDesc}>• Transparency & Trust{"\n"}• Integrity & Accountability{"\n"}• Professionalism & Customer First{"\n"}• Innovation & Long-Term Relationships</Text>
+              </View>
+            </>
+          )}
 
-          <View style={styles.aboutServiceCard}>
-            <Target size={24} color="#a855f7" style={{ marginBottom: 8 }} />
-            <Text style={styles.aboutServiceTitle}>CRM & Leads</Text>
-            <Text style={styles.aboutServiceDesc}>Sales pipeline, lead conversion & reports.</Text>
-          </View>
+          {activeTab === 'investment' && (
+            <>
+              <View style={styles.aboutServiceCard}>
+                <TrendingUp size={24} color={colors.success} style={{ marginBottom: 8 }} />
+                <Text style={styles.aboutServiceTitle}>Investment Benefits</Text>
+                <Text style={styles.aboutServiceDesc}>Attractive investment opportunities, capital appreciation, regular rental income potential, wealth preservation, passive income generation, and long-term value creation.</Text>
+              </View>
+
+
+              <View style={styles.aboutServiceCard}>
+                <KeyRound size={24} color={colors.warning} style={{ marginBottom: 8 }} />
+                <Text style={styles.aboutServiceTitle}>Why Invest in PPF</Text>
+                <Text style={styles.aboutServiceDesc}>Invest in PPF with attractive interest rates and secure returns.</Text>
+              </View>
+
+              <View style={styles.aboutServiceCard}>
+                <KeyRound size={24} color={colors.warning} style={{ marginBottom: 8 }} />
+                <Text style={styles.aboutServiceTitle}>Why Invest in Debentures</Text>
+                <Text style={styles.aboutServiceDesc}>Build long-term wealth with professionally managed investment strategies designed for sustainable growth.</Text>
+              </View>
+
+              <View style={styles.aboutServiceCard}>
+                <KeyRound size={24} color={colors.warning} style={{ marginBottom: 8 }} />
+                <Text style={styles.aboutServiceTitle}>Why Invest in Real Estate</Text>
+                <Text style={styles.aboutServiceDesc}>Tangible asset class offering robust inflation hedge, portfolio diversification, strong capital appreciation, and reliable long-term financial security.</Text>
+              </View>
+
+
+              <View style={[styles.aboutServiceCard, { width: '100%' }]}>
+                <UserIcon size={24} color={colors.accent} style={{ marginBottom: 8 }} />
+                <Text style={styles.aboutServiceTitle}>Who Can Invest</Text>
+                <Text style={styles.aboutServiceDesc}>Salaried Professionals, Business Owners, NRIs, HNIs, Family Offices, Corporate Investors, First-Time and Experienced Investors.</Text>
+              </View>
+            </>
+          )}
+
+          {activeTab === 'services' && (
+            <>
+              <View style={styles.aboutServiceCard}>
+                <Briefcase size={24} color={colors.info} style={{ marginBottom: 8 }} />
+                <Text style={styles.aboutServiceTitle}>Our Key Services</Text>
+                <Text style={styles.aboutServiceDesc}>Residential & Commercial property investments, Office Spaces, Retail Shops, Luxury Apartments, Business Parks, Portfolio Advisory & Exit Strategies.</Text>
+              </View>
+
+              <View style={styles.aboutServiceCard}>
+                <Target size={24} color={colors.accent} style={{ marginBottom: 8 }} />
+                <Text style={styles.aboutServiceTitle}>Investment Process</Text>
+                <Text style={styles.aboutServiceDesc}>Investor Registration → Digital KYC Verification → Transparent Documentation → Agreement Execution → Investment Confirmation → Dedicated RM Updates.</Text>
+              </View>
+
+              <View style={[styles.aboutServiceCard, { width: '100%' }]}>
+                <ShieldCheck size={24} color={colors.success} style={{ marginBottom: 8 }} />
+                <Text style={styles.aboutServiceTitle}>Due Diligence Process</Text>
+                <Text style={styles.aboutServiceDesc}>Rigorous market research, legal & title verification, financial analysis, technical feasibility assessments, documentation reviews, and continuous project monitoring.</Text>
+              </View>
+            </>
+          )}
+
+          {activeTab === 'features' && (
+            <>
+              <View style={styles.aboutServiceCard}>
+                <ShieldCheck size={24} color={colors.warning} style={{ marginBottom: 8 }} />
+                <Text style={styles.aboutServiceTitle}>Security & Compliance</Text>
+                <Text style={styles.aboutServiceDesc}>Complete regulatory compliance, transparent transaction records, secure data handling, and strict confidentiality of investor info.</Text>
+              </View>
+
+              <View style={styles.aboutServiceCard}>
+                <KeyRound size={24} color={colors.info} style={{ marginBottom: 8 }} />
+                <Text style={styles.aboutServiceTitle}>Digital Platform Features</Text>
+                <Text style={styles.aboutServiceDesc}>Digital KYC, browse verified opportunities, dynamic investment calculator, portfolio dashboard, payment tracking, property listings, & live support.</Text>
+              </View>
+
+              <View style={[styles.aboutServiceCard, { width: '100%' }]}>
+                <UserIcon size={24} color={colors.success} style={{ marginBottom: 8 }} />
+                <Text style={styles.aboutServiceTitle}>Investor Benefits</Text>
+                <Text style={styles.aboutServiceDesc}>Verified opportunities, complete legal due diligence, dedicated Relationship Managers, personalized investment planning, regular updates, and end-to-end support.</Text>
+              </View>
+            </>
+          )}
+        </View>
+
+        {/* Call to Action Grid */}
+        <Text style={styles.aboutSectionHeading}>Advisory Actions</Text>
+        <View style={styles.aboutServicesGrid}>
+          <TouchableOpacity style={[styles.aboutServiceCard, { backgroundColor: colors.accent, borderColor: colors.accent }]} onPress={() => handleCta('invest')}>
+            <TrendingUp size={20} color={colors.background} style={{ marginBottom: 6 }} />
+            <Text style={[styles.aboutServiceTitle, { color: colors.background }]}>Start Investing Today</Text>
+            <Text style={[styles.aboutServiceDesc, { color: 'rgba(255,255,255,0.75)' }]}>Sign up or log in to secure your debentures.</Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity style={styles.aboutServiceCard} onPress={() => handleCta('consult')}>
+            <Briefcase size={20} color={colors.success} style={{ marginBottom: 6 }} />
+            <Text style={styles.aboutServiceTitle}>Book Consultation</Text>
+            <Text style={styles.aboutServiceDesc}>Schedule a free session with our real estate expert.</Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity style={styles.aboutServiceCard} onPress={() => handleCta('profile')}>
+            <Download size={20} color={colors.info} style={{ marginBottom: 6 }} />
+            <Text style={styles.aboutServiceTitle}>Download Profile</Text>
+            <Text style={styles.aboutServiceDesc}>Get Niventra Capital corporate profile brochure.</Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity style={styles.aboutServiceCard} onPress={() => handleCta('talk')}>
+            <Mail size={20} color={colors.warning} style={{ marginBottom: 6 }} />
+            <Text style={styles.aboutServiceTitle}>Talk to an Expert</Text>
+            <Text style={styles.aboutServiceDesc}>Direct connect with our Investment Advisory team.</Text>
+          </TouchableOpacity>
         </View>
 
         {/* Company Contact Details Card */}
@@ -207,7 +406,7 @@ const AboutCompanyScreen = ({ navigation }: any) => {
           <Text style={styles.aboutContactTitle}>Company Information</Text>
           <View style={styles.aboutContactRow}>
             <Building size={16} color={colors.textMuted} style={{ marginRight: 8 }} />
-            <Text style={styles.aboutContactText}>Sewak Park Near Dwarka Mor Metro Station</Text>
+            <Text style={styles.aboutContactText}>A-91, Block A Gali No. 2, Sewak Park Near Dwarka Mor Metro Station, Gate No. 2 Dwarka Mor New Delhi – 110059 Delhi, India</Text>
           </View>
           <View style={styles.aboutContactRow}>
             <Mail size={16} color={colors.textMuted} style={{ marginRight: 8 }} />
@@ -280,7 +479,7 @@ const LoginScreen = ({ navigation }: any) => {
   const topGap = Platform.OS === 'android' ? (StatusBar.currentHeight || insets.top || 24) : 0;
 
   return (
-    <SafeAreaView style={[styles.safeArea, { paddingTop: topGap, backgroundColor: '#F8FAFC' }]}>
+    <SafeAreaView style={[styles.safeArea, { paddingTop: topGap, backgroundColor: colors.background }]}>
       <ScrollView contentContainerStyle={{ flexGrow: 1, paddingHorizontal: 20, paddingVertical: 16, justifyContent: 'center' }} showsVerticalScrollIndicator={false}>
         {/* Navigation link back to About Company */}
         <TouchableOpacity
@@ -297,7 +496,7 @@ const LoginScreen = ({ navigation }: any) => {
           <View style={loginStyles.logoBadgeWrapper}>
             <View style={loginStyles.logoBadgeCircle}>
               <Text style={loginStyles.logoTextNC}>NC</Text>
-              <TrendingUp size={14} color="#D6AF37" style={loginStyles.logoArrow} />
+              <TrendingUp size={14} color={colors.textGold} style={loginStyles.logoArrow} />
             </View>
           </View>
 
@@ -320,7 +519,7 @@ const LoginScreen = ({ navigation }: any) => {
               <TextInput
                 style={loginStyles.textInput}
                 placeholder="keyadmin@gmail.com"
-                placeholderTextColor="#9CA3AF"
+                placeholderTextColor={colors.textMuted}
                 value={email}
                 onChangeText={setEmail}
                 autoCapitalize="none"
@@ -341,7 +540,7 @@ const LoginScreen = ({ navigation }: any) => {
               <TextInput
                 style={[loginStyles.textInput, { flex: 1 }]}
                 placeholder="••••••••"
-                placeholderTextColor="#9CA3AF"
+                placeholderTextColor={colors.textMuted}
                 value={password}
                 onChangeText={setPassword}
                 secureTextEntry={!showPassword}
@@ -355,9 +554,9 @@ const LoginScreen = ({ navigation }: any) => {
                 hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
               >
                 {showPassword ? (
-                  <EyeOff size={20} color="#6B7280" />
+                  <EyeOff size={20} color={colors.textMuted} />
                 ) : (
-                  <Eye size={20} color="#6B7280" />
+                  <Eye size={20} color={colors.textMuted} />
                 )}
               </TouchableOpacity>
             </View>
@@ -382,7 +581,7 @@ const LoginScreen = ({ navigation }: any) => {
             disabled={loading}
           >
             {loading ? (
-              <ActivityIndicator color="#FFFFFF" />
+              <ActivityIndicator color={colors.background} />
             ) : (
               <Text style={loginStyles.signInBtnText}>Sign in</Text>
             )}
@@ -486,14 +685,14 @@ const InvestorRegisterScreen = ({ navigation }: any) => {
   const topGap = Platform.OS === 'android' ? (StatusBar.currentHeight || insets.top || 24) : 0;
 
   return (
-    <SafeAreaView style={[styles.safeArea, { paddingTop: topGap, backgroundColor: '#fff' }]}>
+    <SafeAreaView style={[styles.safeArea, { paddingTop: topGap, backgroundColor: colors.background }]}>
       <ScrollView contentContainerStyle={{ flexGrow: 1, paddingHorizontal: 20, paddingVertical: 20, justifyContent: 'center' }} showsVerticalScrollIndicator={false}>
         <TouchableOpacity
           style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 16, alignSelf: 'flex-start' }}
           onPress={() => navigation.navigate('Login')}
         >
-          <ArrowLeft size={16} color="#0f3d82" style={{ marginRight: 6 }} />
-          <Text style={{ color: '#0f3d82', fontSize: 13, fontWeight: 'bold' }}>Back to Login</Text>
+          <ArrowLeft size={16} color={colors.accent} style={{ marginRight: 6 }} />
+          <Text style={{ color: colors.accent, fontSize: 13, fontWeight: 'bold' }}>Back to Login</Text>
         </TouchableOpacity>
 
         <Text style={registerStyles.portalTitle}>INVESTOR PORTAL</Text>
@@ -514,11 +713,11 @@ const InvestorRegisterScreen = ({ navigation }: any) => {
           <View style={registerStyles.fieldGroup}>
             <Text style={registerStyles.fieldLabel}>Full Name *</Text>
             <View style={registerStyles.inputContainer}>
-              <UserIcon size={18} color="#64748B" style={{ marginRight: 10 }} />
+              <UserIcon size={18} color={colors.textMuted} style={{ marginRight: 10 }} />
               <TextInput
                 style={registerStyles.textInput}
                 placeholder="John Doe"
-                placeholderTextColor="#000"
+                placeholderTextColor={colors.textMuted}
                 value={fullName}
                 onChangeText={setFullName}
               />
@@ -527,12 +726,12 @@ const InvestorRegisterScreen = ({ navigation }: any) => {
 
           <View style={registerStyles.fieldGroup}>
             <Text style={registerStyles.fieldLabel}>Email Address *</Text>
-            <View style={[registerStyles.inputContainer, { backgroundColor: '#EFF6FF', borderColor: '#BFDBFE' }]}>
-              <Mail size={18} color="#64748B" style={{ marginRight: 10 }} />
+            <View style={registerStyles.inputContainer}>
+              <Mail size={18} color={colors.textMuted} style={{ marginRight: 10 }} />
               <TextInput
-                style={[registerStyles.textInput, { color: '#0F172A' }]}
+                style={registerStyles.textInput}
                 placeholder="keyadmin@gmail.com"
-                placeholderTextColor="#64748B"
+                placeholderTextColor={colors.textMuted}
                 value={email}
                 onChangeText={setEmail}
                 autoCapitalize="none"
@@ -544,11 +743,11 @@ const InvestorRegisterScreen = ({ navigation }: any) => {
           <View style={registerStyles.fieldGroup}>
             <Text style={registerStyles.fieldLabel}>Phone Number *</Text>
             <View style={registerStyles.inputContainer}>
-              <Briefcase size={18} color="#64748B" style={{ marginRight: 10 }} />
+              <Briefcase size={18} color={colors.textMuted} style={{ marginRight: 10 }} />
               <TextInput
                 style={registerStyles.textInput}
                 placeholder="+91 9876543210"
-                placeholderTextColor="#fff"
+                placeholderTextColor={colors.textMuted}
                 value={phone}
                 onChangeText={setPhone}
                 keyboardType="phone-pad"
@@ -558,19 +757,19 @@ const InvestorRegisterScreen = ({ navigation }: any) => {
 
           <View style={registerStyles.fieldGroup}>
             <Text style={registerStyles.fieldLabel}>Password *</Text>
-            <View style={[registerStyles.inputContainer, { backgroundColor: '#EFF6FF', borderColor: '#BFDBFE' }]}>
-              <KeyRound size={18} color="#64748B" style={{ marginRight: 10 }} />
+            <View style={registerStyles.inputContainer}>
+              <KeyRound size={18} color={colors.textMuted} style={{ marginRight: 10 }} />
               <TextInput
-                style={[registerStyles.textInput, { flex: 1, color: '#0F172A' }]}
+                style={registerStyles.textInput}
                 placeholder="••••••••"
-                placeholderTextColor="#64748B"
+                placeholderTextColor={colors.textMuted}
                 value={password}
                 onChangeText={setPassword}
                 secureTextEntry={!showPassword}
                 autoCapitalize="none"
               />
               <TouchableOpacity onPress={() => setShowPassword(!showPassword)}>
-                {showPassword ? <EyeOff size={18} color="#64748B" /> : <Eye size={18} color="#64748B" />}
+                {showPassword ? <EyeOff size={18} color={colors.textMuted} /> : <Eye size={18} color={colors.textMuted} />}
               </TouchableOpacity>
             </View>
           </View>
@@ -578,11 +777,11 @@ const InvestorRegisterScreen = ({ navigation }: any) => {
           <View style={registerStyles.fieldGroup}>
             <Text style={registerStyles.fieldLabel}>Confirm Password *</Text>
             <View style={registerStyles.inputContainer}>
-              <KeyRound size={18} color="#64748B" style={{ marginRight: 10 }} />
+              <KeyRound size={18} color={colors.textMuted} style={{ marginRight: 10 }} />
               <TextInput
                 style={registerStyles.textInput}
                 placeholder="••••••••"
-                placeholderTextColor="#fff"
+                placeholderTextColor={colors.textMuted}
                 value={confirmPassword}
                 onChangeText={setConfirmPassword}
                 secureTextEntry={!showPassword}
@@ -597,11 +796,11 @@ const InvestorRegisterScreen = ({ navigation }: any) => {
             disabled={loading}
           >
             {loading ? (
-              <ActivityIndicator color="#FFFFFF" />
+              <ActivityIndicator color={colors.background} />
             ) : (
               <View style={{ flexDirection: 'row', alignItems: 'center' }}>
                 <Text style={registerStyles.submitBtnText}>Register Investor</Text>
-                <ArrowUpRight size={18} color="#FFFFFF" style={{ marginLeft: 6 }} />
+                <ArrowUpRight size={18} color={colors.background} style={{ marginLeft: 6 }} />
               </View>
             )}
           </TouchableOpacity>
@@ -642,6 +841,9 @@ const EmployeesView = () => {
   const [email, setEmail] = useState('');
   const [officeEmail, setOfficeEmail] = useState('');
   const [phone, setPhone] = useState('');
+  const [companyPhone, setCompanyPhone] = useState('');
+  const [permanentAddress, setPermanentAddress] = useState('');
+  const [correspondenceAddress, setCorrespondenceAddress] = useState('');
   const [dateOfBirth, setDateOfBirth] = useState('');
   const [gender, setGender] = useState('');
   const [bloodGroup, setBloodGroup] = useState('');
@@ -731,6 +933,9 @@ const EmployeesView = () => {
     setEmail(emp.email || '');
     setOfficeEmail(emp.officeEmail || '');
     setPhone(emp.phone || '');
+    setCompanyPhone(emp.companyPhone || '');
+    setPermanentAddress(emp.permanentAddress || '');
+    setCorrespondenceAddress(emp.correspondenceAddress || '');
     setDateOfBirth(emp.dateOfBirth ? emp.dateOfBirth.substring(0, 10) : '');
     setGender(emp.gender || '');
     setBloodGroup(emp.bloodGroup || '');
@@ -818,6 +1023,9 @@ const EmployeesView = () => {
         email,
         officeEmail,
         phone,
+        companyPhone,
+        permanentAddress,
+        correspondenceAddress,
         dateOfBirth: dateOfBirth ? new Date(dateOfBirth) : undefined,
         gender,
         bloodGroup,
@@ -869,6 +1077,9 @@ const EmployeesView = () => {
         setEmail('');
         setOfficeEmail('');
         setPhone('');
+        setCompanyPhone('');
+        setPermanentAddress('');
+        setCorrespondenceAddress('');
         setDateOfBirth('');
         setGender('');
         setBloodGroup('');
@@ -972,8 +1183,8 @@ const EmployeesView = () => {
               style={[styles.detailBtn, styles.detailBtnDelete]}
               onPress={() => handleDeleteEmployee(selectedEmployee._id || selectedEmployee.id)}
             >
-              <Trash2 size={16} color="#fff" />
-              <Text style={[styles.detailBtnText, { color: '#fff' }]}>Delete Employee</Text>
+              <Trash2 size={16} color={colors.background} />
+              <Text style={[styles.detailBtnText, { color: colors.background }]}>Delete Employee</Text>
             </TouchableOpacity>
           </View>
 
@@ -995,6 +1206,24 @@ const EmployeesView = () => {
                 <Text style={styles.detailLabel}>Phone</Text>
                 <Text style={styles.detailVal}>{selectedEmployee.phone || '-'}</Text>
               </View>
+              {selectedEmployee.companyPhone && (
+                <View style={styles.detailGridCol}>
+                  <Text style={styles.detailLabel}>Company Phone</Text>
+                  <Text style={styles.detailVal}>{selectedEmployee.companyPhone}</Text>
+                </View>
+              )}
+              {selectedEmployee.permanentAddress && (
+                <View style={[styles.detailGridCol, { width: '100%' }]}>
+                  <Text style={styles.detailLabel}>Permanent Address</Text>
+                  <Text style={styles.detailVal}>{selectedEmployee.permanentAddress}</Text>
+                </View>
+              )}
+              {selectedEmployee.correspondenceAddress && (
+                <View style={[styles.detailGridCol, { width: '100%' }]}>
+                  <Text style={styles.detailLabel}>Correspondence Address</Text>
+                  <Text style={styles.detailVal}>{selectedEmployee.correspondenceAddress}</Text>
+                </View>
+              )}
               {selectedEmployee.gender && (
                 <View style={styles.detailGridCol}>
                   <Text style={styles.detailLabel}>Gender</Text>
@@ -1342,6 +1571,36 @@ const EmployeesView = () => {
                     onChangeText={setOfficeEmail}
                     keyboardType="email-address"
                     autoCapitalize="none"
+                  />
+
+                  <Text style={styles.formLabel}>Company Phone No.</Text>
+                  <TextInput
+                    style={styles.modalTextInput}
+                    placeholder="Enter Company Phone Number"
+                    placeholderTextColor={colors.textMuted}
+                    value={companyPhone}
+                    onChangeText={setCompanyPhone}
+                    keyboardType="phone-pad"
+                  />
+
+                  <Text style={styles.formLabel}>Permanent Address</Text>
+                  <TextInput
+                    style={[styles.modalTextInput, { height: 60, textAlignVertical: 'top' }]}
+                    placeholder="Enter Permanent Address"
+                    placeholderTextColor={colors.textMuted}
+                    value={permanentAddress}
+                    onChangeText={setPermanentAddress}
+                    multiline
+                  />
+
+                  <Text style={styles.formLabel}>Correspondence Address</Text>
+                  <TextInput
+                    style={[styles.modalTextInput, { height: 60, textAlignVertical: 'top' }]}
+                    placeholder="Enter Correspondence Address"
+                    placeholderTextColor={colors.textMuted}
+                    value={correspondenceAddress}
+                    onChangeText={setCorrespondenceAddress}
+                    multiline
                   />
 
                   <Text style={styles.formLabel}>Gender</Text>
@@ -1761,6 +2020,8 @@ const PayrollView = () => {
   const [structFormData, setStructFormData] = useState({
     basic: 0,
     hra: 0,
+    travelAllowance: 0,
+    incentive: 0,
     specialAllowance: 0,
     pf: 0,
     esi: 0,
@@ -1776,7 +2037,10 @@ const PayrollView = () => {
     try {
       const response = await apiCall(`/api/payroll?monthYear=${monthYear}`);
       if (response.success && response.data) {
-        setPayrolls(Array.isArray(response.data) ? response.data : []);
+        const list = Array.isArray(response.data.data)
+          ? response.data.data
+          : Array.isArray(response.data) ? response.data : [];
+        setPayrolls(list);
       }
     } catch (e) {
       console.error(e);
@@ -1798,7 +2062,10 @@ const PayrollView = () => {
       }
 
       if (structRes.success && structRes.data) {
-        setStructures(Array.isArray(structRes.data) ? structRes.data : []);
+        const structList = Array.isArray(structRes.data.data)
+          ? structRes.data.data
+          : Array.isArray(structRes.data) ? structRes.data : [];
+        setStructures(structList);
       }
     } catch (e) {
       console.error(e);
@@ -1898,11 +2165,16 @@ const PayrollView = () => {
 
   const handleSelectStructureEmp = (empId: string) => {
     setSelectedEmp(empId);
-    const existing = structures.find(s => (s.employeeId?._id === empId || s.employeeId === empId));
+    const existing = structures.find(s => {
+      const sEmpId = typeof s.employeeId === 'object' && s.employeeId !== null ? (s.employeeId._id || s.employeeId.id) : s.employeeId;
+      return String(sEmpId) === String(empId);
+    });
     if (existing) {
       setStructFormData({
         basic: existing.basic || 0,
         hra: existing.hra || 0,
+        travelAllowance: existing.travelAllowance || existing.metroAllowance || 0,
+        incentive: existing.incentive || 0,
         specialAllowance: existing.specialAllowance || 0,
         pf: existing.pf || 0,
         esi: existing.esi || 0,
@@ -1913,6 +2185,8 @@ const PayrollView = () => {
       setStructFormData({
         basic: 0,
         hra: 0,
+        travelAllowance: 0,
+        incentive: 0,
         specialAllowance: 0,
         pf: 0,
         esi: 0,
@@ -1975,7 +2249,7 @@ const PayrollView = () => {
             style={[styles.payrollTabBtn, activeSubTab === 'structures' && styles.payrollTabBtnActive]}
             onPress={() => setActiveSubTab('structures')}
           >
-            <Settings size={14} color={activeSubTab === 'structures' ? '#fff' : colors.textMuted} style={{ marginRight: 4 }} />
+            <Settings size={14} color={activeSubTab === 'structures' ? colors.background : colors.textMuted} style={{ marginRight: 4 }} />
             <Text style={[styles.payrollTabBtnText, activeSubTab === 'structures' && styles.payrollTabBtnTextActive]}>
               Structures
             </Text>
@@ -2028,9 +2302,17 @@ const PayrollView = () => {
             <Text style={styles.noEmployeesText}>No employee records found.</Text>
           ) : (
             employees.map((emp) => {
-              const payroll = payrolls.find(p => (p.employeeId?._id === emp._id || p.employeeId === emp._id || p.employeeId?.id === emp._id));
+              const empId = String(emp._id || emp.id || '');
+              const empCode = emp.employeeCode;
+              const payroll = payrolls.find(p => {
+                const pEmp = p.employeeId;
+                if (!pEmp) return false;
+                const pEmpId = typeof pEmp === 'object' ? String(pEmp._id || pEmp.id || '') : String(pEmp);
+                const pEmpCode = typeof pEmp === 'object' ? pEmp.employeeCode : null;
+                return pEmpId === empId || (empCode && pEmpCode && empCode === pEmpCode);
+              });
               const isApproved = payroll && payroll.status === 'Approved';
-              const isSelected = payroll && selectedPayrolls.includes(payroll._id);
+              const isSelected = payroll && selectedPayrolls.includes(payroll._id || payroll.id);
 
               return (
                 <View key={emp._id || emp.id} style={styles.payrollTableRow}>
@@ -2103,19 +2385,22 @@ const PayrollView = () => {
               <Text style={styles.structEmpListTitle}>Employees</Text>
               <ScrollView style={{ flex: 1 }}>
                 {employees.map((emp) => {
-                  const hasStruct = structures.some(s => (s.employeeId?._id === emp._id || s.employeeId === emp._id));
-                  const isSelected = selectedEmp === emp._id;
+                  const empId = emp._id || emp.id;
+                  const hasStruct = structures.some(s => (
+                    s.employeeId?._id === empId || s.employeeId === empId || s.employeeId?._id === emp._id || s.employeeId === emp._id
+                  ));
+                  const isSelected = selectedEmp === empId || selectedEmp === emp._id;
                   return (
                     <TouchableOpacity
-                      key={emp._id}
+                      key={empId}
                       style={[styles.structEmpItem, isSelected && styles.structEmpItemActive]}
-                      onPress={() => handleSelectStructureEmp(emp._id)}
+                      onPress={() => handleSelectStructureEmp(empId)}
                     >
                       <View style={{ flex: 1 }}>
                         <Text style={styles.empNameText}>{emp.firstName} {emp.lastName}</Text>
                         <Text style={styles.empCodeText}>{emp.employeeCode}</Text>
                       </View>
-                      <View style={[styles.dotIndicator, { backgroundColor: hasStruct ? '#10b981' : '#ef4444' }]} />
+                      <View style={[styles.dotIndicator, { backgroundColor: hasStruct ? colors.success : colors.danger }]} />
                     </TouchableOpacity>
                   );
                 })}
@@ -2134,8 +2419,10 @@ const PayrollView = () => {
                     <TextInput
                       style={styles.modalTextInput}
                       keyboardType="numeric"
-                      value={String(structFormData.basic)}
-                      onChangeText={(val) => setStructFormData({ ...structFormData, basic: Number(val) || 0 })}
+                      value={structFormData.basic === 0 ? '' : String(structFormData.basic)}
+                      placeholder="0"
+                      placeholderTextColor={colors.textMuted}
+                      onChangeText={(val) => setStructFormData({ ...structFormData, basic: val === '' ? 0 : Number(val) || 0 })}
                     />
                   </View>
                   <View style={styles.formCol}>
@@ -2143,8 +2430,35 @@ const PayrollView = () => {
                     <TextInput
                       style={styles.modalTextInput}
                       keyboardType="numeric"
-                      value={String(structFormData.hra)}
-                      onChangeText={(val) => setStructFormData({ ...structFormData, hra: Number(val) || 0 })}
+                      value={structFormData.hra === 0 ? '' : String(structFormData.hra)}
+                      placeholder="0"
+                      placeholderTextColor={colors.textMuted}
+                      onChangeText={(val) => setStructFormData({ ...structFormData, hra: val === '' ? 0 : Number(val) || 0 })}
+                    />
+                  </View>
+                </View>
+
+                <View style={styles.formRow2Col}>
+                  <View style={styles.formCol}>
+                    <Text style={styles.formLabel}>Travel Allowance (₹)</Text>
+                    <TextInput
+                      style={styles.modalTextInput}
+                      keyboardType="numeric"
+                      value={structFormData.travelAllowance === 0 ? '' : String(structFormData.travelAllowance)}
+                      placeholder="0"
+                      placeholderTextColor={colors.textMuted}
+                      onChangeText={(val) => setStructFormData({ ...structFormData, travelAllowance: val === '' ? 0 : Number(val) || 0 })}
+                    />
+                  </View>
+                  <View style={styles.formCol}>
+                    <Text style={styles.formLabel}>Incentive (₹)</Text>
+                    <TextInput
+                      style={styles.modalTextInput}
+                      keyboardType="numeric"
+                      value={structFormData.incentive === 0 ? '' : String(structFormData.incentive)}
+                      placeholder="0"
+                      placeholderTextColor={colors.textMuted}
+                      onChangeText={(val) => setStructFormData({ ...structFormData, incentive: val === '' ? 0 : Number(val) || 0 })}
                     />
                   </View>
                 </View>
@@ -2154,8 +2468,10 @@ const PayrollView = () => {
                   <TextInput
                     style={styles.modalTextInput}
                     keyboardType="numeric"
-                    value={String(structFormData.specialAllowance)}
-                    onChangeText={(val) => setStructFormData({ ...structFormData, specialAllowance: Number(val) || 0 })}
+                    value={structFormData.specialAllowance === 0 ? '' : String(structFormData.specialAllowance)}
+                    placeholder="0"
+                    placeholderTextColor={colors.textMuted}
+                    onChangeText={(val) => setStructFormData({ ...structFormData, specialAllowance: val === '' ? 0 : Number(val) || 0 })}
                   />
                 </View>
 
@@ -2166,8 +2482,10 @@ const PayrollView = () => {
                     <TextInput
                       style={styles.modalTextInput}
                       keyboardType="numeric"
-                      value={String(structFormData.pf)}
-                      onChangeText={(val) => setStructFormData({ ...structFormData, pf: Number(val) || 0 })}
+                      value={structFormData.pf === 0 ? '' : String(structFormData.pf)}
+                      placeholder="0"
+                      placeholderTextColor={colors.textMuted}
+                      onChangeText={(val) => setStructFormData({ ...structFormData, pf: val === '' ? 0 : Number(val) || 0 })}
                     />
                   </View>
                   <View style={styles.formCol}>
@@ -2175,8 +2493,10 @@ const PayrollView = () => {
                     <TextInput
                       style={styles.modalTextInput}
                       keyboardType="numeric"
-                      value={String(structFormData.esi)}
-                      onChangeText={(val) => setStructFormData({ ...structFormData, esi: Number(val) || 0 })}
+                      value={structFormData.esi === 0 ? '' : String(structFormData.esi)}
+                      placeholder="0"
+                      placeholderTextColor={colors.textMuted}
+                      onChangeText={(val) => setStructFormData({ ...structFormData, esi: val === '' ? 0 : Number(val) || 0 })}
                     />
                   </View>
                 </View>
@@ -2187,8 +2507,10 @@ const PayrollView = () => {
                     <TextInput
                       style={styles.modalTextInput}
                       keyboardType="numeric"
-                      value={String(structFormData.professionalTax)}
-                      onChangeText={(val) => setStructFormData({ ...structFormData, professionalTax: Number(val) || 0 })}
+                      value={structFormData.professionalTax === 0 ? '' : String(structFormData.professionalTax)}
+                      placeholder="0"
+                      placeholderTextColor={colors.textMuted}
+                      onChangeText={(val) => setStructFormData({ ...structFormData, professionalTax: val === '' ? 0 : Number(val) || 0 })}
                     />
                   </View>
                   <View style={styles.formCol}>
@@ -2196,8 +2518,10 @@ const PayrollView = () => {
                     <TextInput
                       style={styles.modalTextInput}
                       keyboardType="numeric"
-                      value={String(structFormData.incomeTax)}
-                      onChangeText={(val) => setStructFormData({ ...structFormData, incomeTax: Number(val) || 0 })}
+                      value={structFormData.incomeTax === 0 ? '' : String(structFormData.incomeTax)}
+                      placeholder="0"
+                      placeholderTextColor={colors.textMuted}
+                      onChangeText={(val) => setStructFormData({ ...structFormData, incomeTax: val === '' ? 0 : Number(val) || 0 })}
                     />
                   </View>
                 </View>
@@ -2206,7 +2530,7 @@ const PayrollView = () => {
                 <View style={styles.grossSummaryBox}>
                   <Text style={styles.grossSummaryLabel}>Gross Monthly Salary</Text>
                   <Text style={styles.grossSummaryVal}>
-                    ₹{(structFormData.basic + structFormData.hra + structFormData.specialAllowance).toLocaleString()}
+                    ₹{(structFormData.basic + structFormData.hra + structFormData.travelAllowance + structFormData.incentive + structFormData.specialAllowance).toLocaleString()}
                   </Text>
                 </View>
 
@@ -2220,7 +2544,7 @@ const PayrollView = () => {
                     disabled={saveLoading}
                   >
                     {saveLoading ? (
-                      <ActivityIndicator color="#fff" />
+                      <ActivityIndicator color={colors.background} />
                     ) : (
                       <Text style={styles.saveBtnText}>Save Structure</Text>
                     )}
@@ -2249,7 +2573,7 @@ const PayrollView = () => {
             disabled={processingBulk}
           >
             {processingBulk ? (
-              <ActivityIndicator color="#fff" />
+              <ActivityIndicator color={colors.background} />
             ) : (
               <Text style={styles.bulkPayBtnText}>Process Bank Transfer</Text>
             )}
@@ -2258,78 +2582,372 @@ const PayrollView = () => {
       )}
 
       {/* Salary Slip Detail Modal */}
-      <Modal visible={!!selectedPayrollSlip} animationType="slide" transparent>
-        <View style={styles.modalOverlay}>
-          <View style={styles.modalContainer}>
-            <View style={styles.modalHeader}>
-              <Text style={styles.modalTitle}>Payslip Details</Text>
-              <TouchableOpacity onPress={() => setSelectedPayrollSlip(null)}>
-                <X size={20} color={colors.text} />
+      <Modal visible={!!selectedPayrollSlip} animationType="slide" transparent={false}>
+        <View style={{ flex: 1, backgroundColor: '#F4F6FB' }}>
+          {/* Top Bar */}
+          <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', backgroundColor: '#1E2A5E', paddingTop: 48, paddingBottom: 14, paddingHorizontal: 18 }}>
+            <TouchableOpacity onPress={() => setSelectedPayrollSlip(null)} style={{ padding: 4 }}>
+              <X size={22} color="#fff" />
+            </TouchableOpacity>
+            <Text style={{ color: '#fff', fontWeight: '800', fontSize: 16, letterSpacing: 1 }}>SALARY SLIP</Text>
+            <TouchableOpacity
+              onPress={async () => {
+                if (!selectedPayrollSlip) return;
+                const slip = selectedPayrollSlip;
+                const emp = slip.employeeId || {};
+                const monthNameStr = slip.monthYear
+                  ? new Date(`${slip.monthYear}-01`).toLocaleDateString('en-US', { month: 'long', year: 'numeric' }).toUpperCase()
+                  : slip.monthYear;
+                const fmt = (n: number) => (n || 0).toLocaleString('en-IN', { minimumFractionDigits: 2 });
+                const travelAllow = slip.earnings?.travelAllowance || slip.earnings?.metroAllowance || slip.earnings?.specialAllowance || 0;
+                const htmlContent = `
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8" />
+  <style>
+    @page { margin: 0; size: A4; }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: Arial, sans-serif; padding: 32px; background: #fff; color: #111; font-size: 13px; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+    .header { display: flex; justify-content: space-between; align-items: flex-start; padding-bottom: 18px; margin-bottom: 20px; border-bottom: 1px solid #e5e7eb; }
+    .header-left { display: flex; align-items: flex-start; gap: 14px; }
+    .logo-circle { width: 56px; height: 56px; border-radius: 50%; border: 2px solid #c7d2fe; display: flex; align-items: center; justify-content: center; flex-shrink: 0; background: #eef2ff; }
+    .logo-text { font-size: 15px; font-weight: 900; color: #1E2A5E; }
+    .header-info h1 { font-size: 24px; font-weight: 900; color: #111; margin-bottom: 3px; }
+    .header-info p { font-size: 11px; color: #777; margin-bottom: 1px; line-height: 1.5; }
+    .header-right { text-align: right; }
+    .doc-label { font-size: 9px; color: #aaa; font-weight: 700; text-transform: uppercase; letter-spacing: 1.5px; }
+    .doc-ref { font-size: 14px; font-family: monospace; color: #333; font-weight: 700; margin-top: 2px; }
+    .badges { display: flex; align-items: center; gap: 10px; margin-top: 14px; margin-bottom: 22px; }
+    .badge-solid { background: #1E2A5E; color: #fff; font-size: 10px; font-weight: 800; letter-spacing: 1.5px; padding: 6px 14px; border-radius: 4px; }
+    .badge-outline { border: 1.5px solid #1E2A5E; color: #1E2A5E; font-size: 10px; font-weight: 800; letter-spacing: 1px; padding: 5px 12px; border-radius: 4px; }
+    .emp-card { background: #F7F8FC; border: 1px solid #E4E7F0; border-radius: 8px; padding: 16px 20px; margin-bottom: 24px; display: flex; justify-content: space-between; align-items: flex-start; }
+    .emp-row { display: flex; gap: 20px; margin-bottom: 14px; }
+    .emp-row:last-child { margin-bottom: 0; }
+    .emp-cell { flex: 1; }
+    .field-label { font-size: 9px; color: #999; font-weight: 700; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 3px; }
+    .field-val { font-size: 14px; font-weight: 800; color: #111; }
+    .field-val.blue { color: #1E2A5E; }
+    .field-val.green { color: #15803d; }
+    .field-val.sm { font-size: 13px; font-weight: 600; color: #333; }
+    .status-badge { padding: 5px 16px; border-radius: 999px; font-size: 11px; font-weight: 800; margin-left: 12px; white-space: nowrap; }
+    .status-paid { background: #f0fdf4; color: #15803d; border: 1.5px solid #bbf7d0; }
+    .status-draft { background: #fffbeb; color: #b45309; border: 1.5px solid #fde68a; }
+    .status-approved { background: #eff6ff; color: #1d4ed8; border: 1.5px solid #bfdbfe; }
+    .sal-section { display: grid; grid-template-columns: 1fr 1fr; gap: 28px; margin-bottom: 0; }
+    .sal-head { display: flex; border-bottom: 2px solid; padding-bottom: 8px; margin-bottom: 12px; }
+    .sal-head.earn { color: #15803d; border-color: #16a34a; }
+    .sal-head.ded { color: #b91c1c; border-color: #dc2626; }
+    .col-head { font-size: 11px; font-weight: 900; text-transform: uppercase; letter-spacing: 1.5px; }
+    .sal-row { display: flex; justify-content: space-between; margin-bottom: 10px; }
+    .sal-row .lbl { color: #555; font-size: 13px; }
+    .sal-row .val { font-weight: 700; font-size: 13px; }
+    .sal-row .val.red { color: #b91c1c; }
+    .divider { border: none; border-top: 1px solid #e5e7eb; margin: 18px 0; }
+    .totals { display: grid; grid-template-columns: 1fr 1fr; gap: 28px; margin-bottom: 22px; }
+    .total-item .t-label { font-size: 10px; font-weight: 700; color: #888; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 4px; }
+    .total-item .t-val { font-size: 20px; font-weight: 900; color: #111; }
+    .total-item .t-val.red { color: #b91c1c; }
+    .net-box { border: 1.5px solid #d1d5db; border-radius: 10px; padding: 24px 28px; display: flex; justify-content: space-between; align-items: center; }
+    .net-label-text { font-size: 12px; font-weight: 800; text-transform: uppercase; letter-spacing: 2px; color: #111; margin-bottom: 4px; }
+    .net-sub { font-size: 11px; color: #888; }
+    .net-amount { font-size: 42px; font-weight: 900; color: #111; letter-spacing: -1px; }
+    .footer-note { text-align: center; font-size: 9px; color: #ccc; margin-top: 28px; }
+  </style>
+</head>
+<body>
+  <div class="header">
+    <div class="header-left">
+      <div class="logo-circle"><span class="logo-text">NC</span></div>
+      <div class="header-info">
+        <h1>${emp.firstName || ''} ${emp.lastName || ''}</h1>
+        <p>A-91, Sewak Park Near Dwarka Mor Metro Station, Gate No. 2 New Delhi – 110059 Delhi, India</p>
+        <p>info@niventracapitaladvisory.com</p>
+      </div>
+    </div>
+    <div class="header-right">
+      <p class="doc-label">Document Ref</p>
+      <p class="doc-ref">${(slip._id || '').toString().slice(-8).toUpperCase()}</p>
+    </div>
+  </div>
+  <div class="badges">
+    <span class="badge-solid">PAYSLIP FOR ${monthNameStr}</span>
+    <span class="badge-outline">PAID DAYS: ${slip.paidDays || 30} DAYS</span>
+  </div>
+  <div class="emp-card">
+    <div style="flex:1">
+      <div class="emp-row">
+        <div class="emp-cell"><p class="field-label">Employee Name</p><p class="field-val">${emp.firstName || ''} ${emp.lastName || ''}</p></div>
+        <div class="emp-cell"><p class="field-label">Employee Code</p><p class="field-val">${emp.employeeCode || '—'}</p></div>
+        <div class="emp-cell"><p class="field-label">Pay Month</p><p class="field-val blue">${monthNameStr}</p></div>
+      </div>
+      <div class="emp-row">
+        <div class="emp-cell"><p class="field-label">Designation</p><p class="field-val sm">${emp.designation || '—'}</p></div>
+        <div class="emp-cell"><p class="field-label">Department</p><p class="field-val sm">${emp.department || '—'}</p></div>
+        <div class="emp-cell"><p class="field-label">Paid Days</p><p class="field-val green">${slip.paidDays || 30} Days / 30</p></div>
+      </div>
+    </div>
+    <span class="status-badge ${slip.status === 'Paid' ? 'status-paid' : slip.status === 'Approved' ? 'status-approved' : 'status-draft'}">${(slip.status || '').toUpperCase()}</span>
+  </div>
+  <div class="sal-section">
+    <div>
+      <div class="sal-head earn"><span class="col-head">Earnings</span></div>
+      <div class="sal-row"><span class="lbl">Basic Salary</span><span class="val">₹${fmt(slip.earnings?.basic)}</span></div>
+      <div class="sal-row"><span class="lbl">House Rent Allowance</span><span class="val">₹${fmt(slip.earnings?.hra)}</span></div>
+      <div class="sal-row"><span class="lbl">Travel Allowance</span><span class="val">₹${fmt(travelAllow)}</span></div>
+      ${slip.earnings?.incentive > 0 ? `<div class="sal-row"><span class="lbl">Incentive</span><span class="val">₹${fmt(slip.earnings?.incentive)}</span></div>` : ''}
+      ${slip.earnings?.bonus > 0 ? `<div class="sal-row"><span class="lbl">Performance Bonus</span><span class="val">₹${fmt(slip.earnings?.bonus)}</span></div>` : ''}
+    </div>
+    <div>
+      <div class="sal-head ded"><span class="col-head">Deductions</span></div>
+      <div class="sal-row"><span class="lbl">Provident Fund (PF)</span><span class="val red">₹${fmt(slip.deductions?.pf)}</span></div>
+      <div class="sal-row"><span class="lbl">ESI Contribution</span><span class="val red">₹${fmt(slip.deductions?.esi)}</span></div>
+      <div class="sal-row"><span class="lbl">Professional Tax</span><span class="val red">₹${fmt(slip.deductions?.professionalTax)}</span></div>
+      <div class="sal-row"><span class="lbl">Income Tax (TDS)</span><span class="val red">₹${fmt(slip.deductions?.incomeTax)}</span></div>
+    </div>
+  </div>
+  <hr class="divider" />
+  <div class="totals">
+    <div class="total-item"><p class="t-label">Gross Earnings</p><p class="t-val">₹${fmt(slip.grossSalary)}</p></div>
+    <div class="total-item"><p class="t-label">Total Deductions</p><p class="t-val red">₹${fmt(slip.totalDeductions)}</p></div>
+  </div>
+  <div class="net-box">
+    <div>
+      <p class="net-label-text">Net Salary Payable</p>
+      <p class="net-sub">Amount transferred to employee bank account</p>
+    </div>
+    <p class="net-amount">₹ ${fmt(slip.netSalary)}</p>
+  </div>
+  <p class="footer-note">This is a system generated document and is valid without a physical signature. Generated on ${new Date().toLocaleDateString()}</p>
+</body>
+</html>`;
+                try {
+                  const { uri } = await Print.printToFileAsync({ html: htmlContent, base64: false });
+                  const canShare = await Sharing.isAvailableAsync();
+                  if (canShare) {
+                    await Sharing.shareAsync(uri, { mimeType: 'application/pdf', dialogTitle: 'Download Salary Slip PDF' });
+                  } else {
+                    Alert.alert('PDF Saved', `Slip saved to: ${uri}`);
+                  }
+                } catch (e) {
+                  Alert.alert('Error', 'Could not generate PDF.');
+                }
+              }}
+              style={{ backgroundColor: '#4ADE80', paddingHorizontal: 12, paddingVertical: 7, borderRadius: 8, flexDirection: 'row', alignItems: 'center', gap: 5 }}
+            >
+              <Download size={14} color="#14532d" />
+              <Text style={{ color: '#14532d', fontWeight: '800', fontSize: 12 }}>PDF</Text>
+            </TouchableOpacity>
+          </View>
+
+          {/* Email button sub-bar */}
+          {selectedPayrollSlip && (
+            <View style={{ backgroundColor: '#fff', borderBottomWidth: 1, borderBottomColor: '#e5e7eb', paddingHorizontal: 16, paddingVertical: 10, flexDirection: 'row', justifyContent: 'flex-end' }}>
+              <TouchableOpacity
+                onPress={async () => {
+                  if (!selectedPayrollSlip) return;
+                  const slip = selectedPayrollSlip;
+                  const emp = slip.employeeId || {};
+                  const monthNameStr = slip.monthYear
+                    ? new Date(`${slip.monthYear}-01`).toLocaleDateString('en-US', { month: 'long', year: 'numeric' }).toUpperCase()
+                    : slip.monthYear;
+                  const fmt2 = (n: number) => (n || 0).toLocaleString('en-IN', { minimumFractionDigits: 2 });
+                  const travelAllow2 = slip.earnings?.travelAllowance || slip.earnings?.metroAllowance || slip.earnings?.specialAllowance || 0;
+                  const emailHtml = `<!DOCTYPE html><html><head><meta charset="utf-8"/><style>*{box-sizing:border-box;margin:0;padding:0;}body{font-family:Arial,sans-serif;padding:32px;background:#fff;color:#111;font-size:13px;}.header{display:flex;justify-content:space-between;align-items:flex-start;padding-bottom:18px;margin-bottom:20px;border-bottom:1px solid #e5e7eb;}.header-left{display:flex;align-items:flex-start;gap:14px;}.logo-circle{width:56px;height:56px;border-radius:50%;border:2px solid #c7d2fe;display:flex;align-items:center;justify-content:center;flex-shrink:0;background:#eef2ff;}.logo-text{font-size:15px;font-weight:900;color:#1E2A5E;}.header-info h1{font-size:24px;font-weight:900;color:#111;margin-bottom:3px;}.header-info p{font-size:11px;color:#777;margin-bottom:1px;}.header-right{text-align:right;}.doc-label{font-size:9px;color:#aaa;font-weight:700;text-transform:uppercase;letter-spacing:1.5px;}.doc-ref{font-size:14px;font-family:monospace;color:#333;font-weight:700;margin-top:2px;}.badges{display:flex;align-items:center;gap:10px;margin:14px 0 22px;}.badge-solid{background:#1E2A5E;color:#fff;font-size:10px;font-weight:800;letter-spacing:1.5px;padding:6px 14px;border-radius:4px;}.badge-outline{border:1.5px solid #1E2A5E;color:#1E2A5E;font-size:10px;font-weight:800;letter-spacing:1px;padding:5px 12px;border-radius:4px;}.emp-card{background:#F7F8FC;border:1px solid #E4E7F0;border-radius:8px;padding:16px 20px;margin-bottom:24px;display:flex;justify-content:space-between;align-items:flex-start;}.emp-row{display:flex;gap:20px;margin-bottom:14px;}.emp-cell{flex:1;}.field-label{font-size:9px;color:#999;font-weight:700;text-transform:uppercase;letter-spacing:1px;margin-bottom:3px;}.field-val{font-size:14px;font-weight:800;color:#111;}.field-val.blue{color:#1E2A5E;}.field-val.green{color:#15803d;}.field-val.sm{font-size:13px;font-weight:600;color:#333;}.status-badge{padding:5px 16px;border-radius:999px;font-size:11px;font-weight:800;margin-left:12px;}.status-paid{background:#f0fdf4;color:#15803d;border:1.5px solid #bbf7d0;}.status-draft{background:#fffbeb;color:#b45309;border:1.5px solid #fde68a;}.status-approved{background:#eff6ff;color:#1d4ed8;border:1.5px solid #bfdbfe;}.sal-section{display:grid;grid-template-columns:1fr 1fr;gap:28px;}.sal-head{display:flex;border-bottom:2px solid;padding-bottom:8px;margin-bottom:12px;}.sal-head.earn{color:#15803d;border-color:#16a34a;}.sal-head.ded{color:#b91c1c;border-color:#dc2626;}.col-head{font-size:11px;font-weight:900;text-transform:uppercase;letter-spacing:1.5px;}.sal-row{display:flex;justify-content:space-between;margin-bottom:10px;}.sal-row .lbl{color:#555;font-size:13px;}.sal-row .val{font-weight:700;font-size:13px;}.sal-row .val.red{color:#b91c1c;}.divider{border:none;border-top:1px solid #e5e7eb;margin:18px 0;}.totals{display:grid;grid-template-columns:1fr 1fr;gap:28px;margin-bottom:22px;}.total-item .t-label{font-size:10px;font-weight:700;color:#888;text-transform:uppercase;letter-spacing:1px;margin-bottom:4px;}.total-item .t-val{font-size:20px;font-weight:900;color:#111;}.total-item .t-val.red{color:#b91c1c;}.net-box{border:1.5px solid #d1d5db;border-radius:10px;padding:24px 28px;display:flex;justify-content:space-between;align-items:center;}.net-label-text{font-size:12px;font-weight:800;text-transform:uppercase;letter-spacing:2px;color:#111;margin-bottom:4px;}.net-sub{font-size:11px;color:#888;}.net-amount{font-size:42px;font-weight:900;color:#111;letter-spacing:-1px;}.footer-note{text-align:center;font-size:9px;color:#ccc;margin-top:28px;}</style></head><body><div class="header"><div class="header-left"><div class="logo-circle"><span class="logo-text">NC</span></div><div class="header-info"><h1>${emp.firstName || ''} ${emp.lastName || ''}</h1><p>A-91, Sewak Park Near Dwarka Mor Metro Station, Gate No. 2 New Delhi – 110059 Delhi, India</p><p>info@niventracapitaladvisory.com</p></div></div><div class="header-right"><p class="doc-label">Document Ref</p><p class="doc-ref">${(slip._id || '').toString().slice(-8).toUpperCase()}</p></div></div><div class="badges"><span class="badge-solid">PAYSLIP FOR ${monthNameStr}</span><span class="badge-outline">PAID DAYS: ${slip.paidDays || 30} DAYS</span></div><div class="emp-card"><div style="flex:1"><div class="emp-row"><div class="emp-cell"><p class="field-label">Employee Name</p><p class="field-val">${emp.firstName || ''} ${emp.lastName || ''}</p></div><div class="emp-cell"><p class="field-label">Employee Code</p><p class="field-val">${emp.employeeCode || '—'}</p></div><div class="emp-cell"><p class="field-label">Pay Month</p><p class="field-val blue">${monthNameStr}</p></div></div><div class="emp-row"><div class="emp-cell"><p class="field-label">Designation</p><p class="field-val sm">${emp.designation || '—'}</p></div><div class="emp-cell"><p class="field-label">Department</p><p class="field-val sm">${emp.department || '—'}</p></div><div class="emp-cell"><p class="field-label">Paid Days</p><p class="field-val green">${slip.paidDays || 30} Days / 30</p></div></div></div><span class="status-badge ${slip.status === 'Paid' ? 'status-paid' : slip.status === 'Approved' ? 'status-approved' : 'status-draft'}">${(slip.status || '').toUpperCase()}</span></div><div class="sal-section"><div><div class="sal-head earn"><span class="col-head">Earnings</span></div><div class="sal-row"><span class="lbl">Basic Salary</span><span class="val">₹${fmt2(slip.earnings?.basic)}</span></div><div class="sal-row"><span class="lbl">House Rent Allowance</span><span class="val">₹${fmt2(slip.earnings?.hra)}</span></div><div class="sal-row"><span class="lbl">Travel Allowance</span><span class="val">₹${fmt2(travelAllow2)}</span></div>${slip.earnings?.incentive > 0 ? `<div class="sal-row"><span class="lbl">Incentive</span><span class="val">₹${fmt2(slip.earnings?.incentive)}</span></div>` : ''}${slip.earnings?.bonus > 0 ? `<div class="sal-row"><span class="lbl">Performance Bonus</span><span class="val">₹${fmt2(slip.earnings?.bonus)}</span></div>` : ''}</div><div><div class="sal-head ded"><span class="col-head">Deductions</span></div><div class="sal-row"><span class="lbl">Provident Fund (PF)</span><span class="val red">₹${fmt2(slip.deductions?.pf)}</span></div><div class="sal-row"><span class="lbl">ESI Contribution</span><span class="val red">₹${fmt2(slip.deductions?.esi)}</span></div><div class="sal-row"><span class="lbl">Professional Tax</span><span class="val red">₹${fmt2(slip.deductions?.professionalTax)}</span></div><div class="sal-row"><span class="lbl">Income Tax (TDS)</span><span class="val red">₹${fmt2(slip.deductions?.incomeTax)}</span></div></div></div><hr class="divider"/><div class="totals"><div class="total-item"><p class="t-label">Gross Earnings</p><p class="t-val">₹${fmt2(slip.grossSalary)}</p></div><div class="total-item"><p class="t-label">Total Deductions</p><p class="t-val red">₹${fmt2(slip.totalDeductions)}</p></div></div><div class="net-box"><div><p class="net-label-text">Net Salary Payable</p><p class="net-sub">Amount transferred to employee bank account</p></div><p class="net-amount">₹ ${fmt2(slip.netSalary)}</p></div><p class="footer-note">This is a system generated document. Generated on ${new Date().toLocaleDateString()}</p></body></html>`;
+                  try {
+                    const { uri } = await Print.printToFileAsync({ html: emailHtml, base64: false });
+                    const canCompose = await MailComposer.isAvailableAsync();
+                    if (canCompose) {
+                      await MailComposer.composeAsync({
+                        subject: `Salary Slip - ${emp.firstName || ''} ${emp.lastName || ''} (${monthNameStr})`,
+                        body: `Dear ${emp.firstName || 'Employee'},\n\nPlease find your salary slip for ${monthNameStr} attached.\n\nRegards,\nNiventra Capital`,
+                        attachments: [uri],
+                      });
+                    } else {
+                      // Fallback: share the PDF if mail composer not available
+                      await Sharing.shareAsync(uri, { mimeType: 'application/pdf', dialogTitle: 'Send Salary Slip via Email' });
+                    }
+                  } catch (e) {
+                    Alert.alert('Error', 'Could not open email. Please try again.');
+                  }
+                }}
+                style={{ flexDirection: 'row', alignItems: 'center', gap: 6, backgroundColor: '#EEF2FF', borderWidth: 1, borderColor: '#C7D2FE', paddingHorizontal: 14, paddingVertical: 8, borderRadius: 8 }}
+              >
+                <Mail size={15} color="#4338CA" />
+                <Text style={{ color: '#4338CA', fontWeight: '700', fontSize: 13 }}>Email PDF</Text>
               </TouchableOpacity>
             </View>
+          )}
 
-            {selectedPayrollSlip && (
-              <ScrollView contentContainerStyle={{ paddingBottom: 20 }}>
-                <Text style={{ fontSize: 16, fontWeight: 'bold', color: colors.text, marginBottom: 4 }}>
-                  {selectedPayrollSlip.employeeId?.firstName} {selectedPayrollSlip.employeeId?.lastName}
-                </Text>
-                <Text style={{ fontSize: 12, color: colors.textMuted, marginBottom: 16 }}>
-                  Period: {selectedPayrollSlip.monthYear} • Status: {selectedPayrollSlip.status}
-                </Text>
+          {selectedPayrollSlip && (() => {
+            const slip = selectedPayrollSlip;
+            const emp = slip.employeeId || {};
+            const monthNameStr = slip.monthYear
+              ? new Date(`${slip.monthYear}-01`).toLocaleDateString('en-US', { month: 'long', year: 'numeric' }).toUpperCase()
+              : slip.monthYear;
+            const fmt = (n: number) => (n || 0).toLocaleString('en-IN', { minimumFractionDigits: 2 });
+            const travelAllow = slip.earnings?.travelAllowance || slip.earnings?.metroAllowance || slip.earnings?.specialAllowance || 0;
+            const statusColor = slip.status === 'Paid'
+              ? { bg: '#f0fdf4', text: '#15803d', border: '#bbf7d0' }
+              : slip.status === 'Approved'
+                ? { bg: '#eff6ff', text: '#1d4ed8', border: '#bfdbfe' }
+                : { bg: '#fffbeb', text: '#b45309', border: '#fde68a' };
+            return (
+              <ScrollView contentContainerStyle={{ padding: 16, paddingBottom: 40 }}>
+                {/* White slip card */}
+                <View style={{ backgroundColor: '#fff', borderRadius: 12, overflow: 'hidden', shadowColor: '#000', shadowOpacity: 0.08, shadowRadius: 12, elevation: 4 }}>
 
-                <View style={styles.detailCard}>
-                  <Text style={[styles.detailCardTitle, { color: colors.success }]}>Earnings</Text>
-                  <View style={styles.detailGrid}>
-                    <View style={styles.detailGridCol}>
-                      <Text style={styles.detailLabel}>Basic</Text>
-                      <Text style={styles.detailVal}>₹{selectedPayrollSlip.earnings?.basic || 0}</Text>
-                    </View>
-                    <View style={styles.detailGridCol}>
-                      <Text style={styles.detailLabel}>HRA</Text>
-                      <Text style={styles.detailVal}>₹{selectedPayrollSlip.earnings?.hra || 0}</Text>
-                    </View>
-                    <View style={styles.detailGridCol}>
-                      <Text style={styles.detailLabel}>Special Allowance</Text>
-                      <Text style={styles.detailVal}>₹{selectedPayrollSlip.earnings?.specialAllowance || 0}</Text>
-                    </View>
-                    <View style={styles.detailGridCol}>
-                      <Text style={styles.detailLabel}>Bonus / Incentive</Text>
-                      <Text style={styles.detailVal}>₹{(selectedPayrollSlip.earnings?.bonus || 0) + (selectedPayrollSlip.earnings?.incentive || 0)}</Text>
+                  {/* Header */}
+                  <View style={{ backgroundColor: '#fff', padding: 18, borderBottomWidth: 2.5, borderBottomColor: '#1E2A5E' }}>
+                    <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+                      <View style={{ flex: 1 }}>
+                        <Text style={{ fontSize: 18, fontWeight: '900', color: '#1E2A5E', letterSpacing: 0.5 }}>Niventra Capital</Text>
+                        <Text style={{ fontSize: 11, color: '#888', marginTop: 1 }}>Finance & Investment Company</Text>
+                        <View style={{ flexDirection: 'row', flexWrap: 'wrap', marginTop: 8, gap: 6 }}>
+                          <View style={{ backgroundColor: '#1E2A5E', paddingHorizontal: 10, paddingVertical: 4, borderRadius: 4 }}>
+                            <Text style={{ color: '#fff', fontSize: 9, fontWeight: '800', letterSpacing: 1.2 }}>PAYSLIP FOR {monthNameStr}</Text>
+                          </View>
+                          <View style={{ borderWidth: 1.5, borderColor: '#1E2A5E', paddingHorizontal: 8, paddingVertical: 4, borderRadius: 4 }}>
+                            <Text style={{ color: '#1E2A5E', fontSize: 9, fontWeight: '800', letterSpacing: 1 }}>PAID DAYS: {slip.paidDays || 30} DAYS</Text>
+                          </View>
+                        </View>
+                      </View>
+                      <View style={{ alignItems: 'flex-end', marginLeft: 12 }}>
+                        <Text style={{ fontSize: 9, color: '#aaa', fontWeight: '700', textTransform: 'uppercase', letterSpacing: 1 }}>Document Ref</Text>
+                        <Text style={{ fontSize: 12, fontFamily: 'monospace', color: '#333', fontWeight: '600', marginTop: 2 }}>
+                          {(slip._id || '').toString().slice(-8).toUpperCase()}
+                        </Text>
+                      </View>
                     </View>
                   </View>
-                </View>
 
-                <View style={styles.detailCard}>
-                  <Text style={[styles.detailCardTitle, { color: colors.danger }]}>Deductions</Text>
-                  <View style={styles.detailGrid}>
-                    <View style={styles.detailGridCol}>
-                      <Text style={styles.detailLabel}>PF</Text>
-                      <Text style={styles.detailVal}>₹{selectedPayrollSlip.deductions?.pf || 0}</Text>
-                    </View>
-                    <View style={styles.detailGridCol}>
-                      <Text style={styles.detailLabel}>ESI</Text>
-                      <Text style={styles.detailVal}>₹{selectedPayrollSlip.deductions?.esi || 0}</Text>
-                    </View>
-                    <View style={styles.detailGridCol}>
-                      <Text style={styles.detailLabel}>Professional Tax</Text>
-                      <Text style={styles.detailVal}>₹{selectedPayrollSlip.deductions?.professionalTax || 0}</Text>
-                    </View>
-                    <View style={styles.detailGridCol}>
-                      <Text style={styles.detailLabel}>Income Tax</Text>
-                      <Text style={styles.detailVal}>₹{selectedPayrollSlip.deductions?.incomeTax || 0}</Text>
+                  {/* Employee Card */}
+                  <View style={{ backgroundColor: '#F7F8FC', margin: 16, borderRadius: 10, padding: 16, borderWidth: 1, borderColor: '#E4E7F0' }}>
+                    <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+                      <View style={{ flex: 1 }}>
+                        <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 12 }}>
+                          <View style={{ minWidth: '42%', marginBottom: 10 }}>
+                            <Text style={{ fontSize: 9, color: '#999', fontWeight: '700', textTransform: 'uppercase', letterSpacing: 1, marginBottom: 2 }}>Employee Name</Text>
+                            <Text style={{ fontSize: 14, fontWeight: '800', color: '#111' }}>{emp.firstName || ''} {emp.lastName || ''}</Text>
+                          </View>
+                          <View style={{ minWidth: '42%', marginBottom: 10 }}>
+                            <Text style={{ fontSize: 9, color: '#999', fontWeight: '700', textTransform: 'uppercase', letterSpacing: 1, marginBottom: 2 }}>Employee Code</Text>
+                            <Text style={{ fontSize: 14, fontWeight: '800', color: '#111' }}>{emp.employeeCode || '—'}</Text>
+                          </View>
+                          <View style={{ minWidth: '42%', marginBottom: 10 }}>
+                            <Text style={{ fontSize: 9, color: '#999', fontWeight: '700', textTransform: 'uppercase', letterSpacing: 1, marginBottom: 2 }}>Pay Month</Text>
+                            <Text style={{ fontSize: 13, fontWeight: '800', color: '#1E2A5E' }}>{monthNameStr}</Text>
+                          </View>
+                          <View style={{ minWidth: '42%', marginBottom: 10 }}>
+                            <Text style={{ fontSize: 9, color: '#999', fontWeight: '700', textTransform: 'uppercase', letterSpacing: 1, marginBottom: 2 }}>Designation</Text>
+                            <Text style={{ fontSize: 12, fontWeight: '600', color: '#333' }}>{emp.designation || '—'}</Text>
+                          </View>
+                          <View style={{ minWidth: '42%', marginBottom: 10 }}>
+                            <Text style={{ fontSize: 9, color: '#999', fontWeight: '700', textTransform: 'uppercase', letterSpacing: 1, marginBottom: 2 }}>Department</Text>
+                            <Text style={{ fontSize: 12, fontWeight: '600', color: '#333' }}>{emp.department || '—'}</Text>
+                          </View>
+                          <View style={{ minWidth: '42%', marginBottom: 10 }}>
+                            <Text style={{ fontSize: 9, color: '#999', fontWeight: '700', textTransform: 'uppercase', letterSpacing: 1, marginBottom: 2 }}>Paid Days</Text>
+                            <Text style={{ fontSize: 13, fontWeight: '800', color: '#16a34a' }}>{slip.paidDays || 30} Days / 30</Text>
+                          </View>
+                        </View>
+                      </View>
+                      <View style={{ backgroundColor: statusColor.bg, borderWidth: 1.5, borderColor: statusColor.border, paddingHorizontal: 12, paddingVertical: 6, borderRadius: 999, marginLeft: 10, marginTop: 2 }}>
+                        <Text style={{ color: statusColor.text, fontWeight: '800', fontSize: 11 }}>{(slip.status || '').toUpperCase()}</Text>
+                      </View>
                     </View>
                   </View>
-                </View>
 
-                <View style={styles.grossSummaryBox}>
-                  <Text style={styles.grossSummaryLabel}>Net Payable Amount</Text>
-                  <Text style={[styles.grossSummaryVal, { color: colors.success }]}>
-                    ₹{selectedPayrollSlip.netSalary?.toLocaleString() || 0}
+                  {/* Earnings & Deductions side by side */}
+                  <View style={{ flexDirection: 'row', paddingHorizontal: 16, gap: 16 }}>
+                    {/* Earnings */}
+                    <View style={{ flex: 1 }}>
+                      <View style={{ borderBottomWidth: 2, borderBottomColor: '#16a34a', paddingBottom: 6, marginBottom: 12 }}>
+                        <Text style={{ fontSize: 10, fontWeight: '900', color: '#15803d', textTransform: 'uppercase', letterSpacing: 1.5 }}>Earnings</Text>
+                      </View>
+                      <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginBottom: 9 }}>
+                        <Text style={{ fontSize: 12, color: '#555' }}>Basic Salary</Text>
+                        <Text style={{ fontSize: 12, fontWeight: '700' }}>₹{fmt(slip.earnings?.basic)}</Text>
+                      </View>
+                      <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginBottom: 9 }}>
+                        <Text style={{ fontSize: 12, color: '#555' }}>House Rent Allow.</Text>
+                        <Text style={{ fontSize: 12, fontWeight: '700' }}>₹{fmt(slip.earnings?.hra)}</Text>
+                      </View>
+                      <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginBottom: 9 }}>
+                        <Text style={{ fontSize: 12, color: '#555' }}>Travel Allow.</Text>
+                        <Text style={{ fontSize: 12, fontWeight: '700' }}>₹{fmt(travelAllow)}</Text>
+                      </View>
+                      {slip.earnings?.incentive > 0 && (
+                        <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginBottom: 9 }}>
+                          <Text style={{ fontSize: 12, color: '#555' }}>Incentive</Text>
+                          <Text style={{ fontSize: 12, fontWeight: '700' }}>₹{fmt(slip.earnings?.incentive)}</Text>
+                        </View>
+                      )}
+                      {slip.earnings?.bonus > 0 && (
+                        <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginBottom: 9 }}>
+                          <Text style={{ fontSize: 12, color: '#555' }}>Perf. Bonus</Text>
+                          <Text style={{ fontSize: 12, fontWeight: '700' }}>₹{fmt(slip.earnings?.bonus)}</Text>
+                        </View>
+                      )}
+                    </View>
+
+                    {/* Vertical divider */}
+                    <View style={{ width: 1, backgroundColor: '#E4E7F0' }} />
+
+                    {/* Deductions */}
+                    <View style={{ flex: 1 }}>
+                      <View style={{ borderBottomWidth: 2, borderBottomColor: '#dc2626', paddingBottom: 6, marginBottom: 12 }}>
+                        <Text style={{ fontSize: 10, fontWeight: '900', color: '#b91c1c', textTransform: 'uppercase', letterSpacing: 1.5 }}>Deductions</Text>
+                      </View>
+                      <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginBottom: 9 }}>
+                        <Text style={{ fontSize: 12, color: '#555' }}>Provident Fund</Text>
+                        <Text style={{ fontSize: 12, fontWeight: '700', color: '#b91c1c' }}>₹{fmt(slip.deductions?.pf)}</Text>
+                      </View>
+                      <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginBottom: 9 }}>
+                        <Text style={{ fontSize: 12, color: '#555' }}>ESI Contribution</Text>
+                        <Text style={{ fontSize: 12, fontWeight: '700', color: '#b91c1c' }}>₹{fmt(slip.deductions?.esi)}</Text>
+                      </View>
+                      <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginBottom: 9 }}>
+                        <Text style={{ fontSize: 12, color: '#555' }}>Professional Tax</Text>
+                        <Text style={{ fontSize: 12, fontWeight: '700', color: '#b91c1c' }}>₹{fmt(slip.deductions?.professionalTax)}</Text>
+                      </View>
+                      <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginBottom: 9 }}>
+                        <Text style={{ fontSize: 12, color: '#555' }}>Income Tax (TDS)</Text>
+                        <Text style={{ fontSize: 12, fontWeight: '700', color: '#b91c1c' }}>₹{fmt(slip.deductions?.incomeTax)}</Text>
+                      </View>
+                    </View>
+                  </View>
+
+                  {/* Totals row */}
+                  <View style={{ flexDirection: 'row', borderTopWidth: 1, borderTopColor: '#E4E7F0', marginHorizontal: 16, marginTop: 16, paddingTop: 12, paddingBottom: 12, justifyContent: 'space-between' }}>
+                    <View style={{ flex: 1 }}>
+                      <Text style={{ fontSize: 10, fontWeight: '700', color: '#888', textTransform: 'uppercase', letterSpacing: 1 }}>Gross Earnings</Text>
+                      <Text style={{ fontSize: 18, fontWeight: '900', color: '#111', marginTop: 2 }}>₹{fmt(slip.grossSalary)}</Text>
+                    </View>
+                    <View style={{ width: 1, backgroundColor: '#E4E7F0', marginHorizontal: 12 }} />
+                    <View style={{ flex: 1, alignItems: 'flex-end' }}>
+                      <Text style={{ fontSize: 10, fontWeight: '700', color: '#888', textTransform: 'uppercase', letterSpacing: 1 }}>Total Deductions</Text>
+                      <Text style={{ fontSize: 18, fontWeight: '900', color: '#b91c1c', marginTop: 2 }}>₹{fmt(slip.totalDeductions)}</Text>
+                    </View>
+                  </View>
+
+                  {/* Net Salary Banner */}
+                  <View style={{ margin: 16, borderWidth: 1.5, borderColor: '#d1d5db', borderRadius: 12, padding: 20, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', backgroundColor: '#fff' }}>
+                    <View>
+                      <Text style={{ fontSize: 11, fontWeight: '800', textTransform: 'uppercase', letterSpacing: 2, color: '#111' }}>Net Salary Payable</Text>
+                      <Text style={{ fontSize: 10, color: '#888', marginTop: 3 }}>Amount transferred to employee bank account</Text>
+                    </View>
+                    <Text style={{ fontSize: 26, fontWeight: '900', color: '#111', letterSpacing: -0.5 }}>₹{fmt(slip.netSalary)}</Text>
+                  </View>
+
+                  {/* Footer note */}
+                  <Text style={{ textAlign: 'center', fontSize: 9, color: '#bbb', marginBottom: 18, paddingHorizontal: 16 }}>
+                    This is a system generated document and is valid without a physical signature. Generated on {new Date().toLocaleDateString()}
                   </Text>
                 </View>
               </ScrollView>
-            )}
-          </View>
+            );
+          })()}
         </View>
       </Modal>
     </View>
@@ -2484,24 +3102,24 @@ const AttendanceView = () => {
 
         {/* Stats Grid */}
         <View style={{ flexDirection: 'row', gap: 10, marginBottom: spacing.m }}>
-          <View style={[styles.empStatPill, { flex: 1, backgroundColor: '#f0fdf4' }]}>
-            <Text style={{ fontSize: 11, color: '#166534', fontWeight: '600' }}>TOTAL</Text>
-            <Text style={{ fontSize: 18, color: '#15803d', fontWeight: 'bold' }}>{managerRecords.length}</Text>
+          <View style={[styles.empStatPill, { flex: 1, backgroundColor: colors.surfaceLight }]}>
+            <Text style={{ fontSize: 11, color: colors.textMuted, fontWeight: '600' }}>TOTAL</Text>
+            <Text style={{ fontSize: 18, color: colors.accent, fontWeight: 'bold' }}>{managerRecords.length}</Text>
           </View>
 
-          <View style={[styles.empStatPill, { flex: 1, backgroundColor: '#ecfdf5' }]}>
-            <Text style={{ fontSize: 11, color: '#047857', fontWeight: '600' }}>PRESENT</Text>
-            <Text style={{ fontSize: 18, color: '#059669', fontWeight: 'bold' }}>{presentCount}</Text>
+          <View style={[styles.empStatPill, { flex: 1, backgroundColor: colors.surfaceLight }]}>
+            <Text style={{ fontSize: 11, color: colors.textMuted, fontWeight: '600' }}>PRESENT</Text>
+            <Text style={{ fontSize: 18, color: colors.success, fontWeight: 'bold' }}>{presentCount}</Text>
           </View>
 
-          <View style={[styles.empStatPill, { flex: 1, backgroundColor: '#fef2f2' }]}>
-            <Text style={{ fontSize: 11, color: '#991b1b', fontWeight: '600' }}>ABSENT</Text>
-            <Text style={{ fontSize: 18, color: '#dc2626', fontWeight: 'bold' }}>{absentCount}</Text>
+          <View style={[styles.empStatPill, { flex: 1, backgroundColor: colors.surfaceLight }]}>
+            <Text style={{ fontSize: 11, color: colors.textMuted, fontWeight: '600' }}>ABSENT</Text>
+            <Text style={{ fontSize: 18, color: colors.danger, fontWeight: 'bold' }}>{absentCount}</Text>
           </View>
 
-          <View style={[styles.empStatPill, { flex: 1, backgroundColor: '#fffbeb' }]}>
-            <Text style={{ fontSize: 11, color: '#92400e', fontWeight: '600' }}>LATE</Text>
-            <Text style={{ fontSize: 18, color: '#d97706', fontWeight: 'bold' }}>{lateCount}</Text>
+          <View style={[styles.empStatPill, { flex: 1, backgroundColor: colors.surfaceLight }]}>
+            <Text style={{ fontSize: 11, color: colors.textMuted, fontWeight: '600' }}>LATE</Text>
+            <Text style={{ fontSize: 18, color: colors.warning, fontWeight: 'bold' }}>{lateCount}</Text>
           </View>
         </View>
 
@@ -2625,10 +3243,10 @@ const AttendanceView = () => {
               disabled={punching}
             >
               {punching ? (
-                <ActivityIndicator color="#fff" />
+                <ActivityIndicator color={colors.background} />
               ) : (
                 <>
-                  <Clock size={18} color="#fff" style={{ marginRight: 8 }} />
+                  <Clock size={18} color={colors.background} style={{ marginRight: 8 }} />
                   <Text style={styles.punchBtnText}>Punch In</Text>
                 </>
               )}
@@ -2642,10 +3260,10 @@ const AttendanceView = () => {
               disabled={punching}
             >
               {punching ? (
-                <ActivityIndicator color="#fff" />
+                <ActivityIndicator color={colors.background} />
               ) : (
                 <>
-                  <Clock size={18} color="#fff" style={{ marginRight: 8 }} />
+                  <Clock size={18} color={colors.background} style={{ marginRight: 8 }} />
                   <Text style={styles.punchBtnText}>Punch Out</Text>
                 </>
               )}
@@ -2654,7 +3272,7 @@ const AttendanceView = () => {
 
           {hasPunchedIn && hasPunchedOut && (
             <View style={styles.shiftCompletedBadge}>
-              <UserCheck size={18} color="#10b981" style={{ marginRight: 6 }} />
+              <UserCheck size={18} color={colors.success} style={{ marginRight: 6 }} />
               <Text style={styles.shiftCompletedText}>Shift Completed</Text>
             </View>
           )}
@@ -2676,7 +3294,7 @@ const AttendanceView = () => {
             {/* Late Warning matching screenshot */}
             {(todayStatus?.metrics?.isLate || todayStatus?.isLate || todayStatus?.status === 'Late') && (
               <View style={styles.lateAlertBox}>
-                <AlertCircle size={16} color="#d97706" style={{ marginRight: 6 }} />
+                <AlertCircle size={16} color={colors.warning} style={{ marginRight: 6 }} />
                 <Text style={styles.lateAlertText}>You were marked Late today.</Text>
               </View>
             )}
@@ -3148,7 +3766,9 @@ const HolidaysView = () => {
   const [holidays, setHolidays] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [showAddCard, setShowAddCard] = useState(false);
+  const [showDatePicker, setShowDatePicker] = useState(false);
 
+  const [editingId, setEditingId] = useState<string | null>(null);
   const [formData, setFormData] = useState({
     name: '',
     date: '',
@@ -3162,7 +3782,12 @@ const HolidaysView = () => {
     try {
       const res = await apiCall('/api/holidays');
       if (res.success && res.data) {
-        setHolidays(Array.isArray(res.data) ? res.data : []);
+        const list = Array.isArray(res.data.data)
+          ? res.data.data
+          : Array.isArray(res.data)
+            ? res.data
+            : [];
+        setHolidays(list);
       }
     } catch (e) {
       console.error(e);
@@ -3175,7 +3800,46 @@ const HolidaysView = () => {
     fetchHolidays();
   }, []);
 
-  const handleAddHoliday = async () => {
+  const handleEditHoliday = (holiday: any) => {
+    setEditingId(holiday._id || holiday.id);
+    const dateStr = holiday.date ? String(holiday.date).substring(0, 10) : '';
+    setFormData({
+      name: holiday.name || '',
+      date: dateStr,
+      type: holiday.type || 'Public',
+      description: holiday.description || '',
+    });
+    setShowAddCard(true);
+  };
+
+  const handleDeleteHoliday = async (id: string) => {
+    Alert.alert(
+      'Confirm Delete',
+      'Are you sure you want to delete this holiday?',
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Delete',
+          style: 'destructive',
+          onPress: async () => {
+            try {
+              const res = await apiCall(`/api/holidays/${id}`, { method: 'DELETE' });
+              if (res.success) {
+                Alert.alert('Success', 'Holiday deleted successfully!');
+                fetchHolidays();
+              } else {
+                Alert.alert('Error', res.error || 'Failed to delete holiday.');
+              }
+            } catch (err: any) {
+              Alert.alert('Error', err.message || 'An error occurred.');
+            }
+          },
+        },
+      ]
+    );
+  };
+
+  const handleSaveHoliday = async () => {
     if (!formData.name || !formData.date) {
       Alert.alert('Validation Error', 'Please enter Holiday Name and Date.');
       return;
@@ -3183,18 +3847,23 @@ const HolidaysView = () => {
 
     setSubmitLoading(true);
     try {
-      const res = await apiCall('/api/holidays', {
-        method: 'POST',
+      const isEdit = !!editingId;
+      const url = isEdit ? `/api/holidays/${editingId}` : '/api/holidays';
+      const method = isEdit ? 'PUT' : 'POST';
+
+      const res = await apiCall(url, {
+        method,
         body: JSON.stringify(formData),
       });
 
       if (res.success) {
-        Alert.alert('Success', 'Holiday added successfully!');
+        Alert.alert('Success', isEdit ? 'Holiday updated successfully!' : 'Holiday added successfully!');
         setShowAddCard(false);
+        setEditingId(null);
         setFormData({ name: '', date: '', type: 'Public', description: '' });
         fetchHolidays();
       } else {
-        Alert.alert('Error', res.error || 'Failed to add holiday.');
+        Alert.alert('Error', res.error || 'Failed to save holiday.');
       }
     } catch (err: any) {
       Alert.alert('Error', err.message || 'An error occurred.');
@@ -3225,7 +3894,7 @@ const HolidaysView = () => {
           style={styles.addHolidayBtn}
           onPress={() => setShowAddCard(!showAddCard)}
         >
-          <Plus size={16} color="#fff" style={{ marginRight: 4 }} />
+          <Plus size={16} color={colors.background} style={{ marginRight: 4 }} />
           <Text style={styles.addHolidayBtnText}>Add Holiday</Text>
         </TouchableOpacity>
       </View>
@@ -3233,7 +3902,7 @@ const HolidaysView = () => {
       {/* Add New Holiday Form Card matching screenshot */}
       {showAddCard && (
         <View style={styles.addHolidayCard}>
-          <Text style={styles.addHolidayCardTitle}>Add New Holiday</Text>
+          <Text style={styles.addHolidayCardTitle}>{editingId ? 'Edit Holiday' : 'Add New Holiday'}</Text>
 
           <View style={styles.formRow2Col}>
             <View style={styles.formCol}>
@@ -3249,13 +3918,56 @@ const HolidaysView = () => {
 
             <View style={styles.formCol}>
               <Text style={styles.formLabel}>Date (YYYY-MM-DD) *</Text>
-              <TextInput
-                style={styles.modalTextInput}
-                placeholder="e.g. 2026-12-25"
-                placeholderTextColor={colors.textMuted}
-                value={formData.date}
-                onChangeText={(val) => setFormData({ ...formData, date: val })}
-              />
+              {Platform.OS === 'web' ? (
+                <input
+                  type="date"
+                  value={formData.date}
+                  onChange={(e) => setFormData({ ...formData, date: e.target.value })}
+                  style={{
+                    height: 44,
+                    borderRadius: 8,
+                    borderWidth: 1,
+                    borderColor: colors.border,
+                    backgroundColor: colors.surface,
+                    color: colors.text,
+                    paddingLeft: 12,
+                    paddingRight: 12,
+                    fontSize: 14,
+                    outline: 'none',
+                    width: '100%',
+                    fontFamily: 'inherit',
+                  }}
+                />
+              ) : (
+                <>
+                  <TouchableOpacity
+                    style={[styles.modalTextInput, { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }]}
+                    onPress={() => setShowDatePicker(true)}
+                  >
+                    <Text style={{ color: formData.date ? colors.text : colors.textMuted, fontSize: 14 }}>
+                      {formData.date || 'Select Date'}
+                    </Text>
+                    <Calendar size={18} color={colors.accent} />
+                  </TouchableOpacity>
+
+                  {showDatePicker && (
+                    <DateTimePicker
+                      value={formData.date && !isNaN(new Date(formData.date).getTime()) ? new Date(formData.date) : new Date()}
+                      mode="date"
+                      display={Platform.OS === 'ios' ? 'spinner' : 'default'}
+                      onChange={(event: any, selectedDate?: Date) => {
+                        setShowDatePicker(Platform.OS === 'ios');
+                        if (selectedDate) {
+                          const yyyy = selectedDate.getFullYear();
+                          const mm = String(selectedDate.getMonth() + 1).padStart(2, '0');
+                          const dd = String(selectedDate.getDate()).padStart(2, '0');
+                          setFormData({ ...formData, date: `${yyyy}-${mm}-${dd}` });
+                        }
+                      }}
+                    />
+                  )}
+                </>
+              )}
             </View>
           </View>
 
@@ -3284,19 +3996,26 @@ const HolidaysView = () => {
           />
 
           <View style={styles.structFormActions}>
-            <TouchableOpacity style={styles.cancelBtn} onPress={() => setShowAddCard(false)}>
+            <TouchableOpacity
+              style={styles.cancelBtn}
+              onPress={() => {
+                setShowAddCard(false);
+                setEditingId(null);
+                setFormData({ name: '', date: '', type: 'Public', description: '' });
+              }}
+            >
               <Text style={styles.cancelBtnText}>Cancel</Text>
             </TouchableOpacity>
 
             <TouchableOpacity
               style={[styles.saveBtn, submitLoading && styles.disabledButton]}
-              onPress={handleAddHoliday}
+              onPress={handleSaveHoliday}
               disabled={submitLoading}
             >
               {submitLoading ? (
                 <ActivityIndicator color={colors.background} />
               ) : (
-                <Text style={styles.saveBtnText}>Save Holiday</Text>
+                <Text style={styles.saveBtnText}>{editingId ? 'Update Holiday' : 'Save Holiday'}</Text>
               )}
             </TouchableOpacity>
           </View>
@@ -3305,8 +4024,8 @@ const HolidaysView = () => {
 
       {/* Holiday Cards Grid */}
       <View style={styles.holidayGrid}>
-        {holidays.map((holiday) => (
-          <View key={holiday._id} style={styles.holidayCardItem}>
+        {holidays.map((holiday, idx) => (
+          <View key={holiday._id || holiday.id || `holiday-${idx}`} style={styles.holidayCardItem}>
             <View style={styles.holidayIconBox}>
               <Calendar size={22} color={colors.accent} />
             </View>
@@ -3314,21 +4033,39 @@ const HolidaysView = () => {
             <View style={{ flex: 1 }}>
               <Text style={styles.holidayNameText}>{holiday.name}</Text>
               <Text style={styles.holidayDateText}>
-                {new Date(holiday.date).toLocaleDateString(undefined, {
-                  weekday: 'long',
-                  year: 'numeric',
-                  month: 'long',
-                  day: 'numeric',
-                })}
+                {holiday.date
+                  ? new Date(typeof holiday.date === 'string' && holiday.date.includes('T') ? holiday.date : `${holiday.date.substring(0, 10)}T00:00:00`).toLocaleDateString(undefined, {
+                    weekday: 'long',
+                    year: 'numeric',
+                    month: 'long',
+                    day: 'numeric',
+                  })
+                  : '-'}
               </Text>
 
               <View style={styles.holidayTypeTag}>
-                <Text style={styles.holidayTypeTagText}>{holiday.type} Holiday</Text>
+                <Text style={styles.holidayTypeTagText}>{holiday.type || 'Public'} Holiday</Text>
               </View>
 
               {holiday.description ? (
                 <Text style={styles.holidayDescText}>{holiday.description}</Text>
               ) : null}
+            </View>
+
+            {/* Action Buttons: Edit & Delete */}
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, marginLeft: 8 }}>
+              <TouchableOpacity
+                style={{ padding: 6, borderRadius: 6, backgroundColor: colors.surfaceLight }}
+                onPress={() => handleEditHoliday(holiday)}
+              >
+                <Edit size={16} color={colors.text} />
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={{ padding: 6, borderRadius: 6, backgroundColor: 'rgba(239, 68, 68, 0.12)' }}
+                onPress={() => handleDeleteHoliday(holiday._id || holiday.id)}
+              >
+                <Trash2 size={16} color={colors.danger} />
+              </TouchableOpacity>
             </View>
           </View>
         ))}
@@ -3447,7 +4184,7 @@ const LeadsView = () => {
           style={styles.addLeadBtn}
           onPress={() => setShowAddModal(true)}
         >
-          <Plus size={16} color="#fff" style={{ marginRight: 4 }} />
+          <Plus size={16} color={colors.background} style={{ marginRight: 4 }} />
           <Text style={styles.addLeadBtnText}>Add Lead</Text>
         </TouchableOpacity>
       </View>
@@ -3807,10 +4544,10 @@ const ReportsView = () => {
           disabled={loading}
         >
           {loading ? (
-            <ActivityIndicator color="#fff" />
+            <ActivityIndicator color={colors.background} />
           ) : (
             <>
-              <Search size={16} color="#fff" style={{ marginRight: 6 }} />
+              <Search size={16} color={colors.background} style={{ marginRight: 6 }} />
               <Text style={styles.generateReportBtnText}>Generate</Text>
             </>
           )}
@@ -4001,7 +4738,7 @@ const SettingsView = () => {
           disabled={saving}
         >
           {saving ? (
-            <ActivityIndicator color="#fff" />
+            <ActivityIndicator color={colors.background} />
           ) : (
             <Text style={styles.saveSettingsBtnText}>Save Changes</Text>
           )}
@@ -4698,7 +5435,7 @@ const NotificationsView = () => {
     <ScrollView contentContainerStyle={styles.notificationsContainer}>
       {/* Title Row matching screenshot */}
       <View style={styles.notificationHeaderRow}>
-        <RadioTower size={28} color="#0f3d82" style={{ marginRight: 10 }} />
+        <RadioTower size={28} color={colors.accent} style={{ marginRight: 10 }} />
         <View style={{ flex: 1 }}>
           <Text style={styles.empTitle}>Notification Engine Logs</Text>
           <Text style={styles.empSubtitle}>
@@ -4736,11 +5473,11 @@ const NotificationsView = () => {
                   {/* Channel */}
                   <View style={{ width: 100, flexDirection: 'row', alignItems: 'center' }}>
                     {log.channel === 'Email' ? (
-                      <Mail size={14} color="#3b82f6" style={{ marginRight: 4 }} />
+                      <Mail size={14} color={colors.info} style={{ marginRight: 4 }} />
                     ) : log.channel === 'SMS' ? (
-                      <MessageSquare size={14} color="#10b981" style={{ marginRight: 4 }} />
+                      <MessageSquare size={14} color={colors.success} style={{ marginRight: 4 }} />
                     ) : (
-                      <Bell size={14} color="#a855f7" style={{ marginRight: 4 }} />
+                      <Bell size={14} color={colors.accent} style={{ marginRight: 4 }} />
                     )}
                     <Text style={styles.attTableCell}>{log.channel}</Text>
                   </View>
@@ -4874,7 +5611,7 @@ const CompanyWalletView = () => {
 
         <View style={{ flexDirection: 'row', alignItems: 'center' }}>
           <TouchableOpacity style={styles.exportStatementBtn} onPress={exportStatement}>
-            <Download size={14} color="#fff" style={{ marginRight: 4 }} />
+            <Download size={14} color={colors.background} style={{ marginRight: 4 }} />
             <Text style={styles.exportStatementText}>Export Statement</Text>
           </TouchableOpacity>
 
@@ -4882,7 +5619,7 @@ const CompanyWalletView = () => {
             style={styles.addHolidayBtn}
             onPress={() => setShowForm(!showForm)}
           >
-            <Plus size={14} color="#fff" style={{ marginRight: 4 }} />
+            <Plus size={14} color={colors.background} style={{ marginRight: 4 }} />
             <Text style={styles.addHolidayBtnText}>New Transaction</Text>
           </TouchableOpacity>
         </View>
@@ -4891,7 +5628,7 @@ const CompanyWalletView = () => {
       {/* Available Balance Black Banner Card matching user screenshot */}
       <View style={styles.walletBalanceCard}>
         <View style={styles.walletIconBackground}>
-          <Wallet size={160} color="#fff" />
+          <Wallet size={160} color={colors.background} />
         </View>
         <Text style={styles.walletBalanceLabel}>AVAILABLE BALANCE</Text>
         <Text style={styles.walletBalanceValue}>
@@ -5022,7 +5759,7 @@ const CompanyWalletView = () => {
                   <Text style={[
                     styles.attTableCell,
                     { width: 110, textAlign: 'right', fontWeight: 'bold' },
-                    tx.type === 'Credit' ? { color: '#10b981' } : { color: '#ef4444' }
+                    tx.type === 'Credit' ? { color: colors.success } : { color: colors.danger }
                   ]}>
                     {tx.type === 'Credit' ? '+' : '-'}₹{tx.amount.toLocaleString()}
                   </Text>
@@ -5233,7 +5970,7 @@ const EmployeeProfileView = () => {
     <ScrollView contentContainerStyle={styles.walletContainer}>
       {/* Title Row matching screenshot */}
       <View style={styles.notificationHeaderRow}>
-        <ShieldCheck size={28} color="#2563eb" style={{ marginRight: 10 }} />
+        <ShieldCheck size={28} color={colors.info} style={{ marginRight: 10 }} />
         <View style={{ flex: 1 }}>
           <Text style={styles.empTitle}>My Profile</Text>
           <Text style={styles.empSubtitle}>Manage your account security and preferences.</Text>
@@ -5274,9 +6011,9 @@ const EmployeeProfileView = () => {
                   disabled={photoUploading}
                 >
                   {photoUploading ? (
-                    <ActivityIndicator size="small" color="#2563eb" style={{ marginRight: 6 }} />
+                    <ActivityIndicator size="small" color={colors.info} style={{ marginRight: 6 }} />
                   ) : (
-                    <Camera size={16} color="#2563eb" style={{ marginRight: 6 }} />
+                    <Camera size={16} color={colors.info} style={{ marginRight: 6 }} />
                   )}
                   <Text style={styles.changePhotoText}>
                     {photoUploading ? 'Uploading...' : 'Change Profile Photo'}
@@ -5429,6 +6166,372 @@ const EmployeeProfileView = () => {
   );
 };
 
+function numberToWords(num: number): string {
+  if (!num) return 'Zero';
+  const a = ['', 'One', 'Two', 'Three', 'Four', 'Five', 'Six', 'Seven', 'Eight', 'Nine', 'Ten', 'Eleven', 'Twelve', 'Thirteen', 'Fourteen', 'Fifteen', 'Sixteen', 'Seventeen', 'Eighteen', 'Nineteen'];
+  const b = ['', '', 'Twenty', 'Thirty', 'Forty', 'Fifty', 'Sixty', 'Seventy', 'Eighty', 'Ninety'];
+  const numStr = num.toString();
+  if (numStr.length > 9) return 'Overflow';
+  const n = ('000000000' + numStr).substr(-9).match(/^(\d{2})(\d{2})(\d{2})(\d{1})(\d{2})$/);
+  if (!n) return '';
+  let str = '';
+  str += (Number(n[1]) !== 0) ? (a[Number(n[1])] || b[Number(n[1][0])] + ' ' + a[Number(n[1][1])]) + ' Crore ' : '';
+  str += (Number(n[2]) !== 0) ? (a[Number(n[2])] || b[Number(n[2][0])] + ' ' + a[Number(n[2][1])]) + ' Lakh ' : '';
+  str += (Number(n[3]) !== 0) ? (a[Number(n[3])] || b[Number(n[3][0])] + ' ' + a[Number(n[3][1])]) + ' Thousand ' : '';
+  str += (Number(n[4]) !== 0) ? (a[Number(n[4])] || b[Number(n[4][0])] + ' ' + a[Number(n[4][1])]) + ' Hundred ' : '';
+  str += (Number(n[5]) !== 0) ? ((str !== '') ? 'and ' : '') + (a[Number(n[5])] || b[Number(n[5][0])] + ' ' + a[Number(n[5][1])]) : '';
+  return str.trim();
+}
+
+const generatePaymentBondHtml = (inv: any) => {
+  const principal = Number(inv?.investmentAmount || 0);
+  const rate = Number(inv?.monthlyGrowthPercentage || 2.5);
+  const interest = Math.round((principal * rate) / 100);
+  const maturityAmt = principal + interest;
+
+  const principalWords = numberToWords(principal);
+  const maturityWords = numberToWords(maturityAmt);
+
+  const df = inv?.debentureForm || {};
+  const today = new Date();
+  const issueDateStr = today.toLocaleDateString('en-GB');
+  const maturityDate = new Date(today);
+  maturityDate.setMonth(today.getMonth() + 1);
+  const maturityDateStr = maturityDate.toLocaleDateString('en-GB');
+
+  const bondNo = inv?.investorCode ? `MDS DWK ${inv.investorCode.replace('INV-', '')}` : 'MDS DWK 0005';
+  const refNo = `MP07/ZX/${today.getFullYear()}`;
+
+  return `<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Payment Bond Certificate</title>
+<style>
+  :root {
+    --navy: #0c1c3d;
+    --gold: #c9972f;
+    --gold-light: #e8b84b;
+    --cream: #fffdf8;
+    --text: #1c1c1c;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    background: #e7e7e7;
+    font-family: 'Segoe UI', Arial, sans-serif;
+    color: var(--text);
+    padding: 16px;
+  }
+  .certificate-sheet {
+    max-width: 800px;
+    margin: 0 auto;
+    background: #ffffff;
+    border: 3px double var(--navy);
+    padding: 20px;
+    position: relative;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+  }
+  .inner-border {
+    border: 1px solid var(--gold);
+    padding: 16px;
+  }
+  .header-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding-bottom: 12px;
+    border-bottom: 2px solid var(--gold);
+    position: relative;
+  }
+  .gold-seal {
+    width: 65px;
+    height: 65px;
+    border-radius: 50%;
+    background: radial-gradient(circle, #e8b84b 0%, #c9972f 100%);
+    border: 2px solid #8f6718;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+    font-size: 7.5px;
+    font-weight: 800;
+    color: #0c1c3d;
+    text-transform: uppercase;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+  }
+  .company-brand {
+    text-align: center;
+    flex: 1;
+  }
+  .brand-logo {
+    width: 50px;
+    height: 50px;
+    border-radius: 50%;
+    background: #0c1c3d;
+    color: var(--gold-light);
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 20px;
+    font-weight: 900;
+    border: 2px solid var(--gold);
+  }
+  .company-title {
+    font-size: 19px;
+    font-weight: 900;
+    color: var(--navy);
+    letter-spacing: 1px;
+    margin-top: 4px;
+  }
+  .company-motto {
+    font-size: 10px;
+    font-weight: 700;
+    color: var(--gold);
+    letter-spacing: 1px;
+  }
+  .qr-box {
+    text-align: center;
+    border: 1px solid #ddd;
+    padding: 4px;
+    border-radius: 4px;
+    font-size: 8px;
+    font-weight: 700;
+    color: #555;
+  }
+  .qr-placeholder {
+    width: 46px;
+    height: 46px;
+    background: #f0f0f0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 22px;
+  }
+  .bond-title-bar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin: 14px 0;
+    font-size: 11px;
+    font-weight: 700;
+    color: var(--navy);
+  }
+  .center-pill {
+    background: var(--navy);
+    color: var(--gold-light);
+    padding: 3px 12px;
+    border-radius: 12px;
+    font-size: 9.5px;
+    letter-spacing: 1px;
+  }
+  .main-bond-heading {
+    text-align: center;
+    font-size: 24px;
+    font-weight: 900;
+    color: var(--gold);
+    letter-spacing: 2px;
+    margin: 2px 0 10px;
+    text-shadow: 0 1px 1px rgba(0,0,0,0.1);
+  }
+  .notice-box {
+    background: #fffdf5;
+    border: 1px solid #e3c98a;
+    padding: 10px 14px;
+    border-radius: 6px;
+    font-size: 11.5px;
+    line-height: 1.6;
+    text-align: center;
+    margin-bottom: 14px;
+  }
+  .tables-grid {
+    display: flex;
+    gap: 14px;
+    margin-bottom: 14px;
+  }
+  .table-col {
+    flex: 1;
+    border: 1px solid var(--navy);
+    border-radius: 6px;
+    overflow: hidden;
+  }
+  .table-header {
+    background: var(--navy);
+    color: #fff;
+    text-align: center;
+    font-size: 10.5px;
+    font-weight: 800;
+    padding: 5px;
+    letter-spacing: 1px;
+  }
+  .table-row {
+    display: flex;
+    justify-content: space-between;
+    padding: 6px 10px;
+    border-bottom: 1px solid #eee;
+    font-size: 11px;
+  }
+  .table-row:last-child { border-bottom: none; }
+  .lbl { color: #555; }
+  .val { font-weight: 800; color: #111; }
+  .val.highlight { color: #b91c1c; font-size: 13px; }
+  .terms-box {
+    border: 1px solid var(--navy);
+    border-radius: 6px;
+    overflow: hidden;
+    margin-bottom: 16px;
+  }
+  .terms-content {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 10px;
+    padding: 10px 12px;
+    font-size: 9.5px;
+    line-height: 1.5;
+    color: #333;
+  }
+  .footer-signatures {
+    display: flex;
+    align-items: flex-end;
+    justify-content: space-between;
+    margin-top: 14px;
+    padding-top: 10px;
+  }
+  .stamp-box {
+    width: 65px;
+    height: 65px;
+    border: 2px solid var(--navy);
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+    font-size: 7.5px;
+    font-weight: 800;
+    color: var(--navy);
+  }
+  .center-cert-note {
+    font-size: 8.5px;
+    color: #666;
+    max-width: 250px;
+    text-align: center;
+    line-height: 1.3;
+  }
+  .sign-col {
+    text-align: right;
+    font-size: 10px;
+  }
+  .cursive-sign {
+    font-family: 'Brush Script MT', cursive, sans-serif;
+    font-size: 20px;
+    color: var(--navy);
+    margin: 4px 0 2px;
+  }
+  .bottom-navy-bar {
+    background: var(--navy);
+    color: #fff;
+    font-size: 8.5px;
+    padding: 6px 10px;
+    margin-top: 14px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    border-radius: 4px;
+    flex-wrap: wrap;
+    gap: 4px;
+  }
+  @media (max-width: 600px) {
+    body { padding: 4px; }
+    .certificate-sheet { padding: 8px; }
+    .inner-border { padding: 8px; }
+    .tables-grid { flex-direction: column; }
+    .terms-content { grid-template-columns: 1fr; }
+    .header-row { flex-direction: column; gap: 8px; }
+    .company-title { font-size: 15px; }
+    .bond-title-bar { flex-direction: column; gap: 6px; text-align: center; }
+    .bond-title-bar div { text-align: center !important; }
+  }
+</style>
+</head>
+<body>
+<div class="certificate-sheet">
+  <div class="inner-border">
+    <div class="header-row">
+      <div class="company-brand">
+        <div class="brand-logo">NC</div>
+        <div class="company-title">NIVENTRA CAPITAL ADVISORY INDIA PVT. LTD.</div>
+        <div class="company-motto">&mdash; INVEST TODAY &bull; PROSPER TOMORROW &mdash;</div>
+      </div>
+   
+    </div>
+
+    <div class="bond-title-bar">
+      <div>BOND NO. : <b>${bondNo}</b><br>ISSUE DATE : <b>${issueDateStr}</b></div>
+      <div class="center-pill">&#10022; INVESTMENT ACKNOWLEDGEMENT &#10022;</div>
+      <div style="text-align:right;">REFERENCE NO. : <b>${refNo}</b></div>
+    </div>
+
+    <div class="main-bond-heading">PAYMENT BOND</div>
+
+    <div class="notice-box">
+      This is to certify that <b>NIVENTRA CAPITAL ADVISORY INDIA PVT. LTD.</b> has received an amount of <b>&#8377;${principal.toLocaleString()}/- (${principalWords} Rupees Only)</b> from the investor named below on the terms and conditions mentioned herein.
+    </div>
+
+    <div class="tables-grid">
+      <div class="table-col">
+        <div class="table-header">&#10022; INVESTOR INFORMATION &#10022;</div>
+        <div class="table-row"><span class="lbl">Investor Name</span><span class="val">${inv?.fullName || '—'}</span></div>
+        <div class="table-row"><span class="lbl">Father's Name</span><span class="val">${df.fatherSpouseName || '—'}</span></div>
+        <div class="table-row"><span class="lbl">Address</span><span class="val">${df.address || '—'}</span></div>
+        <div class="table-row"><span class="lbl">Mobile No.</span><span class="val">${inv?.phone || '—'}</span></div>
+        <div class="table-row"><span class="lbl">Email ID</span><span class="val">${inv?.email || '—'}</span></div>
+      </div>
+
+      <div class="table-col">
+        <div class="table-header">&#10022; INVESTMENT DETAILS &#10022;</div>
+        <div class="table-row"><span class="lbl">Principal Amount</span><span class="val">&#8377;${principal.toLocaleString()}/-</span></div>
+        <div class="table-row"><span class="lbl">Investment Date</span><span class="val">${issueDateStr}</span></div>
+        <div class="table-row"><span class="lbl">Maturity Period</span><span class="val">1 Month</span></div>
+        <div class="table-row"><span class="lbl">Maturity Date</span><span class="val">${maturityDateStr}</span></div>
+        <div class="table-row"><span class="lbl">Amount Payable on Maturity</span><span class="val highlight">&#8377;${maturityAmt.toLocaleString()}/-</span></div>
+        <div style="font-size:8.5px;color:#c05a1e;text-align:right;padding:2px 10px;">(${maturityWords} Rupees Only)</div>
+      </div>
+    </div>
+
+    <div class="terms-box">
+      <div class="table-header">&#10022; TERMS & CONDITIONS &#10022;</div>
+      <div class="terms-content">
+        <div>1. This Bond is issued by NIVENTRA CAPITAL ADVISORY INDIA PVT. LTD. as an acknowledgement of receipt of the above amount.</div>
+        <div>4. This Bond is non-transferable unless approved in writing by the Company.</div>
+        <div>2. On successful completion of the one-month period, the Company shall pay the maturity amount stated above, subject to the terms of this Bond.</div>
+        <div>5. Any alteration or overwriting without the Company's authorization shall render this Bond invalid.</div>
+        <div>3. Payment shall be made through NEFT/RTGS/IMPS/Cheque or any other approved banking mode.</div>
+        <div>6. Any dispute shall be subject to the jurisdiction of the competent courts.</div>
+      </div>
+    </div>
+
+    <div class="footer-signatures">
+      <div class="center-cert-note">The Company hereby certifies that this Bond has been issued under its authority and shall be governed by the terms and conditions mentioned herein.</div>
+      <div class="sign-col">
+        <div style="font-size:9px;color:#555;">For NIVENTRA CAPITAL ADVISORY INDIA PVT. LTD.</div>
+        <div class="cursive-sign">Deepak Dayal</div>
+        <div><b>DEEPAK DAYAL</b></div>
+        <div style="font-size:8.5px;color:#666;">DIRECTOR / AUTHORIZED SIGNATORY</div>
+      </div>
+    </div>
+
+    <div class="bottom-navy-bar">
+      <span>&#128205; REGISTERED OFFICE: DWARKA MOR</span>
+      <span>&#127760; WEBSITE: www.niventracapitaladvisory.com</span>
+      <span>&#128222; CUSTOMER CARE: +91 8920313143</span>
+      <span>&#9993; EMAIL: info@niventracapitaladvisory.com</span>
+    </div>
+  </div>
+</div>
+</body>
+</html>`;
+};
+
 // --- Investors Admin View Sub-Component ---
 const InvestorsAdminView = () => {
   const [investors, setInvestors] = useState<any[]>([]);
@@ -5438,8 +6541,31 @@ const InvestorsAdminView = () => {
 
   // Modals
   const [selectedInvestor, setSelectedInvestor] = useState<any>(null); // Audit & View modal
+  const [selectedDebentureForm, setSelectedDebentureForm] = useState<any>(null); // Debenture form HTML modal
+  const [bondInvestorModal, setBondInvestorModal] = useState<any>(null); // Payment Bond PDF modal
   const [editInvestor, setEditInvestor] = useState<any>(null); // Edit modal
   const [showAddModal, setShowAddModal] = useState(false); // Add modal
+
+  const handleDownloadBondPdf = async (targetInv: any) => {
+    try {
+      const html = generatePaymentBondHtml(targetInv);
+      const { uri } = await Print.printToFileAsync({ html, base64: false });
+      if (Platform.OS === 'web') {
+        const link = document.createElement('a');
+        link.href = uri;
+        link.download = `Payment_Bond_${targetInv.investorCode || 'Certificate'}.pdf`;
+        link.click();
+      } else {
+        await Sharing.shareAsync(uri, {
+          mimeType: 'application/pdf',
+          dialogTitle: 'Payment Bond Certificate PDF',
+          UTI: 'com.adobe.pdf',
+        });
+      }
+    } catch (e: any) {
+      Alert.alert('Error', e.message || 'Failed to download Payment Bond PDF');
+    }
+  };
 
   // Form states for Add Investor
   const [formData, setFormData] = useState({
@@ -5461,12 +6587,21 @@ const InvestorsAdminView = () => {
     try {
       const res: any = await apiCall('/api/investors/me');
       let list: any[] = [];
-      if (res && res.success && Array.isArray(res.data)) {
-        list = res.data;
+      if (res && res.success && res.data) {
+        const payload = res.data;
+        if (Array.isArray(payload)) {
+          list = payload;
+        } else if (payload && typeof payload === 'object') {
+          if (Array.isArray(payload.data)) {
+            list = payload.data;
+          } else if (payload.data && Array.isArray(payload.data.data)) {
+            list = payload.data.data;
+          } else {
+            list = [payload];
+          }
+        }
       } else if (Array.isArray(res)) {
         list = res;
-      } else if (res && res.data) {
-        list = Array.isArray(res.data) ? res.data : [res.data];
       }
       setInvestors(list);
     } catch (e) {
@@ -5494,9 +6629,14 @@ const InvestorsAdminView = () => {
     const filter = statusFilter.toUpperCase();
     const invStatus = (inv.status || 'Pending').toUpperCase();
 
-    const matchesStatus =
-      filter === 'ALL' ||
-      invStatus === filter;
+    let matchesStatus = false;
+    if (statusFilter === 'ALL') {
+      matchesStatus = true;
+    } else if (statusFilter === 'DebentureForms') {
+      matchesStatus = !!inv.debentureForm?.applicationNo;
+    } else {
+      matchesStatus = invStatus === filter;
+    }
 
     return matchesSearch && matchesStatus;
   });
@@ -5691,10 +6831,11 @@ const InvestorsAdminView = () => {
     Pending: (Array.isArray(investors) ? investors : []).filter((i) => !i.status || i.status === 'Pending').length,
     Verified: (Array.isArray(investors) ? investors : []).filter((i) => i.status === 'Verified').length,
     Rejected: (Array.isArray(investors) ? investors : []).filter((i) => i.status === 'Rejected').length,
+    DebentureForms: (Array.isArray(investors) ? investors : []).filter((i) => i.debentureForm?.applicationNo).length,
   };
 
   return (
-    <ScrollView style={{ flex: 1 }} contentContainerStyle={{ padding: spacing.m }}>
+    <ScrollView style={{ flex: 1 }} contentContainerStyle={{ flexGrow: 1, padding: spacing.m, paddingBottom: 60 }} nestedScrollEnabled={true} keyboardShouldPersistTaps="handled">
       <View style={styles.titleRow}>
         <View style={{ flex: 1, marginRight: 8 }}>
           <Text style={styles.empTitle}>Investor Management</Text>
@@ -5704,158 +6845,325 @@ const InvestorsAdminView = () => {
           style={[styles.saveBtn, { backgroundColor: colors.accent, paddingHorizontal: 12, paddingVertical: 8 }]}
           onPress={() => setShowAddModal(true)}
         >
-          <Text style={[styles.saveBtnText, { color: '#fff', fontSize: 12 }]}>+ Add Investor</Text>
+          <Text style={[styles.saveBtnText, { color: colors.background, fontSize: 12 }]}>+ Add Investor</Text>
         </TouchableOpacity>
       </View>
 
-      {/* Search & Filter Bar */}
-      <View style={{ marginBottom: spacing.m }}>
-        <TextInput
-          style={styles.modalTextInput}
-          placeholder="Search Investor Name, Email, Phone, Code..."
-          placeholderTextColor={colors.textMuted}
-          value={searchQuery}
-          onChangeText={setSearchQuery}
-        />
+      {/* Search & Filter Bar matching screenshot exactly */}
+      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10, marginBottom: spacing.m, flexWrap: 'wrap' }}>
+        {/* Search Input with Icon */}
+        <View style={{ flex: 1, minWidth: 260, flexDirection: 'row', alignItems: 'center', backgroundColor: '#fff', borderWidth: 1, borderColor: '#d1d5db', borderRadius: 8, paddingHorizontal: 12, height: 40 }}>
+          <Search size={16} color="#9ca3af" style={{ marginRight: 8 }} />
+          <TextInput
+            style={{ flex: 1, fontSize: 13, color: '#111', padding: 0 }}
+            placeholder="Search Investor Name, Email, Phone, Code..."
+            placeholderTextColor="#9ca3af"
+            value={searchQuery}
+            onChangeText={setSearchQuery}
+          />
+        </View>
 
-        <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginTop: 8 }}>
-          <View style={{ flexDirection: 'row', gap: 6 }}>
-            {[
-              { key: 'ALL', label: `All Status (${counts.ALL})` },
-              { key: 'Pending', label: `Pending (${counts.Pending})` },
-              { key: 'Verified', label: `Verified (${counts.Verified})` },
-              { key: 'Rejected', label: `Rejected (${counts.Rejected})` },
-            ].map((item) => (
+        {/* Filter Buttons */}
+        <View style={{ flexDirection: 'row', gap: 6, flexWrap: 'wrap', alignItems: 'center' }}>
+          {[
+            { key: 'ALL', label: 'All Status', color: '#fff' },
+            { key: 'Pending', label: 'Pending', color: '#ff9800' },
+            { key: 'Verified', label: 'Verified', color: '#10b981' },
+            { key: 'Rejected', label: 'Rejected', color: '#ef4444' },
+            { key: 'DebentureForms', label: 'Debenture Forms', color: '#3b82f6', icon: true },
+          ].map((item) => {
+            const isActive = statusFilter === item.key;
+            return (
               <TouchableOpacity
                 key={item.key}
-                style={[
-                  styles.typeSelectBtn,
-                  statusFilter === item.key && styles.typeSelectBtnActive,
-                  { paddingVertical: 6, paddingHorizontal: 12 },
-                ]}
+                style={{
+                  backgroundColor: '#0c1c3d',
+                  borderWidth: 1,
+                  borderColor: isActive ? colors.accent : '#132a5c',
+                  paddingHorizontal: 12,
+                  paddingVertical: 8,
+                  borderRadius: 6,
+                  flexDirection: 'row',
+                  alignItems: 'center',
+                  gap: 5,
+                }}
                 onPress={() => setStatusFilter(item.key)}
               >
-                <Text style={[styles.typeSelectText, statusFilter === item.key && styles.typeSelectTextActive, { fontSize: 11 }]}>
+                {item.icon && <FileText size={12} color={item.color} />}
+                <Text style={{ fontSize: 12, fontWeight: '700', color: item.color }}>
                   {item.label}
                 </Text>
               </TouchableOpacity>
-            ))}
-          </View>
-        </ScrollView>
+            );
+          })}
+        </View>
       </View>
 
       {loading ? (
         <ActivityIndicator size="large" color={colors.accent} style={{ marginTop: 40 }} />
       ) : (
-        <View>
-          {filteredInvestors.map((inv) => {
-            const docsObj = inv.docVerifications || {};
-            const docKeys = Object.keys(docsObj);
-            const docsApprovedCount = docKeys.filter((v) => docsObj[v] === 'Approved').length;
-            const totalDocsCount = docKeys.length || 5;
-            const isBondAccepted = inv.bondAgreement?.accepted;
+        <View style={{ flex: 1 }}>
+          {Platform.OS !== 'web' ? (
+            /* --- MOBILE-OPTIMIZED CARD LIST VIEW --- */
+            <View style={{ gap: 12, marginBottom: 20 }}>
+              {filteredInvestors.length === 0 ? (
+                <View style={{ backgroundColor: colors.surface, borderRadius: 10, padding: 20, alignItems: 'center', borderWidth: 1, borderColor: colors.border }}>
+                  <Text style={{ color: colors.textMuted, fontSize: 13 }}>No investors found matching the selected filter.</Text>
+                </View>
+              ) : (
+                filteredInvestors.map((inv) => {
+                  const docsObj = inv.docVerifications || {};
+                  const docKeys = Object.keys(docsObj);
+                  const docsApprovedCount = docKeys.filter((v) => docsObj[v] === 'Approved').length;
+                  const totalDocsCount = docKeys.length || 5;
+                  const isBondAccepted = inv.bondAgreement?.accepted;
 
-            return (
-              <View key={inv._id || inv.id || Math.random().toString()} style={[styles.employeeRowCard, { padding: spacing.m, marginBottom: spacing.m }]}>
-                {/* Header: Name, Code & Status Badge */}
-                <View style={styles.empCardHeader}>
-                  <View style={{ flex: 1 }}>
-                    <Text style={[styles.empName, { fontSize: 16, fontWeight: 'bold', color: colors.text }]}>
-                      {inv.fullName || inv.email}
-                    </Text>
-                    <Text style={{ fontSize: 12, fontWeight: 'bold', color: colors.accent, marginTop: 2 }}>
-                      {inv.investorCode || 'INV-0000'}
-                    </Text>
-                    <Text style={{ fontSize: 12, color: colors.textMuted, marginTop: 2 }}>
-                      ✉️ {inv.email} {inv.phone ? ` • 📞 ${inv.phone}` : ''}
-                    </Text>
-                  </View>
+                  const statusColor = inv.status === 'Verified'
+                    ? { bg: '#d1fae5', text: '#065f46', border: '#a7f3d0' }
+                    : inv.status === 'Rejected'
+                      ? { bg: '#fee2e2', text: '#991b1b', border: '#fecaca' }
+                      : { bg: '#ffedd5', text: '#c2410c', border: '#fed7aa' };
 
-                  <View style={{ alignItems: 'flex-end' }}>
+                  return (
                     <View
-                      style={[
-                        styles.statusBadge,
-                        inv.status === 'Verified'
-                          ? { backgroundColor: '#00a65a' }
-                          : inv.status === 'Rejected'
-                            ? { backgroundColor: '#EF4444' }
-                            : { backgroundColor: '#F97316' },
-                        { paddingHorizontal: 10, paddingVertical: 4, borderRadius: 12 },
-                      ]}
+                      key={inv._id || inv.id || Math.random().toString()}
+                      style={{
+                        backgroundColor: colors.surface,
+                        borderRadius: 12,
+                        borderWidth: 1,
+                        borderColor: colors.border,
+                        padding: 14,
+                        shadowColor: '#000',
+                        shadowOffset: { width: 0, height: 1 },
+                        shadowOpacity: 0.05,
+                        shadowRadius: 3,
+                        elevation: 2,
+                      }}
                     >
-                      <Text style={[styles.statusText, { color: '#fff', fontSize: 11, fontWeight: 'bold' }]}>
-                        {inv.status || 'Pending'} (Docs: {docsApprovedCount}/{totalDocsCount} Approved)
-                      </Text>
+                      {/* Top Header Row */}
+                      <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', borderBottomWidth: 1, borderBottomColor: colors.border, paddingBottom: 10, marginBottom: 10 }}>
+                        <View style={{ flex: 1, marginRight: 8 }}>
+                          <Text style={{ fontSize: 16, fontWeight: '800', color: colors.text }}>{inv.fullName || '—'}</Text>
+                          <Text style={{ fontSize: 12, fontWeight: 'bold', color: colors.accent, marginTop: 2 }}>{inv.investorCode || 'INV-0000'}</Text>
+                        </View>
+                        <View style={{ backgroundColor: statusColor.bg, borderWidth: 1.5, borderColor: statusColor.border, paddingHorizontal: 10, paddingVertical: 4, borderRadius: 14 }}>
+                          <Text style={{ color: statusColor.text, fontSize: 11, fontWeight: '800' }}>✓ {inv.status || 'Pending'}</Text>
+                        </View>
+                      </View>
+
+                      {/* Contact Row */}
+                      <View style={{ marginBottom: 10 }}>
+                        <Text style={{ fontSize: 12, color: colors.textMuted }}>
+                          ✉️ {inv.email || '—'} {inv.phone ? `  •  📱 ${inv.phone}` : ''}
+                        </Text>
+                      </View>
+
+                      {/* 2-Column Info Grid */}
+                      <View style={{ flexDirection: 'row', backgroundColor: colors.surfaceLight, borderRadius: 8, padding: 10, marginBottom: 12, gap: 10 }}>
+                        <View style={{ flex: 1 }}>
+                          <Text style={{ fontSize: 10, color: colors.textMuted, fontWeight: '700' }}>INVESTED AMOUNT</Text>
+                          <Text style={{ fontSize: 15, fontWeight: '900', color: colors.text, marginTop: 2 }}>₹{(inv.investmentAmount || 0).toLocaleString()}</Text>
+
+                          <Text style={{ fontSize: 10, color: colors.textMuted, fontWeight: '700', marginTop: 8 }}>MONTHLY GROWTH</Text>
+                          <Text style={{ fontSize: 13, fontWeight: '800', color: colors.success, marginTop: 1 }}>{inv.monthlyGrowthPercentage || 2.5}% / mo</Text>
+                        </View>
+
+                        <View style={{ flex: 1 }}>
+                          <Text style={{ fontSize: 10, color: colors.textMuted, fontWeight: '700' }}>REFERRED BY</Text>
+                          <Text style={{ fontSize: 12, fontWeight: '700', color: colors.text, marginTop: 2 }} numberOfLines={1}>
+                            {inv.referralEmployeeName || 'Direct / Self'}
+                          </Text>
+
+                          <Text style={{ fontSize: 10, color: colors.textMuted, fontWeight: '700', marginTop: 8 }}>BOND & KYC DOCS</Text>
+                          <Text style={{ fontSize: 11, fontWeight: '700', color: isBondAccepted ? colors.success : colors.textMuted, marginTop: 1 }}>
+                            {isBondAccepted ? '✓ Bond Signed' : 'Pending Bond'} ({docsApprovedCount}/{totalDocsCount} KYC)
+                          </Text>
+                        </View>
+                      </View>
+
+                      {/* Action Buttons Bar */}
+                      <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 6, justifyContent: 'flex-end', paddingTop: 8, borderTopWidth: 1, borderTopColor: colors.border }}>
+                        {inv.status === 'Verified' && (
+                          <TouchableOpacity
+                            style={{ backgroundColor: '#f59e0b', paddingHorizontal: 12, paddingVertical: 8, borderRadius: 6, flexDirection: 'row', alignItems: 'center', gap: 4 }}
+                            onPress={() => setBondInvestorModal(inv)}
+                          >
+                            <ShieldCheck size={13} color="#0c1c3d" />
+                            <Text style={{ color: '#0c1c3d', fontSize: 12, fontWeight: '900' }}>Bond PDF</Text>
+                          </TouchableOpacity>
+                        )}
+
+                        <TouchableOpacity
+                          style={{ backgroundColor: '#0c1c3d', paddingHorizontal: 12, paddingVertical: 8, borderRadius: 6, flexDirection: 'row', alignItems: 'center', gap: 4 }}
+                          onPress={() => setSelectedDebentureForm(inv)}
+                        >
+                          <FileText size={13} color="#fff" />
+                          <Text style={{ color: '#fff', fontSize: 12, fontWeight: '700' }}>Form</Text>
+                        </TouchableOpacity>
+
+                        <TouchableOpacity
+                          style={{ backgroundColor: '#0c1c3d', paddingHorizontal: 12, paddingVertical: 8, borderRadius: 6, flexDirection: 'row', alignItems: 'center', gap: 4 }}
+                          onPress={() => setSelectedInvestor(inv)}
+                        >
+                          <Eye size={13} color="#fff" />
+                          <Text style={{ color: '#fff', fontSize: 12, fontWeight: '700' }}>View & Verify</Text>
+                        </TouchableOpacity>
+
+                        <TouchableOpacity
+                          style={{ backgroundColor: '#3b82f6', padding: 8, borderRadius: 6 }}
+                          onPress={() => setEditInvestor({ ...inv })}
+                        >
+                          <Edit size={14} color="#fff" />
+                        </TouchableOpacity>
+
+                        <TouchableOpacity
+                          style={{ backgroundColor: '#ef4444', padding: 8, borderRadius: 6 }}
+                          onPress={() => handleDeleteInvestor(inv)}
+                        >
+                          <Trash2 size={14} color="#fff" />
+                        </TouchableOpacity>
+                      </View>
                     </View>
-                  </View>
+                  );
+                })
+              )}
+            </View>
+          ) : (
+            /* --- DESKTOP TABLE VIEW --- */
+            <ScrollView horizontal showsHorizontalScrollIndicator={true} style={{ marginBottom: 16 }}>
+              <View style={{ minWidth: 1000, backgroundColor: '#fff', borderRadius: 8, borderWidth: 1, borderColor: '#e5e7eb', overflow: 'hidden' }}>
+                {/* Table Header */}
+                <View style={{ flexDirection: 'row', backgroundColor: '#f9fafb', borderBottomWidth: 1, borderBottomColor: '#e5e7eb', paddingVertical: 12, paddingHorizontal: 16, alignItems: 'center' }}>
+                  <Text style={{ width: 140, fontSize: 12, fontWeight: '700', color: '#6b7280' }}>Investor Code & Name</Text>
+                  <Text style={{ width: 180, fontSize: 12, fontWeight: '700', color: '#6b7280' }}>Contact Email / Phone</Text>
+                  <Text style={{ width: 110, fontSize: 12, fontWeight: '700', color: '#6b7280' }}>Referred By</Text>
+                  <Text style={{ width: 110, fontSize: 12, fontWeight: '700', color: '#6b7280' }}>Invest RS Amount</Text>
+                  <Text style={{ width: 120, fontSize: 12, fontWeight: '700', color: '#6b7280' }}>Monthly Growth %</Text>
+                  <Text style={{ width: 140, fontSize: 12, fontWeight: '700', color: '#6b7280' }}>Status</Text>
+                  <Text style={{ width: 140, fontSize: 12, fontWeight: '700', color: '#6b7280' }}>Bond Agreement</Text>
+                  <Text style={{ width: 220, fontSize: 12, fontWeight: '700', color: '#6b7280', textAlign: 'right' }}>Actions</Text>
                 </View>
 
-                {/* Details Grid */}
-                <View style={[styles.empCardBody, { marginTop: spacing.s, paddingTop: spacing.s, borderTopWidth: 1, borderTopColor: colors.border }]}>
-                  <View style={styles.empDetailCol}>
-                    <Text style={styles.detailLabel}>REFERRED BY</Text>
-                    <Text style={[styles.detailVal, { color: colors.accent, fontWeight: 'bold', fontSize: 13 }]}>
-                      {inv.referralEmployeeName || 'Direct / Self'}
-                    </Text>
-                  </View>
+                {/* Table Body */}
+                {filteredInvestors.map((inv) => {
+                  const docsObj = inv.docVerifications || {};
+                  const docKeys = Object.keys(docsObj);
+                  const docsApprovedCount = docKeys.filter((v) => docsObj[v] === 'Approved').length;
+                  const totalDocsCount = docKeys.length || 5;
+                  const isBondAccepted = inv.bondAgreement?.accepted;
 
-                  <View style={styles.empDetailCol}>
-                    <Text style={styles.detailLabel}>INVEST RS AMOUNT</Text>
-                    <Text style={[styles.detailVal, { color: '#00a65a', fontWeight: 'bold', fontSize: 14 }]}>
-                      ₹{(inv.investmentAmount || 0).toLocaleString()}
-                    </Text>
-                  </View>
+                  const statusColor = inv.status === 'Verified'
+                    ? { bg: '#d1fae5', text: '#065f46', border: '#a7f3d0' }
+                    : inv.status === 'Rejected'
+                      ? { bg: '#fee2e2', text: '#991b1b', border: '#fecaca' }
+                      : { bg: '#ffedd5', text: '#c2410c', border: '#fed7aa' };
 
-                  <View style={styles.empDetailCol}>
-                    <Text style={styles.detailLabel}>MONTHLY GROWTH %</Text>
-                    <Text style={[styles.detailVal, { color: colors.accent, fontWeight: 'bold', fontSize: 14 }]}>
-                      {inv.monthlyGrowthPercentage || 2.5}% / mo
-                    </Text>
-                  </View>
-                </View>
+                  return (
+                    <View
+                      key={inv._id || inv.id || Math.random().toString()}
+                      style={{ flexDirection: 'row', borderBottomWidth: 1, borderBottomColor: '#f3f4f6', paddingVertical: 14, paddingHorizontal: 16, alignItems: 'center', backgroundColor: '#fff' }}
+                    >
+                      {/* Investor Code & Name */}
+                      <View style={{ width: 140 }}>
+                        <Text style={{ fontSize: 13, fontWeight: '800', color: '#111' }}>{inv.fullName || '—'}</Text>
+                        <Text style={{ fontSize: 11, fontWeight: 'bold', color: '#4338ca', marginTop: 2 }}>{inv.investorCode || 'INV-0000'}</Text>
+                      </View>
 
-                {/* Bond Agreement Status Bar */}
-                <View style={{ marginTop: 8, paddingVertical: 6, paddingHorizontal: 10, backgroundColor: isBondAccepted ? 'rgba(16, 185, 129, 0.1)' : 'rgba(245, 158, 11, 0.1)', borderRadius: borderRadius.s, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
-                  <Text style={{ fontSize: 11, fontWeight: '700', color: colors.textMuted }}>Bond Agreement:</Text>
-                  {isBondAccepted ? (
-                    <Text style={{ fontSize: 11, color: '#00a65a', fontWeight: 'bold' }}>
-                      ✓ Accepted ({inv.bondAgreement?.signatureText || inv.email})
-                    </Text>
-                  ) : (
-                    <Text style={{ fontSize: 11, color: '#F97316', fontWeight: 'bold' }}>
-                      Not Accepted
-                    </Text>
-                  )}
-                </View>
+                      {/* Contact Email / Phone */}
+                      <View style={{ width: 180 }}>
+                        <Text style={{ fontSize: 12, color: '#374151', textBreakStrategy: 'simple' }}>{inv.email || '—'}</Text>
+                        <Text style={{ fontSize: 12, color: '#6b7280', marginTop: 1 }}>{inv.phone || '—'}</Text>
+                      </View>
 
-                {/* Actions Bar */}
-                <View style={{ flexDirection: 'row', justifyContent: 'flex-end', gap: 8, marginTop: 10, paddingTop: 10, borderTopWidth: 1, borderTopColor: colors.border }}>
-                  <TouchableOpacity
-                    style={[styles.saveBtn, { backgroundColor: colors.accent, paddingHorizontal: 12, paddingVertical: 6 }]}
-                    onPress={() => setSelectedInvestor(inv)}
-                  >
-                    <Text style={{ color: '#fff', fontSize: 11, fontWeight: 'bold' }}>👁️ View & Verify</Text>
-                  </TouchableOpacity>
+                      {/* Referred By */}
+                      <View style={{ width: 110 }}>
+                        <View style={{ backgroundColor: '#eff6ff', borderWidth: 1, borderColor: '#bfdbfe', paddingHorizontal: 6, paddingVertical: 3, borderRadius: 4, alignSelf: 'flex-start' }}>
+                          <Text style={{ fontSize: 10, fontWeight: '800', color: '#1e40af' }}>{inv.referralEmployeeName || 'Direct / Self'}</Text>
+                        </View>
+                      </View>
 
-                  <TouchableOpacity
-                    style={[styles.saveBtn, { backgroundColor: '#3b82f6', paddingHorizontal: 12, paddingVertical: 6 }]}
-                    onPress={() => setEditInvestor({ ...inv })}
-                  >
-                    <Text style={{ color: '#fff', fontSize: 11, fontWeight: 'bold' }}>✏️ Edit</Text>
-                  </TouchableOpacity>
+                      {/* Invest RS Amount */}
+                      <View style={{ width: 110 }}>
+                        <Text style={{ fontSize: 13, fontWeight: '800', color: '#111' }}>₹{(inv.investmentAmount || 0).toLocaleString()}</Text>
+                      </View>
 
-                  <TouchableOpacity
-                    style={[styles.saveBtn, { backgroundColor: '#EF4444', paddingHorizontal: 12, paddingVertical: 6 }]}
-                    onPress={() => handleDeleteInvestor(inv)}
-                  >
-                    <Text style={{ color: '#fff', fontSize: 11, fontWeight: 'bold' }}>🗑️ Delete</Text>
-                  </TouchableOpacity>
-                </View>
+                      {/* Monthly Growth % */}
+                      <View style={{ width: 120 }}>
+                        <Text style={{ fontSize: 12, fontWeight: '800', color: '#10b981' }}>{inv.monthlyGrowthPercentage || 2.5}% / mo</Text>
+                      </View>
+
+                      {/* Status */}
+                      <View style={{ width: 140 }}>
+                        <View style={{ backgroundColor: statusColor.bg, borderWidth: 1.5, borderColor: statusColor.border, paddingHorizontal: 8, paddingVertical: 3, borderRadius: 12, alignSelf: 'flex-start' }}>
+                          <Text style={{ color: statusColor.text, fontSize: 10, fontWeight: '800' }}>{inv.status || 'Pending'}</Text>
+                        </View>
+                        <Text style={{ fontSize: 10, color: '#9ca3af', marginTop: 3 }}>Docs: {docsApprovedCount}/{totalDocsCount} Approved</Text>
+                      </View>
+
+                      {/* Bond Agreement */}
+                      <View style={{ width: 140 }}>
+                        {isBondAccepted ? (
+                          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 3 }}>
+                            <ShieldCheck size={13} color="#10b981" />
+                            <Text style={{ fontSize: 11, color: '#10b981', fontWeight: '800' }}>
+                              Accepted ({inv.bondAgreement?.signatureText || '—'})
+                            </Text>
+                          </View>
+                        ) : (
+                          <Text style={{ fontSize: 11, color: '#9ca3af' }}>Not Accepted</Text>
+                        )}
+                      </View>
+
+                      {/* Actions */}
+                      <View style={{ minWidth: 260, flexDirection: 'row', justifyContent: 'flex-end', gap: 6, alignItems: 'center' }}>
+                        {inv.status === 'Verified' && (
+                          <TouchableOpacity
+                            style={{ backgroundColor: '#f59e0b', paddingHorizontal: 10, paddingVertical: 6, borderRadius: 4, flexDirection: 'row', alignItems: 'center', gap: 4 }}
+                            onPress={() => setBondInvestorModal(inv)}
+                          >
+                            <ShieldCheck size={12} color="#0c1c3d" />
+                            <Text style={{ color: '#0c1c3d', fontSize: 11, fontWeight: '900' }}>Bond PDF</Text>
+                          </TouchableOpacity>
+                        )}
+
+                        <TouchableOpacity
+                          style={{ backgroundColor: '#0c1c3d', paddingHorizontal: 10, paddingVertical: 6, borderRadius: 4, flexDirection: 'row', alignItems: 'center', gap: 4 }}
+                          onPress={() => setSelectedDebentureForm(inv)}
+                        >
+                          <FileText size={12} color="#fff" />
+                          <Text style={{ color: '#fff', fontSize: 11, fontWeight: '700' }}>Form</Text>
+                        </TouchableOpacity>
+
+                        <TouchableOpacity
+                          style={{ backgroundColor: '#0c1c3d', paddingHorizontal: 10, paddingVertical: 6, borderRadius: 4, flexDirection: 'row', alignItems: 'center', gap: 4 }}
+                          onPress={() => setSelectedInvestor(inv)}
+                        >
+                          <Eye size={12} color="#fff" />
+                          <Text style={{ color: '#fff', fontSize: 11, fontWeight: '700' }}>View & Verify</Text>
+                        </TouchableOpacity>
+
+                        <TouchableOpacity
+                          style={{ backgroundColor: '#3b82f6', padding: 6, borderRadius: 4 }}
+                          onPress={() => setEditInvestor({ ...inv })}
+                        >
+                          <Edit size={12} color="#fff" />
+                        </TouchableOpacity>
+
+                        <TouchableOpacity
+                          style={{ backgroundColor: '#ef4444', padding: 6, borderRadius: 4 }}
+                          onPress={() => handleDeleteInvestor(inv)}
+                        >
+                          <Trash2 size={12} color="#fff" />
+                        </TouchableOpacity>
+                      </View>
+                    </View>
+                  );
+                })}
+                {filteredInvestors.length === 0 && (
+                  <Text style={{ textAlign: 'center', color: '#9ca3af', paddingVertical: 32 }}>No investors found.</Text>
+                )}
               </View>
-            );
-          })}
-          {filteredInvestors.length === 0 && (
-            <Text style={styles.noEmployeesText}>No investors found.</Text>
+            </ScrollView>
           )}
         </View>
       )}
@@ -6052,7 +7360,7 @@ const InvestorsAdminView = () => {
                 {selectedInvestor?.investorCode} • {selectedInvestor?.email} • {selectedInvestor?.phone}
               </Text>
 
-              <View style={[styles.netSalaryCard, { backgroundColor: '#f4f6f9', marginVertical: 12 }]}>
+              <View style={[styles.netSalaryCard, { backgroundColor: colors.surfaceLight, marginVertical: 12 }]}>
                 <Text style={styles.detailLabel}>REFERRED BY EMPLOYEE</Text>
                 <Text style={{ fontSize: 14, fontWeight: 'bold', color: colors.accent }}>
                   {selectedInvestor?.referralEmployeeName || 'Direct / Self Signup'}
@@ -6061,7 +7369,7 @@ const InvestorsAdminView = () => {
                 <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginTop: 8 }}>
                   <View>
                     <Text style={styles.detailLabel}>INVESTED RS AMOUNT</Text>
-                    <Text style={{ fontSize: 16, fontWeight: 'black', color: '#00a65a' }}>
+                    <Text style={{ fontSize: 16, fontWeight: 'black', color: colors.success }}>
                       ₹{(selectedInvestor?.investmentAmount || 0).toLocaleString()}
                     </Text>
                   </View>
@@ -6072,6 +7380,16 @@ const InvestorsAdminView = () => {
                     </Text>
                   </View>
                 </View>
+
+                {selectedInvestor?.status === 'Verified' && (
+                  <TouchableOpacity
+                    style={{ backgroundColor: '#f59e0b', paddingHorizontal: 16, paddingVertical: 10, borderRadius: 8, marginTop: 12, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8 }}
+                    onPress={() => setBondInvestorModal(selectedInvestor)}
+                  >
+                    <ShieldCheck size={16} color="#0c1c3d" />
+                    <Text style={{ color: '#0c1c3d', fontWeight: '900', fontSize: 13 }}>Download Payment Bond (PDF)</Text>
+                  </TouchableOpacity>
+                )}
               </View>
 
               {/* Debenture Application Form Details */}
@@ -6097,26 +7415,26 @@ const InvestorsAdminView = () => {
               )}
 
               {/* Investor KYC Fields & Bond Agreement Summary */}
-              <View style={[styles.settingsCard, { marginVertical: 10, backgroundColor: '#F8FAFC' }]}>
+              <View style={[styles.settingsCard, { marginVertical: 10, backgroundColor: colors.surfaceLight }]}>
                 <Text style={[styles.settingsCardTitle, { fontSize: 13, color: colors.accent }]}>Investor KYC & Bank Details</Text>
-                <Text style={{ fontSize: 11, color: '#334155', marginTop: 4 }}>
+                <Text style={{ fontSize: 11, color: colors.text, marginTop: 4 }}>
                   Aadhar No: <Text style={{ fontWeight: 'bold' }}>{selectedInvestor?.kycDocs?.aadharNumber || 'Not Entered'}</Text>
                 </Text>
-                <Text style={{ fontSize: 11, color: '#334155' }}>
+                <Text style={{ fontSize: 11, color: colors.text }}>
                   PAN No: <Text style={{ fontWeight: 'bold' }}>{selectedInvestor?.kycDocs?.panNumber || 'Not Entered'}</Text>
                 </Text>
-                <Text style={{ fontSize: 11, color: '#334155' }}>
+                <Text style={{ fontSize: 11, color: colors.text }}>
                   Bank: <Text style={{ fontWeight: 'bold' }}>{selectedInvestor?.kycDocs?.bankName || 'N/A'}</Text> | A/C: <Text style={{ fontWeight: 'bold' }}>{selectedInvestor?.kycDocs?.accountNumber || 'N/A'}</Text>
                 </Text>
-                <Text style={{ fontSize: 11, color: '#334155' }}>
+                <Text style={{ fontSize: 11, color: colors.text }}>
                   IFSC: <Text style={{ fontWeight: 'bold' }}>{selectedInvestor?.kycDocs?.ifscCode || 'N/A'}</Text> | Branch: <Text style={{ fontWeight: 'bold' }}>{selectedInvestor?.kycDocs?.branchName || 'N/A'}</Text>
                 </Text>
 
-                <View style={{ marginTop: 8, paddingTop: 8, borderTopWidth: 1, borderTopColor: '#E2E8F0' }}>
-                  <Text style={{ fontSize: 11, fontWeight: 'bold', color: '#0F172A' }}>
+                <View style={{ marginTop: 8, paddingTop: 8, borderTopWidth: 1, borderTopColor: colors.border }}>
+                  <Text style={{ fontSize: 11, fontWeight: 'bold', color: colors.text }}>
                     Bond Agreement: {selectedInvestor?.bondAgreement?.accepted ? '✓ Accepted' : '❌ Not Accepted'}
                   </Text>
-                  <Text style={{ fontSize: 11, color: '#64748B' }}>
+                  <Text style={{ fontSize: 11, color: colors.textMuted }}>
                     Signature: <Text style={{ fontWeight: 'bold', color: colors.accent }}>{selectedInvestor?.bondAgreement?.signatureText || 'N/A'}</Text>
                   </Text>
                 </View>
@@ -6136,14 +7454,14 @@ const InvestorsAdminView = () => {
                   <View key={doc.key} style={styles.payrollTableRow}>
                     <View style={{ flex: 1 }}>
                       <Text style={{ fontSize: 13, fontWeight: 'bold' }}>{doc.label}</Text>
-                      <Text style={{ fontSize: 11, color: st === 'Approved' ? '#00a65a' : st === 'Rejected' ? '#EF4444' : '#F97316' }}>
+                      <Text style={{ fontSize: 11, color: st === 'Approved' ? colors.success : st === 'Rejected' ? colors.danger : colors.warning }}>
                         Status: {st}
                       </Text>
                     </View>
 
                     <View style={{ flexDirection: 'row', gap: 6, alignItems: 'center' }}>
                       <TouchableOpacity
-                        style={[styles.filterSubmitBtn, { backgroundColor: doc.url ? '#3B82F6' : '#94A3B8', paddingHorizontal: 6 }]}
+                        style={[styles.filterSubmitBtn, { backgroundColor: doc.url ? colors.info : colors.textMuted, paddingHorizontal: 6 }]}
                         onPress={() => {
                           if (doc.url) {
                             Linking.openURL(doc.url).catch(() => Alert.alert('Doc Link', doc.url));
@@ -6152,23 +7470,23 @@ const InvestorsAdminView = () => {
                           }
                         }}
                       >
-                        <Text style={{ color: '#fff', fontSize: 10, fontWeight: 'bold' }}>👁️ View</Text>
+                        <Text style={{ color: colors.background, fontSize: 10, fontWeight: 'bold' }}>👁️ View</Text>
                       </TouchableOpacity>
 
                       <TouchableOpacity
-                        style={[styles.filterSubmitBtn, { backgroundColor: '#00a65a', paddingHorizontal: 8 }]}
+                        style={[styles.filterSubmitBtn, { backgroundColor: colors.success, paddingHorizontal: 8 }]}
                         onPress={() => handleDocVerify(doc.key, 'Approved')}
                         disabled={submitting}
                       >
-                        <Text style={{ color: '#fff', fontSize: 10, fontWeight: 'bold' }}>Approve</Text>
+                        <Text style={{ color: colors.background, fontSize: 10, fontWeight: 'bold' }}>Approve</Text>
                       </TouchableOpacity>
 
                       <TouchableOpacity
-                        style={[styles.filterSubmitBtn, { backgroundColor: '#eee', paddingHorizontal: 8 }]}
+                        style={[styles.filterSubmitBtn, { backgroundColor: colors.border, paddingHorizontal: 8 }]}
                         onPress={() => handleDocVerify(doc.key, 'Rejected')}
                         disabled={submitting}
                       >
-                        <Text style={{ color: '#EF4444', fontSize: 10, fontWeight: 'bold' }}>Reject</Text>
+                        <Text style={{ color: colors.danger, fontSize: 10, fontWeight: 'bold' }}>Reject</Text>
                       </TouchableOpacity>
                     </View>
                   </View>
@@ -6186,7 +7504,7 @@ const InvestorsAdminView = () => {
                     onChangeText={setRejectReason}
                   />
                   <TouchableOpacity
-                    style={[styles.saveBtn, { backgroundColor: '#EF4444' }]}
+                    style={[styles.saveBtn, { backgroundColor: colors.danger }]}
                     onPress={() => handleUpdateOverallStatus('Rejected', rejectReason)}
                     disabled={submitting || !rejectReason.trim()}
                   >
@@ -6197,13 +7515,13 @@ const InvestorsAdminView = () => {
 
               <View style={{ flexDirection: 'row', justifyContent: 'flex-end', gap: 10, marginTop: 16 }}>
                 <TouchableOpacity
-                  style={[styles.saveBtn, { backgroundColor: '#eee' }]}
+                  style={[styles.saveBtn, { backgroundColor: colors.border }]}
                   onPress={() => setShowRejectBox(!showRejectBox)}
                 >
-                  <Text style={{ color: '#EF4444', fontWeight: 'bold' }}>Reject All</Text>
+                  <Text style={{ color: colors.danger, fontWeight: 'bold' }}>Reject All</Text>
                 </TouchableOpacity>
                 <TouchableOpacity
-                  style={[styles.saveBtn, { backgroundColor: '#00a65a' }]}
+                  style={[styles.saveBtn, { backgroundColor: colors.success }]}
                   onPress={() => handleUpdateOverallStatus('Verified')}
                 >
                   <Text style={styles.saveBtnText}>Approve & Verify All</Text>
@@ -6211,6 +7529,338 @@ const InvestorsAdminView = () => {
               </View>
             </ScrollView>
           </View>
+        </View>
+      </Modal>
+
+      {/* --- DEBENTURE FORM VIEW MODAL --- */}
+      <Modal visible={!!selectedDebentureForm} animationType="slide" transparent={false}>
+        <View style={{ flex: 1, backgroundColor: '#F4F6FB' }}>
+          {/* Top Bar */}
+          <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', backgroundColor: '#0c1c3d', paddingTop: 48, paddingBottom: 14, paddingHorizontal: 18 }}>
+            <TouchableOpacity onPress={() => setSelectedDebentureForm(null)} style={{ padding: 4 }}>
+              <X size={22} color="#fff" />
+            </TouchableOpacity>
+            <Text style={{ color: '#fff', fontWeight: '800', fontSize: 16, letterSpacing: 1 }}>DEBENTURE FORM PREVIEW</Text>
+            <View style={{ width: 30 }} />
+          </View>
+          {selectedDebentureForm && (() => {
+            const inv = selectedDebentureForm;
+            const df = inv.debentureForm || {};
+            const prefillName = df.fullName || inv.fullName || '';
+            const prefillEmail = df.email || inv.email || '';
+            const prefillPhone = df.phone || inv.phone || '';
+
+            // Parse PAN characters
+            const panStr = (df.panNumber || '').toUpperCase().padEnd(10, ' ');
+            const pan1 = panStr[0] || '';
+            const pan2 = panStr[1] || '';
+            const pan3 = panStr[2] || '';
+            const pan4 = panStr[3] || '';
+            const pan5 = panStr[4] || '';
+            const pan6 = panStr[5] || '';
+            const pan7 = panStr[6] || '';
+            const pan8 = panStr[7] || '';
+            const pan9 = panStr[8] || '';
+            const pan10 = panStr[9] || '';
+
+            // Parse PIN characters
+            const pinStr = (df.pinCode || '').padEnd(6, ' ');
+            const pin1 = pinStr[0] || '';
+            const pin2 = pinStr[1] || '';
+            const pin3 = pinStr[2] || '';
+            const pin4 = pinStr[3] || '';
+            const pin5 = pinStr[4] || '';
+            const pin6 = pinStr[5] || '';
+
+            const isSecured = (df.typeOfDebenture || '').includes('Secured') ? 'checked' : '';
+            const isNonConvertible = (df.typeOfDebenture || '').includes('Non-Convertible') ? 'checked' : '';
+            const isRedeemable = (df.typeOfDebenture || '').includes('Redeemable') ? 'checked' : '';
+
+            const calculatedTotal = (Number(df.noOfDebentures) || 1) * (Number(df.faceValue) || 100000);
+
+            const getSelectedDebentureFormHtml = () => `<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Debenture Application Form</title>
+<style>
+  :root{
+    --navy:#0c1c3d;
+    --gold:#c9972f;
+    --gold-light:#e8b84b;
+    --cream:#fffdf8;
+    --text:#1c1c1c;
+  }
+  *{box-sizing:border-box;}
+  body{
+    margin:0;
+    padding:12px;
+    background:#e7e7e7;
+    font-family:'Segoe UI', Arial, sans-serif;
+    color:var(--text);
+  }
+  .sheet{
+    max-width:100%;
+    margin:0 auto;
+    background:var(--cream);
+    border:2px solid var(--navy);
+    position:relative;
+  }
+  input[type="text"],
+  input[type="email"],
+  input[type="tel"],
+  input[type="number"],
+  input[type="date"],
+  textarea,
+  select{
+    font-family:inherit;
+    font-size:12.5px;
+    color:#0c1c3d;
+    background:#fbf6e8;
+    border:none;
+    border-bottom:1px solid #999;
+    padding:2px 4px;
+    outline:none;
+    width:100%;
+  }
+  .digit-box{
+    width:20px;
+    height:22px;
+    text-align:center;
+    padding:0;
+    border:1px solid #999;
+    border-bottom:1px solid #999;
+    font-size:13px;
+    text-transform:uppercase;
+  }
+  .header{
+    background:linear-gradient(180deg,#0c1c3d,#132a5c);
+    color:#fff;
+    padding:18px 30px 14px;
+    text-align:center;
+    border-bottom:4px solid var(--gold);
+    position:relative;
+  }
+  .company-name{
+    font-size:22px;
+    font-weight:800;
+    letter-spacing:1px;
+    color:var(--gold-light);
+    margin:6px 0 8px;
+    text-shadow:0 1px 2px rgba(0,0,0,0.4);
+  }
+  .addr{font-size:12px;line-height:1.5;margin:0 0 8px;}
+  .contact-row{display:flex;justify-content:center;gap:16px;font-size:11px;margin-top:6px;flex-wrap:wrap;}
+  .logo-badge{
+    position:absolute;left:12px;top:14px;
+    width:60px;height:60px;border-radius:50%;
+    background:radial-gradient(circle,#12224e 60%,#0c1c3d 100%);
+    border:3px solid var(--gold);
+    display:flex;align-items:center;justify-content:center;
+    font-weight:800;color:var(--gold-light);font-size:18px;
+  }
+  .crest{position:absolute;right:12px;top:10px;text-align:center;color:var(--gold-light);font-size:9px;font-weight:700;letter-spacing:0.5px;line-height:1.3;}
+  .crest .crown{font-size:16px;display:block;margin-bottom:2px;}
+  .divider{text-align:center;padding:6px 0;color:var(--gold);font-size:13px;letter-spacing:3px;}
+  .title-block{text-align:center;padding:4px 16px;}
+  .title-block h1{color:var(--navy);font-size:20px;letter-spacing:2px;margin:0;}
+  .title-block h2{color:#c05a1e;font-size:13px;letter-spacing:1px;margin:3px 0 8px;}
+  .notice{background:var(--navy);color:#fff;display:inline-block;padding:4px 16px;border-radius:14px;font-size:10.5px;letter-spacing:0.5px;margin-bottom:8px;}
+  .app-no-box{border:1px solid var(--gold);padding:8px 10px;font-size:11.5px;margin:0 16px 10px;background:#fffef9;}
+  .app-no-box div{margin-bottom:6px;display:flex;align-items:center;gap:4px;}
+  .app-no-box div:last-child{margin-bottom:0;}
+  .app-no-box input{width:90px;}
+  .date-trio{display:flex;gap:4px;}
+  .date-trio input{width:30px;text-align:center;}
+  .top-info{padding:0 16px;font-size:12px;line-height:1.6;}
+  .top-info b{display:block;}
+  .section-header{background:var(--navy);color:#fff;font-size:12px;font-weight:700;letter-spacing:0.5px;padding:4px 12px;margin:12px 16px 0;clip-path:polygon(0 0,100% 0,97% 100%,0% 100%);display:inline-block;min-width:200px;}
+  .box{border:1px solid var(--gold);margin:0 16px 12px;padding:8px 12px;background:#fffef9;}
+  .field-row{display:flex;align-items:center;gap:6px;font-size:11.5px;padding:5px 0;border-bottom:1px dotted #e3c98a;flex-wrap:wrap;}
+  .field-row:last-child{border-bottom:none;}
+  .field-icon{width:18px;color:var(--gold);flex-shrink:0;text-align:center;}
+  .field-label{width:160px;flex-shrink:0;color:#333;}
+  .field-colon{width:8px;flex-shrink:0;}
+  .field-fill{flex:1;min-width:80px;}
+  .pan-boxes,.pin-boxes{display:flex;gap:2px;}
+  .checkbox-group{display:flex;gap:16px;flex-wrap:wrap;font-size:11.5px;}
+  .checkbox-group label{display:flex;align-items:center;gap:4px;cursor:pointer;}
+  .checkbox-group input[type="checkbox"],.docs-grid input[type="checkbox"]{width:13px;height:13px;accent-color:var(--navy);}
+  .checkbox-group input[type="text"]{width:60px;}
+  .decl-text{font-size:11px;line-height:1.7;}
+  .decl-text ol{margin:4px 0 0 14px;padding:0;}
+  .decl-flex{display:flex;justify-content:space-between;gap:12px;}
+  .decl-flex .left{flex:1;}
+  .photo-box{width:100px;height:110px;border:1.5px dashed var(--gold);display:flex;align-items:center;justify-content:center;text-align:center;font-size:10px;color:#8a6d1f;flex-shrink:0;position:relative;overflow:hidden;background:#fffef9;}
+  .photo-box img{width:100%;height:100%;object-fit:cover;}
+  .sign-line{display:flex;justify-content:space-between;align-items:center;margin-top:14px;font-size:11px;flex-wrap:wrap;gap:8px;}
+  .sign-line input[type="text"]{width:130px;display:inline-block;}
+  .sig-pad-wrap{text-align:center;}
+  .sig-pad{border:1px solid #999;background:#fff;width:180px;height:50px;display:block;}
+  .docs-grid{display:flex;justify-content:space-between;font-size:11.5px;gap:12px;}
+  .docs-grid .col{flex:1;}
+  .docs-grid label{display:flex;align-items:center;gap:4px;margin-bottom:6px;}
+  .docs-grid input[type="text"]{width:90px;}
+  .office-wrap{display:flex;margin:12px 16px 16px;border:1px solid var(--gold);flex-wrap:wrap;}
+  .office-col{flex:1;min-width:160px;padding:8px 10px;font-size:10.5px;}
+  .office-col+.office-col{border-left:1px solid var(--gold);}
+  .office-title{background:var(--navy);color:#fff;text-align:center;font-size:10px;font-weight:700;padding:3px;margin:-8px -10px 6px;}
+  .office-col div.row{margin-bottom:6px;display:flex;gap:4px;align-items:center;}
+  .office-col .lbl{width:110px;flex-shrink:0;}
+  .office-col input[type="text"],.office-col input[type="date"],.office-col input[type="number"]{flex:1;}
+  .office-col label{display:flex;align-items:center;gap:3px;margin:0;}
+  .office-col input[type="radio"]{width:10px;height:10px;}
+  .stamp{width:56px;height:56px;border:2px solid var(--navy);border-radius:50%;display:flex;align-items:center;justify-content:center;text-align:center;font-size:7px;color:var(--navy);font-weight:700;margin-top:6px;line-height:1.2;}
+  .sign-name{font-family:'Brush Script MT',cursive;font-size:16px;color:#1a2c56;margin:4px 0 0;}
+  small.faded{color:#666;}
+  @media (max-width:768px){
+    body{padding:4px;}
+    .sheet{border-width:1px;}
+    .header{padding:14px 10px;text-align:center;}
+    .logo-badge{position:relative;left:auto;top:auto;margin:0 auto 6px;}
+    .crest{position:relative;right:auto;top:auto;margin:6px auto 0;}
+    .company-name{font-size:16px;letter-spacing:0.5px;}
+    .addr{font-size:10.5px;}
+    .contact-row{font-size:10px;gap:8px;flex-direction:column;align-items:center;}
+    .title-block h1{font-size:16px;}
+    .title-block h2{font-size:12px;}
+    .section-header{min-width:unset;width:calc(100% - 24px);margin:10px 12px 0;}
+    .box{margin:0 12px 10px;padding:8px;}
+    .field-row{flex-direction:column;align-items:flex-start;gap:4px;padding:6px 0;}
+    .field-label{width:100%;font-weight:700;color:var(--navy);}
+    .field-colon{display:none;}
+    .field-fill{width:100%;max-width:100% !important;}
+    .pan-boxes,.pin-boxes{flex-wrap:wrap;}
+    .decl-flex{flex-direction:column-reverse;align-items:center;gap:10px;}
+    .sign-line{flex-direction:column;align-items:flex-start;gap:12px;}
+    .sig-pad-wrap{width:100%;text-align:center;}
+    .sig-pad{width:100% !important;max-width:260px;margin:0 auto;}
+    .docs-grid{flex-direction:column;gap:6px;}
+    .office-wrap{flex-direction:column;margin:10px 12px 12px;}
+    .office-col+.office-col{border-left:none;border-top:1px solid var(--gold);}
+  }
+</style>
+</head>
+<body>
+<form class="sheet" id="debentureForm">
+  <div class="header">
+    <div class="logo-badge">NC</div>
+    <div class="crest"><span class="crown">&#9819;</span>INVEST TODAY<br>PROSPER<br>TOMORROW</div>
+    <div class="company-name">NIVENTRA CAPITAL ADVISORY INDIA PVT LTD</div>
+    <div class="addr">A-91, Block A, Gali No. 2, Sewak Park,<br>Near Dwarka Mor Metro Station, Gate No. 2,<br>Dwarka Mor, New Delhi &ndash; 110059, India</div>
+    <div class="contact-row">
+      <span>&#128222; 8920313143</span>
+      <span>&#9993; info@niventracapitaladvisory.com</span>
+      <span>&#127760; www.niventracapitaladvisory.com</span>
+    </div>
+  </div>
+  <div class="divider">&#10022; &mdash;&mdash;&mdash; &#10022; &mdash;&mdash;&mdash; &#10022;</div>
+  <div class="title-block">
+    <h1>DEBENTURE APPLICATION FORM</h1>
+    <h2>(FOR SECURED DEBENTURES)</h2>
+  </div>
+  <div class="app-no-box">
+    <div>Application No. <input type="text" value="${df.applicationNo || ''}" disabled></div>
+  </div>
+  <div class="top-info">
+    <p>To,<br>The Board of Directors,<br><b>NIVENTRA CAPITAL ADVISORY INDIA PVT LTD</b></p>
+    <p>I/We hereby apply for the allotment of Secured, Rated, Listed/Unlisted, Redeemable, Non-Convertible Debentures of your Company on the terms and conditions as mentioned in the Information Memorandum / Debenture Trust Deed.</p>
+  </div>
+  <div class="section-header">1. INVESTOR DETAILS</div>
+  <div class="box">
+    <div class="field-row"><div class="field-icon">&#128100;</div><div class="field-label">Full Name (Applicant)</div><div class="field-colon">:</div><div class="field-fill"><input type="text" value="${prefillName}" disabled></div></div>
+    <div class="field-row"><div class="field-icon">&#128100;</div><div class="field-label">Father's / Spouse Name</div><div class="field-colon">:</div><div class="field-fill"><input type="text" value="${df.fatherSpouseName || ''}" disabled></div></div>
+    <div class="field-row"><div class="field-icon">&#128197;</div><div class="field-label">Date of Birth / Incorporation</div><div class="field-colon">:</div><div class="field-fill" style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;"><input type="date" value="${df.dob || ''}" disabled><span style="white-space:nowrap;">PAN No.&nbsp;:</span><div class="pan-boxes"><input class="digit-box" value="${pan1}" disabled><input class="digit-box" value="${pan2}" disabled><input class="digit-box" value="${pan3}" disabled><input class="digit-box" value="${pan4}" disabled><input class="digit-box" value="${pan5}" disabled><input class="digit-box" value="${pan6}" disabled><input class="digit-box" value="${pan7}" disabled><input class="digit-box" value="${pan8}" disabled><input class="digit-box" value="${pan9}" disabled><input class="digit-box" value="${pan10}" disabled></div></div></div>
+    <div class="field-row"><div class="field-icon">&#128205;</div><div class="field-label">Address</div><div class="field-colon">:</div><div class="field-fill"><input type="text" value="${df.address || ''}" disabled></div></div>
+    <div class="field-row"><div class="field-icon">&#127970;</div><div class="field-label">City</div><div class="field-colon">:</div><div class="field-fill" style="max-width:140px;"><input type="text" value="${df.city || ''}" disabled></div><div style="width:40px;text-align:center;">State</div><div style="width:8px;">:</div><div class="field-fill" style="max-width:120px;"><input type="text" value="${df.state || ''}" disabled></div><div style="width:60px;text-align:right;">PIN</div><div style="width:8px;">:</div><div class="pin-boxes"><input class="digit-box" value="${pin1}" disabled><input class="digit-box" value="${pin2}" disabled><input class="digit-box" value="${pin3}" disabled><input class="digit-box" value="${pin4}" disabled><input class="digit-box" value="${pin5}" disabled><input class="digit-box" value="${pin6}" disabled></div></div>
+    <div class="field-row"><div class="field-icon">&#128241;</div><div class="field-label">Mobile No.</div><div class="field-colon">:</div><div class="field-fill" style="max-width:180px;"><input type="tel" value="${prefillPhone}" disabled></div><div style="width:60px;text-align:right;">Email</div><div style="width:8px;">:</div><div class="field-fill"><input type="email" value="${prefillEmail}" disabled></div></div>
+    <div class="field-row"><div class="field-icon">&#128188;</div><div class="field-label">Occupation / Nature of Business</div><div class="field-colon">:</div><div class="field-fill"><input type="text" value="${df.occupation || ''}" disabled></div></div>
+  </div>
+  <div class="section-header">2. INVESTMENT DETAILS</div>
+  <div class="box">
+    <div class="field-row"><div class="field-label" style="width:150px;">Type of Debenture</div><div class="field-colon">:</div><div class="checkbox-group"><label><input type="checkbox" ${isSecured} disabled>Secured</label><label><input type="checkbox" ${isNonConvertible} disabled>Non-Convertible</label><label><input type="checkbox" ${isRedeemable} disabled>Redeemable</label></div></div>
+    <div class="field-row"><div class="field-label" style="width:150px;">Face Value (Per Debenture)</div><div class="field-colon">:</div><div class="field-fill">&#8377; <input type="number" style="width:160px;display:inline-block;" value="${df.faceValue || '100000'}" disabled></div></div>
+    <div class="field-row"><div class="field-label" style="width:150px;">No. of Debentures Applied</div><div class="field-colon">:</div><div class="field-fill" style="display:flex;gap:12px;align-items:center;"><input type="number" style="max-width:100px;" value="${df.noOfDebentures || '1'}" disabled><small class="faded">(Figures)</small></div></div>
+    <div class="field-row"><div class="field-label" style="width:150px;">Total Application Amount</div><div class="field-colon">:</div><div class="field-fill" style="display:flex;align-items:center;gap:8px;">&#8377; <input type="number" style="max-width:200px;" value="${calculatedTotal}" disabled><small class="faded">(Face Value x No.)</small></div></div>
+    <div class="field-row"><div class="field-label" style="width:150px;">Mode of Payment</div><div class="field-colon">:</div><div class="field-fill"><input type="text" value="${df.modeOfPayment || 'NEFT/RTGS'}" disabled></div></div>
+    <div class="field-row"><div class="field-label" style="width:150px;">Bank Name</div><div class="field-colon">:</div><div class="field-fill" style="max-width:180px;"><input type="text" value="${df.bankName || ''}" disabled></div><div style="width:130px;text-align:right;">Transaction / UTR No.</div><div style="width:8px;">:</div><div class="field-fill"><input type="text" value="${df.transactionUtrNo || ''}" disabled></div></div>
+  </div>
+  <div class="section-header">3. DECLARATION</div>
+  <div class="box">
+    <div class="decl-flex">
+      <div class="left decl-text">I/We hereby declare and confirm that the information provided in this application is true, correct and complete.</div>
+    </div>
+  </div>
+</form>
+</body>
+</html>`;
+
+            return Platform.OS === 'web' ? (
+              <iframe
+                srcDoc={getSelectedDebentureFormHtml()}
+                style={{ width: '100%', height: '100%', border: 'none', minHeight: 600 }}
+              />
+            ) : (
+              <WebView
+                source={{ html: getSelectedDebentureFormHtml() }}
+                style={{ flex: 1 }}
+                javaScriptEnabled
+                domStorageEnabled
+                scalesPageToFit={false}
+              />
+            );
+          })()}
+        </View>
+      </Modal>
+
+      {/* --- PAYMENT BOND CERTIFICATE PREVIEW MODAL --- */}
+      <Modal visible={!!bondInvestorModal} animationType="slide" transparent={false}>
+        <View style={{ flex: 1, backgroundColor: '#0f172a' }}>
+          {/* Top Bar matching user design */}
+          <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', backgroundColor: '#0c1c3d', paddingTop: 44, paddingBottom: 12, paddingHorizontal: 12, borderBottomWidth: 1, borderBottomColor: '#1e293b' }}>
+            <View style={{ flex: 1, marginRight: 6 }}>
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                <ShieldCheck size={18} color="#10b981" />
+                <Text numberOfLines={1} style={{ color: '#fff', fontWeight: '800', fontSize: 14 }}>Payment Bond</Text>
+              </View>
+              <View style={{ backgroundColor: '#065f46', paddingHorizontal: 6, paddingVertical: 2, borderRadius: 10, alignSelf: 'flex-start', marginTop: 3 }}>
+                <Text style={{ color: '#a7f3d0', fontSize: 8.5, fontWeight: '900' }}>VERIFIED & APPROVED</Text>
+              </View>
+            </View>
+
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+              <TouchableOpacity
+                style={{ backgroundColor: '#f59e0b', paddingHorizontal: 10, paddingVertical: 7, borderRadius: 6, flexDirection: 'row', alignItems: 'center', gap: 5 }}
+                onPress={() => handleDownloadBondPdf(bondInvestorModal)}
+              >
+                <Download size={14} color="#0c1c3d" />
+                <Text style={{ color: '#0c1c3d', fontWeight: '900', fontSize: 11.5 }}>Download PDF</Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity onPress={() => setBondInvestorModal(null)} style={{ backgroundColor: '#1e293b', padding: 6, borderRadius: 6 }}>
+                <X size={18} color="#fff" />
+              </TouchableOpacity>
+            </View>
+          </View>
+
+          {/* Certificate View */}
+          {bondInvestorModal && (
+            Platform.OS === 'web' ? (
+              <iframe
+                srcDoc={generatePaymentBondHtml(bondInvestorModal)}
+                style={{ width: '100%', height: '100%', border: 'none', flex: 1 }}
+              />
+            ) : (
+              <WebView
+                source={{ html: generatePaymentBondHtml(bondInvestorModal) }}
+                style={{ flex: 1 }}
+                javaScriptEnabled
+                domStorageEnabled
+                scalesPageToFit={true}
+              />
+            )
+          )}
         </View>
       </Modal>
     </ScrollView>
@@ -6223,96 +7873,396 @@ const DebentureFormView = () => {
   const [submitting, setSubmitting] = useState(false);
   const [submittedAppNo, setSubmittedAppNo] = useState<string | null>(null);
 
-  const [fullName, setFullName] = useState((user as any)?.firstName ? `${(user as any).firstName} ${(user as any).lastName || ''}`.trim() : '');
-  const [fatherSpouseName, setFatherSpouseName] = useState('');
-  const [dob, setDob] = useState('');
-  const [phone, setPhone] = useState((user as any)?.phone || '');
-  const [email, setEmail] = useState(user?.email || '');
-  const [address, setAddress] = useState('');
-  const [city, setCity] = useState('');
-  const [state, setState] = useState('');
-  const [pinCode, setPinCode] = useState('');
-  const [occupation, setOccupation] = useState('');
-  const [panNumber, setPanNumber] = useState('');
+  const prefillName = (user as any)?.firstName ? `${(user as any).firstName} ${(user as any).lastName || ''}`.trim() : '';
+  const prefillEmail = user?.email || '';
+  const prefillPhone = (user as any)?.phone || '';
 
-  const [typeOfDebenture, setTypeOfDebenture] = useState('Secured');
-  const [faceValue, setFaceValue] = useState('100000');
-  const [noOfDebentures, setNoOfDebentures] = useState('1');
-
-  const [modeOfPayment, setModeOfPayment] = useState('NEFT');
-  const [transactionUtrNo, setTransactionUtrNo] = useState('');
-  const [drawnOnBank, setDrawnOnBank] = useState('');
-  const [acceptedTerms, setAcceptedTerms] = useState(false);
-
-  const calculatedTotal = (Number(noOfDebentures) || 1) * (Number(faceValue) || 100000);
-
-  const handleSubmit = async () => {
-    if (!fullName.trim() || !phone.trim() || !email.trim()) {
-      Alert.alert('Validation Error', 'Please enter Applicant Name, Mobile, and Email.');
-      return;
+  useEffect(() => {
+    if (Platform.OS === 'web') {
+      const handleWebMessage = (event: MessageEvent) => {
+        try {
+          const msg = JSON.parse(event.data);
+          if (msg.type === 'SUBMIT') {
+            handleMessage({ nativeEvent: { data: event.data } });
+          }
+        } catch (_) { }
+      };
+      window.addEventListener('message', handleWebMessage);
+      return () => window.removeEventListener('message', handleWebMessage);
     }
-    if (!acceptedTerms) {
-      Alert.alert('Validation Error', 'Please accept the Debenture Allotment terms.');
-      return;
-    }
+  }, []);
 
-    setSubmitting(true);
+  const handleMessage = async (event: any) => {
     try {
-      const res: any = await apiCall('/api/debenture-application', {
-        method: 'POST',
-        body: JSON.stringify({
-          fullName: fullName.trim(),
-          fatherSpouseName,
-          dob,
-          phone: phone.trim(),
-          email: email.trim(),
-          address,
-          city,
-          state,
-          pinCode,
-          occupation,
-          panNumber,
-          typeOfDebenture,
-          faceValue: Number(faceValue) || 100000,
-          noOfDebentures: Number(noOfDebentures) || 1,
-          investmentAmount: calculatedTotal,
-          modeOfPayment,
-          transactionUtrNo,
-          drawnOnBank,
-          referralEmployeeCode: (user as any)?.employeeCode || '',
-        }),
-      });
-
-      if (res && (res.success || res.data || res.applicationNo)) {
-        const appNo = res.applicationNo || res.data?.debentureForm?.applicationNo || `DEB-${Math.floor(100000 + Math.random() * 900000)}`;
-        setSubmittedAppNo(appNo);
-        Alert.alert('Application Submitted!', `Debenture Application submitted successfully under App No: ${appNo}`);
-      } else {
-        Alert.alert('Error', res?.error || 'Failed to submit debenture application.');
+      const msg = JSON.parse(event.nativeEvent.data);
+      if (msg.type === 'SUBMIT') {
+        const formData = msg.data;
+        if (!formData.fullName || !formData.mobile || !formData.email) {
+          Alert.alert('Validation Error', 'Please enter Applicant Name, Mobile, and Email.');
+          return;
+        }
+        setSubmitting(true);
+        try {
+          const res: any = await apiCall('/api/debenture-application', {
+            method: 'POST',
+            body: JSON.stringify({
+              fullName: formData.fullName,
+              fatherSpouseName: formData.parentSpouseName,
+              dob: formData.dob,
+              phone: formData.mobile,
+              email: formData.email,
+              address: formData.address,
+              city: formData.city,
+              state: formData.state,
+              pinCode: [formData.pin1, formData.pin2, formData.pin3, formData.pin4, formData.pin5, formData.pin6].join(''),
+              occupation: formData.occupation,
+              panNumber: [formData.pan1, formData.pan2, formData.pan3, formData.pan4, formData.pan5, formData.pan6, formData.pan7, formData.pan8, formData.pan9, formData.pan10].join(''),
+              typeOfDebenture: [formData.typeSecured && 'Secured', formData.typeNonConvertible && 'Non-Convertible', formData.typeRedeemable && 'Redeemable'].filter(Boolean).join(', ') || 'Secured',
+              faceValue: Number(formData.faceValue) || 100000,
+              noOfDebentures: Number(formData.numDebenturesFigures) || 1,
+              investmentAmount: (Number(formData.numDebenturesFigures) || 1) * (Number(formData.faceValue) || 100000),
+              modeOfPayment: formData.paymentMode || 'NEFT/RTGS',
+              transactionUtrNo: formData.utrNo,
+              drawnOnBank: formData.drawnOnBank,
+              bankName: formData.bankName,
+              referralEmployeeCode: (user as any)?.employeeCode || '',
+            }),
+          });
+          if (res && (res.success || res.data || res.applicationNo)) {
+            const appNo = res.applicationNo || res.data?.debentureForm?.applicationNo || `DEB-${Math.floor(100000 + Math.random() * 900000)}`;
+            setSubmittedAppNo(appNo);
+            Alert.alert('Application Submitted!', `Debenture Application submitted successfully under App No: ${appNo}`);
+          } else {
+            Alert.alert('Error', res?.error || 'Failed to submit debenture application.');
+          }
+        } catch (e: any) {
+          Alert.alert('Error', e.message || 'Failed to submit application');
+        } finally {
+          setSubmitting(false);
+        }
       }
-    } catch (e: any) {
-      Alert.alert('Error', e.message || 'Failed to submit application');
-    } finally {
-      setSubmitting(false);
-    }
+    } catch (_) { }
   };
+
+  const debentureHtml = `<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Debenture Application Form</title>
+<style>
+  :root{
+    --navy:#0c1c3d;
+    --gold:#c9972f;
+    --gold-light:#e8b84b;
+    --cream:#fffdf8;
+    --text:#1c1c1c;
+  }
+  *{box-sizing:border-box;}
+  body{
+    margin:0;
+    padding:12px;
+    background:#e7e7e7;
+    font-family:'Segoe UI', Arial, sans-serif;
+    color:var(--text);
+  }
+  .sheet{
+    max-width:100%;
+    margin:0 auto;
+    background:var(--cream);
+    border:2px solid var(--navy);
+    position:relative;
+  }
+  input[type="text"],
+  input[type="email"],
+  input[type="tel"],
+  input[type="number"],
+  input[type="date"],
+  textarea,
+  select{
+    font-family:inherit;
+    font-size:12.5px;
+    color:#0c1c3d;
+    background:#fbf6e8;
+    border:none;
+    border-bottom:1px solid #999;
+    padding:2px 4px;
+    outline:none;
+    width:100%;
+  }
+  input[type="text"]:focus,
+  input[type="email"]:focus,
+  input[type="tel"]:focus,
+  input[type="number"]:focus,
+  input[type="date"]:focus,
+  textarea:focus,
+  select:focus{
+    border-bottom:1.5px solid var(--navy);
+    background:#fff8dc;
+  }
+  .digit-box{
+    width:20px;
+    height:22px;
+    text-align:center;
+    padding:0;
+    border:1px solid #999;
+    border-bottom:1px solid #999;
+    font-size:13px;
+    text-transform:uppercase;
+  }
+  .header{
+    background:linear-gradient(180deg,#0c1c3d,#132a5c);
+    color:#fff;
+    padding:18px 30px 14px;
+    text-align:center;
+    border-bottom:4px solid var(--gold);
+    position:relative;
+  }
+  .company-name{
+    font-size:22px;
+    font-weight:800;
+    letter-spacing:1px;
+    color:var(--gold-light);
+    margin:6px 0 8px;
+    text-shadow:0 1px 2px rgba(0,0,0,0.4);
+  }
+  .addr{font-size:12px;line-height:1.5;margin:0 0 8px;}
+  .contact-row{display:flex;justify-content:center;gap:16px;font-size:11px;margin-top:6px;flex-wrap:wrap;}
+  .logo-badge{
+    position:absolute;left:12px;top:14px;
+    width:60px;height:60px;border-radius:50%;
+    background:radial-gradient(circle,#12224e 60%,#0c1c3d 100%);
+    border:3px solid var(--gold);
+    display:flex;align-items:center;justify-content:center;
+    font-weight:800;color:var(--gold-light);font-size:18px;
+  }
+  .crest{position:absolute;right:12px;top:10px;text-align:center;color:var(--gold-light);font-size:9px;font-weight:700;letter-spacing:0.5px;line-height:1.3;}
+  .crest .crown{font-size:16px;display:block;margin-bottom:2px;}
+  .divider{text-align:center;padding:6px 0;color:var(--gold);font-size:13px;letter-spacing:3px;}
+  .title-block{text-align:center;padding:4px 16px;}
+  .title-block h1{color:var(--navy);font-size:20px;letter-spacing:2px;margin:0;}
+  .title-block h2{color:#c05a1e;font-size:13px;letter-spacing:1px;margin:3px 0 8px;}
+  .notice{background:var(--navy);color:#fff;display:inline-block;padding:4px 16px;border-radius:14px;font-size:10.5px;letter-spacing:0.5px;margin-bottom:8px;}
+  .app-no-box{border:1px solid var(--gold);padding:8px 10px;font-size:11.5px;margin:0 16px 10px;background:#fffef9;}
+  .app-no-box div{margin-bottom:6px;display:flex;align-items:center;gap:4px;}
+  .app-no-box div:last-child{margin-bottom:0;}
+  .app-no-box input{width:90px;}
+  .date-trio{display:flex;gap:4px;}
+  .date-trio input{width:30px;text-align:center;}
+  .top-info{padding:0 16px;font-size:12px;line-height:1.6;}
+  .top-info b{display:block;}
+  .section-header{background:var(--navy);color:#fff;font-size:12px;font-weight:700;letter-spacing:0.5px;padding:4px 12px;margin:12px 16px 0;clip-path:polygon(0 0,100% 0,97% 100%,0% 100%);display:inline-block;min-width:200px;}
+  .box{border:1px solid var(--gold);margin:0 16px 12px;padding:8px 12px;background:#fffef9;}
+  .field-row{display:flex;align-items:center;gap:6px;font-size:11.5px;padding:5px 0;border-bottom:1px dotted #e3c98a;flex-wrap:wrap;}
+  .field-row:last-child{border-bottom:none;}
+  .field-icon{width:18px;color:var(--gold);flex-shrink:0;text-align:center;}
+  .field-label{width:160px;flex-shrink:0;color:#333;}
+  .field-colon{width:8px;flex-shrink:0;}
+  .field-fill{flex:1;min-width:80px;}
+  .pan-boxes,.pin-boxes{display:flex;gap:2px;}
+  .checkbox-group{display:flex;gap:16px;flex-wrap:wrap;font-size:11.5px;}
+  .checkbox-group label{display:flex;align-items:center;gap:4px;cursor:pointer;}
+  .checkbox-group input[type="checkbox"],.docs-grid input[type="checkbox"]{width:13px;height:13px;accent-color:var(--navy);}
+  .checkbox-group input[type="text"]{width:60px;}
+  .decl-text{font-size:11px;line-height:1.7;}
+  .decl-text ol{margin:4px 0 0 14px;padding:0;}
+  .decl-flex{display:flex;justify-content:space-between;gap:12px;}
+  .decl-flex .left{flex:1;}
+  .photo-box{width:100px;height:110px;border:1.5px dashed var(--gold);display:flex;align-items:center;justify-content:center;text-align:center;font-size:10px;color:#8a6d1f;flex-shrink:0;position:relative;overflow:hidden;cursor:pointer;background:#fffef9;}
+  .photo-box img{width:100%;height:100%;object-fit:cover;}
+  .photo-box input[type="file"]{position:absolute;inset:0;opacity:0;cursor:pointer;}
+  .sign-line{display:flex;justify-content:space-between;align-items:center;margin-top:14px;font-size:11px;flex-wrap:wrap;gap:8px;}
+  .sign-line input[type="text"]{width:130px;display:inline-block;}
+  .sig-pad-wrap{text-align:center;}
+  .sig-pad{border:1px solid #999;background:#fff;width:180px;height:50px;cursor:crosshair;display:block;}
+  .sig-clear{font-size:9px;color:#0c1c3d;background:none;border:1px solid var(--gold);border-radius:3px;padding:1px 6px;margin-top:2px;cursor:pointer;}
+  .docs-grid{display:flex;justify-content:space-between;font-size:11.5px;gap:12px;}
+  .docs-grid .col{flex:1;}
+  .docs-grid label{display:flex;align-items:center;gap:4px;margin-bottom:6px;cursor:pointer;}
+  .docs-grid input[type="text"]{width:90px;}
+  .office-wrap{display:flex;margin:12px 16px 16px;border:1px solid var(--gold);flex-wrap:wrap;}
+  .office-col{flex:1;min-width:160px;padding:8px 10px;font-size:10.5px;}
+  .office-col+.office-col{border-left:1px solid var(--gold);}
+  .office-title{background:var(--navy);color:#fff;text-align:center;font-size:10px;font-weight:700;padding:3px;margin:-8px -10px 6px;}
+  .office-col div.row{margin-bottom:6px;display:flex;gap:4px;align-items:center;}
+  .office-col .lbl{width:110px;flex-shrink:0;}
+  .office-col input[type="text"],.office-col input[type="date"],.office-col input[type="number"]{flex:1;}
+  .office-col label{display:flex;align-items:center;gap:3px;margin:0;cursor:pointer;}
+  .office-col input[type="radio"]{width:10px;height:10px;}
+  .stamp{width:56px;height:56px;border:2px solid var(--navy);border-radius:50%;display:flex;align-items:center;justify-content:center;text-align:center;font-size:7px;color:var(--navy);font-weight:700;margin-top:6px;line-height:1.2;}
+  .sign-name{font-family:'Brush Script MT',cursive;font-size:16px;color:#1a2c56;margin:4px 0 0;}
+  small.faded{color:#666;}
+  .action-bar{display:flex;justify-content:flex-end;gap:8px;padding:10px 16px 16px;}
+  .action-bar button{font-family:inherit;font-size:12px;font-weight:600;padding:8px 18px;border-radius:4px;border:none;cursor:pointer;}
+  #submitBtn{background:var(--navy);color:#fff;}
+  #resetBtn{background:#eee;color:#333;border:1px solid #ccc;}
+  #statusMsg{padding:0 16px 12px;text-align:center;font-size:12px;color:#0c6b2d;font-weight:600;}
+  @media (max-width:768px){
+    body{padding:4px;}
+    .sheet{border-width:1px;}
+    .header{padding:14px 10px;text-align:center;}
+    .logo-badge{position:relative;left:auto;top:auto;margin:0 auto 6px;}
+    .crest{position:relative;right:auto;top:auto;margin:6px auto 0;}
+    .company-name{font-size:16px;letter-spacing:0.5px;}
+    .addr{font-size:10.5px;}
+    .contact-row{font-size:10px;gap:8px;flex-direction:column;align-items:center;}
+    .title-block h1{font-size:16px;}
+    .title-block h2{font-size:12px;}
+    .section-header{min-width:unset;width:calc(100% - 24px);margin:10px 12px 0;}
+    .box{margin:0 12px 10px;padding:8px;}
+    .field-row{flex-direction:column;align-items:flex-start;gap:4px;padding:6px 0;}
+    .field-label{width:100%;font-weight:700;color:var(--navy);}
+    .field-colon{display:none;}
+    .field-fill{width:100%;max-width:100% !important;}
+    .pan-boxes,.pin-boxes{flex-wrap:wrap;}
+    .decl-flex{flex-direction:column-reverse;align-items:center;gap:10px;}
+    .sign-line{flex-direction:column;align-items:flex-start;gap:12px;}
+    .sig-pad-wrap{width:100%;text-align:center;}
+    .sig-pad{width:100% !important;max-width:260px;margin:0 auto;}
+    .docs-grid{flex-direction:column;gap:6px;}
+    .office-wrap{flex-direction:column;margin:10px 12px 12px;}
+    .office-col+.office-col{border-left:none;border-top:1px solid var(--gold);}
+    .action-bar{justify-content:center;width:100%;}
+    .action-bar button{flex:1;text-align:center;}
+  }
+</style>
+</head>
+<body>
+<form class="sheet" id="debentureForm">
+  <div class="header">
+    <div class="logo-badge">NC</div>
+    <div class="crest"><span class="crown">&#9819;</span>INVEST TODAY<br>PROSPER<br>TOMORROW</div>
+    <div class="company-name">NIVENTRA CAPITAL ADVISORY INDIA PVT LTD</div>
+    <div class="addr">A-91, Block A, Gali No. 2, Sewak Park,<br>Near Dwarka Mor Metro Station, Gate No. 2,<br>Dwarka Mor, New Delhi &ndash; 110059, India</div>
+    <div class="contact-row">
+      <span>&#128222; 8920313143</span>
+      <span>&#9993; info@niventracapitaladvisory.com</span>
+      <span>&#127760; www.niventracapitaladvisory.com</span>
+    </div>
+  </div>
+  <div class="divider">&#10022; &mdash;&mdash;&mdash; &#10022; &mdash;&mdash;&mdash; &#10022;</div>
+  <div class="title-block">
+    <h1>DEBENTURE APPLICATION FORM</h1>
+    <h2>(FOR SECURED DEBENTURES)</h2>
+    <div class="notice">PLEASE READ THE INSTRUCTIONS CAREFULLY BEFORE FILLING THE FORM</div>
+  </div>
+  <div class="app-no-box">
+    <div>Application No. <input type="text" name="applicationNo"></div>
+    <div>Date : <span class="date-trio"><input type="text" maxlength="2" placeholder="DD">/<input type="text" maxlength="2" placeholder="MM">/<input type="text" maxlength="4" placeholder="YYYY" style="width:40px;"></span></div>
+  </div>
+  <div class="top-info">
+    <p>To,<br>The Board of Directors,<br><b>NIVENTRA CAPITAL ADVISORY INDIA PVT LTD</b></p>
+    <p>I/We hereby apply for the allotment of Secured, Rated, Listed/Unlisted, Redeemable, Non-Convertible Debentures of your Company on the terms and conditions as mentioned in the Information Memorandum / Debenture Trust Deed and other related documents.</p>
+  </div>
+  <div class="section-header">1. INVESTOR DETAILS</div>
+  <div class="box">
+    <div class="field-row"><div class="field-icon">&#128100;</div><div class="field-label">Full Name (Applicant)</div><div class="field-colon">:</div><div class="field-fill"><input type="text" name="fullName" value="${prefillName}" required></div></div>
+    <div class="field-row"><div class="field-icon">&#128100;</div><div class="field-label">Father's / Spouse Name</div><div class="field-colon">:</div><div class="field-fill"><input type="text" name="parentSpouseName"></div></div>
+    <div class="field-row"><div class="field-icon">&#128197;</div><div class="field-label">Date of Birth / Incorporation</div><div class="field-colon">:</div><div class="field-fill" style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;"><input type="date" name="dob" style="width:130px;"><span style="white-space:nowrap;">PAN No.&nbsp;:</span><div class="pan-boxes"><input class="digit-box" maxlength="1" name="pan1"><input class="digit-box" maxlength="1" name="pan2"><input class="digit-box" maxlength="1" name="pan3"><input class="digit-box" maxlength="1" name="pan4"><input class="digit-box" maxlength="1" name="pan5"><input class="digit-box" maxlength="1" name="pan6"><input class="digit-box" maxlength="1" name="pan7"><input class="digit-box" maxlength="1" name="pan8"><input class="digit-box" maxlength="1" name="pan9"><input class="digit-box" maxlength="1" name="pan10"></div></div></div>
+    <div class="field-row"><div class="field-icon">&#128205;</div><div class="field-label">Address</div><div class="field-colon">:</div><div class="field-fill"><input type="text" name="address"></div></div>
+    <div class="field-row"><div class="field-icon">&#127970;</div><div class="field-label">City</div><div class="field-colon">:</div><div class="field-fill" style="max-width:140px;"><input type="text" name="city"></div><div style="width:40px;text-align:center;">State</div><div style="width:8px;">:</div><div class="field-fill" style="max-width:120px;"><input type="text" name="state"></div><div style="width:60px;text-align:right;">PIN</div><div style="width:8px;">:</div><div class="pin-boxes"><input class="digit-box" maxlength="1" name="pin1"><input class="digit-box" maxlength="1" name="pin2"><input class="digit-box" maxlength="1" name="pin3"><input class="digit-box" maxlength="1" name="pin4"><input class="digit-box" maxlength="1" name="pin5"><input class="digit-box" maxlength="1" name="pin6"></div></div>
+    <div class="field-row"><div class="field-icon">&#128241;</div><div class="field-label">Mobile No.</div><div class="field-colon">:</div><div class="field-fill" style="max-width:180px;"><input type="tel" name="mobile" maxlength="10" value="${prefillPhone}"></div><div style="width:60px;text-align:right;">Email</div><div style="width:8px;">:</div><div class="field-fill"><input type="email" name="email" value="${prefillEmail}"></div></div>
+    <div class="field-row"><div class="field-icon">&#128188;</div><div class="field-label">Occupation / Nature of Business</div><div class="field-colon">:</div><div class="field-fill"><input type="text" name="occupation"></div></div>
+  </div>
+  <div class="section-header">2. INVESTMENT DETAILS</div>
+  <div class="box">
+    <div class="field-row"><div class="field-label" style="width:150px;">Type of Debenture</div><div class="field-colon">:</div><div class="checkbox-group"><label><input type="checkbox" name="typeSecured" checked>Secured</label><label><input type="checkbox" name="typeNonConvertible">Non-Convertible</label><label><input type="checkbox" name="typeRedeemable">Redeemable</label></div></div>
+    <div class="field-row"><div class="field-label" style="width:150px;">Face Value (Per Debenture)</div><div class="field-colon">:</div><div class="field-fill">&#8377; <input type="number" name="faceValue" style="width:160px;display:inline-block;" min="0" value="100000"></div></div>
+    <div class="field-row"><div class="field-label" style="width:150px;">No. of Debentures Applied</div><div class="field-colon">:</div><div class="field-fill" style="display:flex;gap:12px;align-items:center;"><input type="number" name="numDebenturesFigures" style="max-width:100px;" min="0" value="1"><small class="faded">(Figures)</small><input type="text" name="numDebenturesWords"><small class="faded">(Words)</small></div></div>
+    <div class="field-row"><div class="field-label" style="width:150px;">Total Application Amount</div><div class="field-colon">:</div><div class="field-fill" style="display:flex;align-items:center;gap:8px;">&#8377; <input type="number" name="totalAmount" id="totalAmount" style="max-width:200px;" min="0"><small class="faded">(Face Value x No.)</small></div></div>
+    <div class="field-row"><div class="field-label" style="width:150px;">Mode of Payment</div><div class="field-colon">:</div><div class="checkbox-group"><label><input type="radio" name="paymentMode" value="NEFT/RTGS" checked>NEFT / RTGS</label><label><input type="radio" name="paymentMode" value="Cheque">Cheque</label><label><input type="radio" name="paymentMode" value="DD">DD</label><label><input type="radio" name="paymentMode" value="Other">Other <input type="text" name="paymentModeOther"></label></div></div>
+    <div class="field-row"><div class="field-label" style="width:150px;">Bank Name</div><div class="field-colon">:</div><div class="field-fill" style="max-width:180px;"><input type="text" name="bankName"></div><div style="width:130px;text-align:right;">Transaction / UTR No.</div><div style="width:8px;">:</div><div class="field-fill"><input type="text" name="utrNo"></div></div>
+    <div class="field-row"><div class="field-label" style="width:150px;">Cheque / DD No.</div><div class="field-colon">:</div><div class="field-fill" style="max-width:140px;"><input type="text" name="chequeDdNo"></div><div style="width:40px;text-align:right;">Date</div><div style="width:8px;">:</div><div class="field-fill" style="max-width:120px;"><input type="date" name="chequeDate"></div><div style="width:90px;text-align:right;">Drawn On</div><div style="width:8px;">:</div><div class="field-fill"><input type="text" name="drawnOnBank"></div></div>
+  </div>
+  <div class="section-header">3. DECLARATION</div>
+  <div class="box">
+    <div class="decl-flex">
+      <div class="left decl-text">I/We hereby declare and confirm that:<ol><li>I/We have read and understood the terms and conditions of the Information Memorandum, Debenture Trust Deed and related documents.</li><li>The information provided by me/us in this application is true, correct and complete.</li><li>I/We agree to be bound by the terms and conditions governing the issue of Secured Debentures.</li><li>I/We authorize the Company to verify any or all of the above information, as it may deem fit.</li></ol></div>
+      <label class="photo-box" id="photoBox"><span id="photoPlaceholder">Affix<br>Recent Passport<br>Size Photograph</span><input type="file" accept="image/*" id="photoInput"></label>
+    </div>
+    <div class="sign-line">
+      <div>Place : <input type="text" name="place"></div>
+      <div class="sig-pad-wrap"><canvas class="sig-pad" id="sigPad" width="180" height="50"></canvas><div style="font-weight:600;margin-top:2px;font-size:11px;">Signature of Applicant</div><button type="button" class="sig-clear" id="sigClear">Clear signature</button></div>
+    </div>
+    <div style="font-size:11px;margin-top:8px;">Date : <span class="date-trio"><input type="text" maxlength="2" placeholder="DD" name="declDay">/<input type="text" maxlength="2" placeholder="MM" name="declMonth">/<input type="text" maxlength="4" placeholder="YYYY" style="width:40px;" name="declYear"></span></div>
+  </div>
+  <div class="section-header">4. DOCUMENTS TO BE ENCLOSED (SELF ATTESTED)</div>
+  <div class="box">
+    <div class="docs-grid">
+      <div class="col"><label><input type="checkbox" name="docPan">1. PAN Card Copy</label><label><input type="checkbox" name="docAddress">2. Address Proof (Aadhaar / Voter ID / Passport)</label><label><input type="checkbox" name="docIdentity">3. Identity Proof (Aadhaar / Passport)</label></div>
+      <div class="col"><label><input type="checkbox" name="docPhoto">4. Photograph</label><label><input type="checkbox" name="docCheque">5. Cancelled Cheque / Bank Proof</label><label><input type="checkbox" name="docOther">6. Other <input type="text" name="docOtherText"></label></div>
+    </div>
+  </div>
+  <div class="office-wrap">
+    <div class="office-col"><div class="office-title">FOR OFFICE USE ONLY</div><div class="row"><span class="lbl">Application Received On</span>: <input type="date" name="officeReceivedOn"></div><div class="row"><span class="lbl">Received By</span>: <input type="text" name="officeReceivedBy"></div><div class="row"><span class="lbl">Amount Received</span>: &#8377; <input type="number" name="officeAmountReceived"></div><div class="row"><span class="lbl">Payment Mode</span>: <input type="text" name="officePaymentMode"></div><div class="row"><span class="lbl">Remark</span>: <input type="text" name="officeRemark"></div><div class="row"><span class="lbl">Status</span>: <label><input type="radio" name="officeStatus" value="Accepted">Accepted</label>&nbsp;<label><input type="radio" name="officeStatus" value="Rejected">Rejected</label></div><div class="row"><span class="lbl">Allotted Deb. No.</span>: <input type="text" name="officeAllottedNo"></div></div>
+    <div class="office-col"><div class="office-title">VERIFIED BY</div><div class="row"><span class="lbl">Name</span>: <input type="text" name="verifiedName"></div><div class="row"><span class="lbl">Designation</span>: <input type="text" name="verifiedDesignation"></div><div class="row"><span class="lbl">Sign &amp; Date</span>: <input type="text" name="verifiedSignDate"></div></div>
+    <div class="office-col"><div class="office-title">APPROVED BY</div><div class="row"><span class="lbl">Name</span>: <input type="text" name="approvedName"></div><div class="row"><span class="lbl">Designation</span>: <input type="text" name="approvedDesignation"></div><div class="row"><span class="lbl">Sign &amp; Date</span>: <input type="text" name="approvedSignDate"></div><div style="margin-top:4px;font-weight:700;font-size:10px;">For NIVENTRA CAPITAL ADVISORY INDIA PVT LTD</div><div class="sign-name">Ram Mohan Sharma</div><div style="font-size:9.5px;">Ram Mohan Sharma<br>Authorized Signatory</div><div style="display:flex;justify-content:flex-end;"><div class="stamp">NEW DELHI<br>110059<br>INDIA</div></div></div>
+  </div>
+  <div class="action-bar">
+    <button type="button" id="resetBtn">Reset Form</button>
+    <button type="button" id="submitBtn">Submit Application</button>
+  </div>
+  <div id="statusMsg"></div>
+</form>
+<script>
+  // Signature pad
+  const canvas = document.getElementById('sigPad');
+  const ctx = canvas.getContext('2d');
+  ctx.strokeStyle = '#0c1c3d'; ctx.lineWidth = 1.6; ctx.lineCap = 'round';
+  let drawing = false;
+  function pos(e){const rect=canvas.getBoundingClientRect();const clientX=e.touches?e.touches[0].clientX:e.clientX;const clientY=e.touches?e.touches[0].clientY:e.clientY;return{x:clientX-rect.left,y:clientY-rect.top};}
+  function start(e){drawing=true;const p=pos(e);ctx.beginPath();ctx.moveTo(p.x,p.y);e.preventDefault();}
+  function move(e){if(!drawing)return;const p=pos(e);ctx.lineTo(p.x,p.y);ctx.stroke();e.preventDefault();}
+  function end(){drawing=false;}
+  canvas.addEventListener('mousedown',start);canvas.addEventListener('mousemove',move);window.addEventListener('mouseup',end);
+  canvas.addEventListener('touchstart',start,{passive:false});canvas.addEventListener('touchmove',move,{passive:false});canvas.addEventListener('touchend',end);
+  document.getElementById('sigClear').addEventListener('click',()=>ctx.clearRect(0,0,canvas.width,canvas.height));
+
+  // Photo preview
+  document.getElementById('photoInput').addEventListener('change',function(e){const file=e.target.files[0];if(!file)return;const reader=new FileReader();reader.onload=function(ev){const box=document.getElementById('photoBox');document.getElementById('photoPlaceholder').style.display='none';let img=box.querySelector('img');if(!img){img=document.createElement('img');box.insertBefore(img,box.firstChild);}img.src=ev.target.result;};reader.readAsDataURL(file);});
+
+  // PAN box auto-advance
+  document.querySelectorAll('.pan-boxes .digit-box').forEach((box,idx,arr)=>{box.addEventListener('input',()=>{box.value=box.value.toUpperCase();if(box.value&&idx<arr.length-1)arr[idx+1].focus();});});
+  document.querySelectorAll('.pin-boxes .digit-box').forEach((box,idx,arr)=>{box.addEventListener('input',()=>{box.value=box.value.replace(/[^0-9]/g,'');if(box.value&&idx<arr.length-1)arr[idx+1].focus();});});
+
+  // Auto-calc total
+  function calcTotal(){const fv=parseFloat(document.querySelector('[name=faceValue]').value)||0;const nd=parseFloat(document.querySelector('[name=numDebenturesFigures]').value)||0;document.getElementById('totalAmount').value=fv*nd||'';}
+  document.querySelector('[name=faceValue]').addEventListener('input',calcTotal);
+  document.querySelector('[name=numDebenturesFigures]').addEventListener('input',calcTotal);
+
+  document.getElementById('resetBtn').addEventListener('click',()=>{document.getElementById('debentureForm').reset();ctx.clearRect(0,0,canvas.width,canvas.height);document.getElementById('photoPlaceholder').style.display='';const img=document.getElementById('photoBox').querySelector('img');if(img)img.remove();document.getElementById('statusMsg').textContent='';});
+
+  document.getElementById('submitBtn').addEventListener('click',()=>{
+    const form=document.getElementById('debentureForm');
+    const data={};
+    new FormData(form).forEach((v,k)=>data[k]=v);
+    // Also grab checkboxes
+    form.querySelectorAll('input[type=checkbox]').forEach(cb=>{data[cb.name]=cb.checked;});
+    if (window.ReactNativeWebView) {
+      window.ReactNativeWebView.postMessage(JSON.stringify({type:'SUBMIT',data:data}));
+    } else {
+      window.parent.postMessage(JSON.stringify({type:'SUBMIT',data:data}), '*');
+    }
+  });
+<\/script>
+</body>
+</html>`;
 
   if (submittedAppNo) {
     return (
-      <ScrollView style={{ flex: 1 }} contentContainerStyle={{ padding: spacing.m }}>
-        <View style={[styles.settingsCard, { backgroundColor: '#FFFFFF', alignItems: 'center', padding: 24, marginVertical: 20 }]}>
-          <ShieldCheck size={48} color="#00a65a" style={{ marginBottom: 12 }} />
-          <Text style={{ fontSize: 20, fontWeight: 'bold', color: '#0F172A', textAlign: 'center' }}>
-            Application Submitted Successfully!
-          </Text>
-          <Text style={{ fontSize: 13, color: '#64748B', textAlign: 'center', marginTop: 6, marginBottom: 16 }}>
+      <ScrollView style={{ flex: 1 }} contentContainerStyle={{ flexGrow: 1, padding: spacing.m, paddingBottom: 60 }} nestedScrollEnabled={true} keyboardShouldPersistTaps="handled">
+        <View style={[styles.settingsCard, { backgroundColor: colors.surface, alignItems: 'center', padding: 24, marginVertical: 20 }]}>
+          <ShieldCheck size={48} color={colors.success} style={{ marginBottom: 12 }} />
+          <Text style={{ fontSize: 20, fontWeight: 'bold', color: colors.text, textAlign: 'center' }}>Application Submitted!</Text>
+          <Text style={{ fontSize: 13, color: colors.textMuted, textAlign: 'center', marginTop: 6, marginBottom: 16 }}>
             Your Secured Debenture Application has been registered under Application No:
           </Text>
-          <View style={{ backgroundColor: '#F1F5F9', paddingHorizontal: 16, paddingVertical: 10, borderRadius: 8, borderWidth: 1, borderColor: '#CBD5E1', marginBottom: 20 }}>
-            <Text style={{ fontSize: 18, fontWeight: '900', color: '#134086', letterSpacing: 1 }}>{submittedAppNo}</Text>
+          <View style={{ backgroundColor: colors.surfaceLight, paddingHorizontal: 16, paddingVertical: 10, borderRadius: 8, borderWidth: 1, borderColor: colors.border, marginBottom: 20 }}>
+            <Text style={{ fontSize: 18, fontWeight: '900', color: colors.accent, letterSpacing: 1 }}>{submittedAppNo}</Text>
           </View>
+          {submitting && <ActivityIndicator color={colors.accent} style={{ marginBottom: 12 }} />}
           <TouchableOpacity
-            style={[styles.saveBtn, { backgroundColor: '#134086', paddingHorizontal: 24 }]}
+            style={[styles.saveBtn, { backgroundColor: colors.accent, paddingHorizontal: 24 }]}
             onPress={() => setSubmittedAppNo(null)}
           >
             <Text style={styles.saveBtnText}>Submit Another Application</Text>
@@ -6323,149 +8273,31 @@ const DebentureFormView = () => {
   }
 
   return (
-    <ScrollView style={{ flex: 1 }} contentContainerStyle={{ padding: spacing.m }}>
-      <View style={styles.titleRow}>
-        <View>
-          <Text style={styles.empTitle}>DEBENTURE APPLICATION FORM</Text>
-          <Text style={styles.empSubtitle}>FOR SECURED DEBENTURES ALLOTMENT</Text>
+    <View style={{ flex: 1 }}>
+      {submitting && (
+        <View style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, zIndex: 99, backgroundColor: 'rgba(0,0,0,0.35)', alignItems: 'center', justifyContent: 'center' }}>
+          <ActivityIndicator size="large" color="#e8b84b" />
+          <Text style={{ color: '#fff', marginTop: 12, fontWeight: '700' }}>Submitting Application...</Text>
         </View>
-      </View>
-
-      <View style={[styles.settingsCard, { backgroundColor: '#FFFFFF', marginBottom: 16 }]}>
-        <Text style={[styles.settingsCardTitle, { color: '#0F172A', fontSize: 15 }]}>👤 1. Applicant Personal Details</Text>
-
-        <Text style={styles.formLabel}>Full Applicant Name *</Text>
-        <TextInput style={styles.modalTextInput} placeholder="John Doe" value={fullName} onChangeText={setFullName} />
-
-        <Text style={styles.formLabel}>Father / Spouse Name</Text>
-        <TextInput style={styles.modalTextInput} placeholder="Father or Spouse Name" value={fatherSpouseName} onChangeText={setFatherSpouseName} />
-
-        <View style={{ flexDirection: 'row', gap: 10 }}>
-          <View style={{ flex: 1 }}>
-            <Text style={styles.formLabel}>Date of Birth (DOB)</Text>
-            <TextInput style={styles.modalTextInput} placeholder="DD/MM/YYYY" value={dob} onChangeText={setDob} />
-          </View>
-          <View style={{ flex: 1 }}>
-            <Text style={styles.formLabel}>PAN Number</Text>
-            <TextInput style={styles.modalTextInput} placeholder="ABCDE1234F" value={panNumber} onChangeText={setPanNumber} autoCapitalize="characters" />
-          </View>
-        </View>
-
-        <View style={{ flexDirection: 'row', gap: 10 }}>
-          <View style={{ flex: 1 }}>
-            <Text style={styles.formLabel}>Mobile Number *</Text>
-            <TextInput style={styles.modalTextInput} placeholder="+91 9876543210" value={phone} onChangeText={setPhone} keyboardType="phone-pad" />
-          </View>
-          <View style={{ flex: 1 }}>
-            <Text style={styles.formLabel}>Email Address *</Text>
-            <TextInput style={styles.modalTextInput} placeholder="applicant@gmail.com" value={email} onChangeText={setEmail} keyboardType="email-address" autoCapitalize="none" />
-          </View>
-        </View>
-
-        <Text style={styles.formLabel}>Residential Address</Text>
-        <TextInput style={styles.modalTextInput} placeholder="Street / Area Address" value={address} onChangeText={setAddress} />
-
-        <View style={{ flexDirection: 'row', gap: 8 }}>
-          <View style={{ flex: 1 }}>
-            <Text style={styles.formLabel}>City</Text>
-            <TextInput style={styles.modalTextInput} placeholder="City" value={city} onChangeText={setCity} />
-          </View>
-          <View style={{ flex: 1 }}>
-            <Text style={styles.formLabel}>State</Text>
-            <TextInput style={styles.modalTextInput} placeholder="State" value={state} onChangeText={setState} />
-          </View>
-          <View style={{ flex: 1 }}>
-            <Text style={styles.formLabel}>Pin Code</Text>
-            <TextInput style={styles.modalTextInput} placeholder="110001" value={pinCode} onChangeText={setPinCode} keyboardType="numeric" />
-          </View>
-        </View>
-
-        <Text style={styles.formLabel}>Occupation</Text>
-        <TextInput style={styles.modalTextInput} placeholder="Business / Salaried / Professional" value={occupation} onChangeText={setOccupation} />
-      </View>
-
-      <View style={[styles.settingsCard, { backgroundColor: '#FFFFFF', marginBottom: 16 }]}>
-        <Text style={[styles.settingsCardTitle, { color: '#0F172A', fontSize: 15 }]}>📊 2. Debenture Investment Details</Text>
-
-        <Text style={styles.formLabel}>Type of Debenture</Text>
-        <View style={{ flexDirection: 'row', gap: 6, marginBottom: 10 }}>
-          {['Secured', 'Non-Convertible', 'Redeemable'].map((t) => (
-            <TouchableOpacity
-              key={t}
-              style={[styles.typeSelectBtn, typeOfDebenture === t && styles.typeSelectBtnActive, { flex: 1 }]}
-              onPress={() => setTypeOfDebenture(t)}
-            >
-              <Text style={[styles.typeSelectText, typeOfDebenture === t && styles.typeSelectTextActive, { fontSize: 11 }]}>{t}</Text>
-            </TouchableOpacity>
-          ))}
-        </View>
-
-        <View style={{ flexDirection: 'row', gap: 10 }}>
-          <View style={{ flex: 1 }}>
-            <Text style={styles.formLabel}>Face Value (₹)</Text>
-            <TextInput style={styles.modalTextInput} value={faceValue} onChangeText={setFaceValue} keyboardType="numeric" />
-          </View>
-          <View style={{ flex: 1 }}>
-            <Text style={styles.formLabel}>No. of Debentures</Text>
-            <TextInput style={styles.modalTextInput} value={noOfDebentures} onChangeText={setNoOfDebentures} keyboardType="numeric" />
-          </View>
-        </View>
-
-        <View style={{ backgroundColor: '#F8FAFC', padding: 12, borderRadius: 8, borderWidth: 1, borderColor: '#E2E8F0', marginTop: 10 }}>
-          <Text style={{ fontSize: 11, fontWeight: 'bold', color: '#64748B' }}>TOTAL INVESTMENT AMOUNT (RS)</Text>
-          <Text style={{ fontSize: 22, fontWeight: '900', color: '#00a65a', marginTop: 2 }}>
-            ₹{calculatedTotal.toLocaleString()}
-          </Text>
-        </View>
-      </View>
-
-      <View style={[styles.settingsCard, { backgroundColor: '#FFFFFF', marginBottom: 16 }]}>
-        <Text style={[styles.settingsCardTitle, { color: '#0F172A', fontSize: 15 }]}>💳 3. Payment Details</Text>
-
-        <Text style={styles.formLabel}>Mode of Payment</Text>
-        <View style={{ flexDirection: 'row', gap: 6, marginBottom: 10 }}>
-          {['NEFT', 'RTGS', 'UPI', 'Cheque'].map((m) => (
-            <TouchableOpacity
-              key={m}
-              style={[styles.typeSelectBtn, modeOfPayment === m && styles.typeSelectBtnActive, { flex: 1 }]}
-              onPress={() => setModeOfPayment(m)}
-            >
-              <Text style={[styles.typeSelectText, modeOfPayment === m && styles.typeSelectTextActive, { fontSize: 11 }]}>{m}</Text>
-            </TouchableOpacity>
-          ))}
-        </View>
-
-        <Text style={styles.formLabel}>Transaction UTR / Reference No *</Text>
-        <TextInput style={styles.modalTextInput} placeholder="Enter UTR / Ref Number" value={transactionUtrNo} onChangeText={setTransactionUtrNo} />
-
-        <Text style={styles.formLabel}>Drawn on Bank Name *</Text>
-        <TextInput style={styles.modalTextInput} placeholder="e.g. HDFC Bank, ICICI Bank" value={drawnOnBank} onChangeText={setDrawnOnBank} />
-      </View>
-
-      <View style={[styles.settingsCard, { backgroundColor: '#FFFFFF', marginBottom: 24 }]}>
-        <TouchableOpacity
-          style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 16 }}
-          onPress={() => setAcceptedTerms(!acceptedTerms)}
-        >
-          <View style={[styles.customCheckbox, acceptedTerms && styles.customCheckboxChecked, { marginRight: 10 }]}>
-            {acceptedTerms && <Text style={{ color: '#FFF', fontWeight: 'bold' }}>✓</Text>}
-          </View>
-          <Text style={{ fontSize: 12, color: '#334155', flex: 1 }}>
-            I/We have read and understood the terms and conditions of the Secured Debentures Allotment and confirm all entered details are accurate.
-          </Text>
-        </TouchableOpacity>
-
-        <TouchableOpacity
-          style={[styles.saveBtn, { backgroundColor: '#134086', height: 48, justifyContent: 'center' }, submitting && { opacity: 0.7 }]}
-          onPress={handleSubmit}
-          disabled={submitting}
-        >
-          <Text style={[styles.saveBtnText, { fontSize: 15, fontWeight: 'bold' }]}>
-            {submitting ? 'Submitting Application...' : 'Submit Debenture Application'}
-          </Text>
-        </TouchableOpacity>
-      </View>
-    </ScrollView>
+      )}
+      {Platform.OS === 'web' ? (
+        <iframe
+          srcDoc={debentureHtml}
+          style={{ width: '100%', height: '100%', border: 'none', minHeight: 600 }}
+        />
+      ) : (
+        <WebView
+          source={{ html: debentureHtml }}
+          style={{ flex: 1 }}
+          onMessage={handleMessage}
+          javaScriptEnabled
+          domStorageEnabled
+          scalesPageToFit={true}
+          allowFileAccess
+          mixedContentMode="always"
+        />
+      )}
+    </View>
   );
 };
 
@@ -6474,6 +8306,7 @@ const InvestorPortalView = () => {
   const [investor, setInvestor] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
+  const [bondInvestorModal, setBondInvestorModal] = useState<any>(null);
   const [investmentInput, setInvestmentInput] = useState('');
   const [signatureText, setSignatureText] = useState('');
   const [acceptedBond, setAcceptedBond] = useState(false);
@@ -6652,66 +8485,92 @@ const InvestorPortalView = () => {
   const estimatedReturn = Math.round((investedAmt * monthlyRate) / 100);
 
   return (
-    <ScrollView style={{ flex: 1 }} contentContainerStyle={{ padding: spacing.m }}>
+    <ScrollView style={{ flex: 1 }} contentContainerStyle={{ flexGrow: 1, padding: spacing.m, paddingBottom: 60 }} nestedScrollEnabled={true} keyboardShouldPersistTaps="handled">
       {/* Profile Header Card */}
-      <View style={[styles.netSalaryCard, { backgroundColor: '#FFFFFF', borderColor: '#E2E8F0', padding: 18, marginBottom: 16 }]}>
+      <View style={[styles.netSalaryCard, { backgroundColor: colors.surface, borderColor: colors.border, padding: 18, marginBottom: 16 }]}>
         <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start' }}>
           <View style={{ flex: 1, marginRight: 8 }}>
             <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-              <Text style={{ fontSize: 20, fontWeight: 'bold', color: '#0F172A' }}>
+              <Text style={{ fontSize: 20, fontWeight: 'bold', color: colors.text }}>
                 {investor.fullName || investor.email}
               </Text>
-              <View style={{ backgroundColor: '#DCFCE7', paddingHorizontal: 8, paddingVertical: 2, borderRadius: 12, marginLeft: 8 }}>
-                <Text style={{ color: '#16A34A', fontSize: 11, fontWeight: 'bold' }}>
+              <View style={{ backgroundColor: colors.surfaceLight, paddingHorizontal: 8, paddingVertical: 2, borderRadius: 12, marginLeft: 8 }}>
+                <Text style={{ color: colors.success, fontSize: 11, fontWeight: 'bold' }}>
                   {investor.investorCode || 'INV-0005'}
                 </Text>
               </View>
             </View>
-            <Text style={{ fontSize: 12, color: '#64748B', marginTop: 4 }}>
+            <Text style={{ fontSize: 12, color: colors.textMuted, marginTop: 4 }}>
               Email: {investor.email} {investor.phone ? `• Phone: ${investor.phone}` : ''}
             </Text>
           </View>
 
           <View style={{ alignItems: 'flex-end' }}>
-            <Text style={{ fontSize: 10, fontWeight: 'bold', color: '#94A3B8', marginBottom: 4 }}>VERIFICATION STATUS</Text>
+            <Text style={{ fontSize: 10, fontWeight: 'bold', color: colors.textMuted, marginBottom: 4 }}>VERIFICATION STATUS</Text>
             <View style={{
-              backgroundColor: investor.status === 'Verified' ? '#00a65a' : investor.status === 'Rejected' ? '#EF4444' : '#F97316',
+              backgroundColor: investor.status === 'Verified' ? colors.success : investor.status === 'Rejected' ? colors.danger : colors.warning,
               paddingHorizontal: 12,
               paddingVertical: 5,
               borderRadius: 16,
             }}>
-              <Text style={{ color: '#FFFFFF', fontSize: 11, fontWeight: 'bold' }}>
+              <Text style={{ color: colors.background, fontSize: 11, fontWeight: 'bold' }}>
                 ✓ {investor.status || 'Pending'}
               </Text>
             </View>
           </View>
         </View>
+
+        {investor.status === 'Verified' && (
+          <TouchableOpacity
+            style={{
+              backgroundColor: '#f59e0b',
+              paddingHorizontal: 18,
+              paddingVertical: 12,
+              borderRadius: 8,
+              marginTop: 14,
+              flexDirection: 'row',
+              alignItems: 'center',
+              justifyContent: 'center',
+              gap: 8,
+              shadowColor: '#f59e0b',
+              shadowOpacity: 0.3,
+              shadowRadius: 6,
+              elevation: 4,
+            }}
+            onPress={() => setBondInvestorModal(investor)}
+          >
+            <ShieldCheck size={18} color="#0c1c3d" />
+            <Text style={{ color: '#0c1c3d', fontWeight: '900', fontSize: 15, letterSpacing: 0.5 }}>
+              🎗️ Download Payment Bond (PDF)
+            </Text>
+          </TouchableOpacity>
+        )}
       </View>
 
       {/* 3 Stat Cards Grid */}
       <View style={{ flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'space-between', marginBottom: 16 }}>
         {/* Stat Card 1 */}
-        <View style={{ width: '31%', backgroundColor: '#FFFFFF', borderRadius: 12, padding: 14, borderWidth: 1, borderColor: '#E2E8F0' }}>
-          <Text style={{ fontSize: 10, fontWeight: 'bold', color: '#64748B', marginBottom: 6 }}>INVESTMENT COST (RS)</Text>
-          <Text style={{ fontSize: 20, fontWeight: '900', color: '#0F172A' }}>₹{investedAmt.toLocaleString()}</Text>
+        <View style={{ width: '31%', backgroundColor: colors.surface, borderRadius: 12, padding: 14, borderWidth: 1, borderColor: colors.border }}>
+          <Text style={{ fontSize: 10, fontWeight: 'bold', color: colors.textMuted, marginBottom: 6 }}>INVESTMENT COST (RS)</Text>
+          <Text style={{ fontSize: 20, fontWeight: '900', color: colors.text }}>₹{investedAmt.toLocaleString()}</Text>
         </View>
 
         {/* Stat Card 2 */}
-        <View style={{ width: '31%', backgroundColor: '#FFFFFF', borderRadius: 12, padding: 14, borderWidth: 1, borderColor: '#E2E8F0' }}>
-          <Text style={{ fontSize: 10, fontWeight: 'bold', color: '#64748B', marginBottom: 6 }}>MONTHLY GROWTH RATE</Text>
-          <Text style={{ fontSize: 20, fontWeight: '900', color: '#00a65a' }}>~{monthlyRate}%</Text>
+        <View style={{ width: '31%', backgroundColor: colors.surface, borderRadius: 12, padding: 14, borderWidth: 1, borderColor: colors.border }}>
+          <Text style={{ fontSize: 10, fontWeight: 'bold', color: colors.textMuted, marginBottom: 6 }}>MONTHLY GROWTH RATE</Text>
+          <Text style={{ fontSize: 20, fontWeight: '900', color: colors.success }}>~{monthlyRate}%</Text>
         </View>
 
         {/* Stat Card 3 */}
-        <View style={{ width: '34%', backgroundColor: '#FFFFFF', borderRadius: 12, padding: 14, borderWidth: 1, borderColor: '#E2E8F0' }}>
-          <Text style={{ fontSize: 10, fontWeight: 'bold', color: '#64748B', marginBottom: 6 }}>EST. MONTHLY RETURN PAYOUT</Text>
-          <Text style={{ fontSize: 18, fontWeight: '900', color: '#00a65a' }}>₹{estimatedReturn.toLocaleString()} / mo</Text>
+        <View style={{ width: '34%', backgroundColor: colors.surface, borderRadius: 12, padding: 14, borderWidth: 1, borderColor: colors.border }}>
+          <Text style={{ fontSize: 10, fontWeight: 'bold', color: colors.textMuted, marginBottom: 6 }}>EST. MONTHLY RETURN PAYOUT</Text>
+          <Text style={{ fontSize: 18, fontWeight: '900', color: colors.success }}>₹{estimatedReturn.toLocaleString()} / mo</Text>
         </View>
       </View>
 
       {/* Section 1: Investment Amount (Disabled mode) */}
-      <View style={[styles.settingsCard, { backgroundColor: '#FFFFFF', marginBottom: 16 }]}>
-        <Text style={[styles.settingsCardTitle, { color: '#0F172A', fontSize: 16 }]}>$ 1. Investment Amount (RS)</Text>
+      <View style={[styles.settingsCard, { backgroundColor: colors.surface, marginBottom: 16 }]}>
+        <Text style={[styles.settingsCardTitle, { color: colors.text, fontSize: 16 }]}>$ 1. Investment Amount (RS)</Text>
         <Text style={{ fontSize: 12, color: colors.textMuted, marginVertical: 6 }}>
           Enter the total amount in RS you intend to invest.
         </Text>
@@ -6719,23 +8578,23 @@ const InvestorPortalView = () => {
         <Text style={styles.formLabel}>Invest RS Amount (₹)</Text>
         <View style={{ flexDirection: 'row', gap: 10 }}>
           <TextInput
-            style={[styles.modalTextInput, { flex: 1, backgroundColor: '#F1F5F9', color: '#64748B' }]}
+            style={[styles.modalTextInput, { flex: 1, backgroundColor: colors.surfaceLight, color: colors.textMuted }]}
             placeholder="0"
             value={investmentInput}
             editable={false}
           />
           <TouchableOpacity
-            style={[styles.saveBtn, { backgroundColor: '#94A3B8', paddingHorizontal: 16, justifyContent: 'center' }]}
+            style={[styles.saveBtn, { backgroundColor: colors.textMuted, paddingHorizontal: 16, justifyContent: 'center' }]}
             disabled={true}
           >
-            <Text style={{ color: '#fff', fontWeight: 'bold', fontSize: 13 }}>Update</Text>
+            <Text style={{ color: colors.background, fontWeight: 'bold', fontSize: 13 }}>Update</Text>
           </TouchableOpacity>
         </View>
       </View>
 
       {/* Section 2: KYC PDF Document Uploads */}
-      <View style={[styles.settingsCard, { backgroundColor: '#FFFFFF', marginBottom: 16 }]}>
-        <Text style={[styles.settingsCardTitle, { color: '#0F172A', fontSize: 16 }]}>📄 2. KYC PDF Document Uploads</Text>
+      <View style={[styles.settingsCard, { backgroundColor: colors.surface, marginBottom: 16 }]}>
+        <Text style={[styles.settingsCardTitle, { color: colors.text, fontSize: 16 }]}>📄 2. KYC PDF Document Uploads</Text>
         <Text style={{ fontSize: 12, color: colors.textMuted, marginVertical: 6 }}>
           Only PDF documents up to 15MB are accepted. Mandatory: Aadhar, PAN, 10th & 12th Marksheets, and Bank Passbook.
         </Text>
@@ -6753,15 +8612,15 @@ const InvestorPortalView = () => {
             const fileUri = attachedFiles[item.key];
 
             return (
-              <View key={item.key} style={{ borderWidth: 1, borderColor: '#E2E8F0', borderRadius: 12, padding: 14, backgroundColor: '#FAFAFA' }}>
+              <View key={item.key} style={{ borderWidth: 1, borderColor: colors.border, borderRadius: 12, padding: 14, backgroundColor: colors.surfaceLight }}>
                 <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
-                  <Text style={{ fontSize: 14, fontWeight: 'bold', color: '#0F172A' }}>{item.label}</Text>
+                  <Text style={{ fontSize: 14, fontWeight: 'bold', color: colors.text }}>{item.label}</Text>
                   <View style={{ flexDirection: 'row', gap: 6 }}>
-                    <View style={{ backgroundColor: item.req ? '#881337' : '#fff', paddingHorizontal: 6, paddingVertical: 2, borderRadius: 4 }}>
-                      <Text style={{ color: '#FFF', fontSize: 10, fontWeight: 'bold' }}>{item.req ? 'REQUIRED' : 'OPTIONAL'}</Text>
+                    <View style={{ backgroundColor: item.req ? colors.danger : colors.surface, paddingHorizontal: 6, paddingVertical: 2, borderRadius: 4 }}>
+                      <Text style={{ color: item.req ? colors.background : colors.textMuted, fontSize: 10, fontWeight: 'bold' }}>{item.req ? 'REQUIRED' : 'OPTIONAL'}</Text>
                     </View>
-                    <View style={{ backgroundColor: st === 'Approved' ? '#00a65a' : st === 'Rejected' ? '#EF4444' : '#F97316', paddingHorizontal: 8, paddingVertical: 2, borderRadius: 10 }}>
-                      <Text style={{ color: '#FFF', fontSize: 10, fontWeight: 'bold' }}>{st}</Text>
+                    <View style={{ backgroundColor: st === 'Approved' ? colors.success : st === 'Rejected' ? colors.danger : colors.warning, paddingHorizontal: 8, paddingVertical: 2, borderRadius: 10 }}>
+                      <Text style={{ color: colors.background, fontSize: 10, fontWeight: 'bold' }}>{st}</Text>
                     </View>
                   </View>
                 </View>
@@ -6777,25 +8636,25 @@ const InvestorPortalView = () => {
                 )}
 
                 {st === 'Approved' ? (
-                  <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'center', padding: 10, backgroundColor: '#EFF6FF', borderRadius: 8, borderStyle: 'dashed', borderWidth: 1, borderColor: '#93C5FD', marginTop: 4 }}>
-                    <Text style={{ color: '#00a65a', fontSize: 12, fontWeight: 'bold' }}>✓ VERIFIED & APPROVED BY ADMIN</Text>
+                  <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'center', padding: 10, backgroundColor: colors.surfaceLight, borderRadius: 8, borderStyle: 'dashed', borderWidth: 1, borderColor: colors.surfaceLight, marginTop: 4 }}>
+                    <Text style={{ color: colors.success, fontSize: 12, fontWeight: 'bold' }}>✓ VERIFIED & APPROVED BY ADMIN</Text>
                   </View>
                 ) : (
                   <TouchableOpacity
                     style={{
                       borderWidth: 1.5,
                       borderStyle: 'dashed',
-                      borderColor: fileUri ? '#00a65a' : '#CBD5E1',
+                      borderColor: fileUri ? colors.success : colors.border,
                       borderRadius: 8,
                       padding: 12,
                       alignItems: 'center',
-                      backgroundColor: fileUri ? 'rgba(0, 166, 90, 0.05)' : '#FFFFFF',
+                      backgroundColor: fileUri ? 'rgba(16, 185, 129, 0.05)' : colors.surface,
                       marginTop: 4,
                     }}
                     onPress={() => handlePickDoc(item.key)}
                   >
-                    <UploadCloud size={20} color={fileUri ? '#00a65a' : '#64748B'} style={{ marginBottom: 4 }} />
-                    <Text style={{ fontSize: 12, fontWeight: 'bold', color: fileUri ? '#00a65a' : '#fff' }}>
+                    <UploadCloud size={20} color={fileUri ? colors.success : colors.textMuted} style={{ marginBottom: 4 }} />
+                    <Text style={{ fontSize: 12, fontWeight: 'bold', color: fileUri ? colors.success : colors.textMuted }}>
                       {fileUri ? '✓ PDF / Document Attached (Tap to change)' : 'Tap to upload PDF / Image document'}
                     </Text>
                   </TouchableOpacity>
@@ -6805,11 +8664,11 @@ const InvestorPortalView = () => {
           })}
 
           {/* Bank Details & Passbook Card */}
-          <View style={{ borderWidth: 1, borderColor: '#E2E8F0', borderRadius: 12, padding: 14, backgroundColor: '#FAFAFA' }}>
+          <View style={{ borderWidth: 1, borderColor: colors.border, borderRadius: 12, padding: 14, backgroundColor: colors.surfaceLight }}>
             <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
-              <Text style={{ fontSize: 14, fontWeight: 'bold', color: '#0F172A' }}>Bank Details & Passbook PDF *</Text>
-              <View style={{ backgroundColor: '#881337', paddingHorizontal: 6, paddingVertical: 2, borderRadius: 4 }}>
-                <Text style={{ color: '#FFF', fontSize: 10, fontWeight: 'bold' }}>REQUIRED</Text>
+              <Text style={{ fontSize: 14, fontWeight: 'bold', color: colors.text }}>Bank Details & Passbook PDF *</Text>
+              <View style={{ backgroundColor: colors.danger, paddingHorizontal: 6, paddingVertical: 2, borderRadius: 4 }}>
+                <Text style={{ color: colors.background, fontSize: 10, fontWeight: 'bold' }}>REQUIRED</Text>
               </View>
             </View>
             <View style={{ gap: 8 }}>
@@ -6821,17 +8680,17 @@ const InvestorPortalView = () => {
                 style={{
                   borderWidth: 1.5,
                   borderStyle: 'dashed',
-                  borderColor: attachedFiles.bankPassbook ? '#00a65a' : '#CBD5E1',
+                  borderColor: attachedFiles.bankPassbook ? colors.success : colors.border,
                   borderRadius: 8,
                   padding: 12,
                   alignItems: 'center',
-                  backgroundColor: attachedFiles.bankPassbook ? 'rgba(0, 166, 90, 0.05)' : '#FFFFFF',
+                  backgroundColor: attachedFiles.bankPassbook ? 'rgba(16, 185, 129, 0.05)' : colors.surface,
                   marginTop: 4,
                 }}
                 onPress={() => handlePickDoc('bankPassbook')}
               >
-                <UploadCloud size={20} color={attachedFiles.bankPassbook ? '#00a65a' : '#64748B'} style={{ marginBottom: 4 }} />
-                <Text style={{ fontSize: 12, fontWeight: 'bold', color: attachedFiles.bankPassbook ? '#00a65a' : '#fff' }}>
+                <UploadCloud size={20} color={attachedFiles.bankPassbook ? colors.success : colors.textMuted} style={{ marginBottom: 4 }} />
+                <Text style={{ fontSize: 12, fontWeight: 'bold', color: attachedFiles.bankPassbook ? colors.success : colors.textMuted }}>
                   {attachedFiles.bankPassbook ? '✓ Bank Passbook Attached (Tap to change)' : 'Tap to upload Bank Passbook PDF / Image'}
                 </Text>
               </TouchableOpacity>
@@ -6841,17 +8700,17 @@ const InvestorPortalView = () => {
       </View>
 
       {/* Section 3: Investor Legal Bond Agreement (Matching Screenshot 2) */}
-      <View style={[styles.settingsCard, { backgroundColor: '#FFFFFF', marginBottom: 24 }]}>
-        <Text style={{ fontSize: 16, fontWeight: 'bold', color: '#00a65a', marginBottom: 4 }}>
+      <View style={[styles.settingsCard, { backgroundColor: colors.surface, marginBottom: 24 }]}>
+        <Text style={{ fontSize: 16, fontWeight: 'bold', color: colors.success, marginBottom: 4 }}>
           🛡️ 3. Investor Legal Bond Agreement
         </Text>
-        <Text style={{ fontSize: 12, color: '#64748B', marginBottom: 14 }}>
+        <Text style={{ fontSize: 12, color: colors.textMuted, marginBottom: 14 }}>
           Review terms and check box with your signature to accept the investor bond.
         </Text>
 
         {/* Gray Terms Box */}
-        <View style={{ backgroundColor: '#F8FAFC', borderRadius: 8, borderWidth: 1, borderColor: '#E2E8F0', padding: 14, marginBottom: 16 }}>
-          <Text style={{ fontFamily: Platform.OS === 'ios' ? 'Courier' : 'monospace', fontSize: 11, color: '#334155', lineHeight: 18 }}>
+        <View style={{ backgroundColor: colors.surfaceLight, borderRadius: 8, borderWidth: 1, borderColor: colors.border, padding: 14, marginBottom: 16 }}>
+          <Text style={{ fontFamily: Platform.OS === 'ios' ? 'Courier' : 'monospace', fontSize: 11, color: colors.text, lineHeight: 18 }}>
             {bondTermsText}
           </Text>
         </View>
@@ -6863,28 +8722,28 @@ const InvestorPortalView = () => {
           activeOpacity={0.7}
         >
           <View style={[styles.customCheckbox, acceptedBond && styles.customCheckboxChecked, { marginRight: 10 }]}>
-            {acceptedBond && <Text style={{ color: '#FFFFFF', fontSize: 12, fontWeight: 'bold' }}>✓</Text>}
+            {acceptedBond && <Text style={{ color: colors.background, fontSize: 12, fontWeight: 'bold' }}>✓</Text>}
           </View>
-          <Text style={{ fontSize: 13, fontWeight: '600', color: '#0F172A', flex: 1 }}>
+          <Text style={{ fontSize: 13, fontWeight: '600', color: colors.text, flex: 1 }}>
             I have read, understood, and accept all terms of the Investor Bond Agreement *
           </Text>
         </TouchableOpacity>
 
         {/* Digital Signature */}
-        <Text style={{ fontSize: 13, fontWeight: '600', color: '#334155', marginBottom: 6 }}>
+        <Text style={{ fontSize: 13, fontWeight: '600', color: colors.text, marginBottom: 6 }}>
           Digital Signature (Enter Full Name) *
         </Text>
         <TextInput
-          style={[styles.modalTextInput, { backgroundColor: '#F8FAFC', borderColor: '#CBD5E1', marginBottom: 16 }]}
+          style={[styles.modalTextInput, { backgroundColor: colors.surfaceLight, borderColor: colors.border, marginBottom: 16 }]}
           placeholder="ak914@gmail.com"
-          placeholderTextColor="#94A3B8"
+          placeholderTextColor={colors.textMuted}
           value={signatureText}
           onChangeText={setSignatureText}
         />
 
         {/* Submit Button */}
         <TouchableOpacity
-          style={[styles.saveBtn, { backgroundColor: '#134086', height: 48, justifyContent: 'center' }, submitting && { opacity: 0.7 }]}
+          style={[styles.saveBtn, { backgroundColor: colors.accent, height: 48, justifyContent: 'center' }, submitting && { opacity: 0.7 }]}
           onPress={handleSubmitAll}
           disabled={submitting}
         >
@@ -7054,14 +8913,14 @@ const DashboardScreen = ({ navigation }: any) => {
 
       {/* Conditional rendering of sections */}
       {activeSection === 'Overview' ? (
-        <ScrollView contentContainerStyle={styles.scrollContent}>
+        <ScrollView style={{ flex: 1 }} contentContainerStyle={[styles.scrollContent, { flexGrow: 1, paddingBottom: 60 }]} nestedScrollEnabled={true} keyboardShouldPersistTaps="handled">
           {/* Row 1: Global KPIs */}
           <View style={styles.kpiGrid}>
             {/* Card 1: Total Employees */}
             <View style={[styles.dashboardCard, { backgroundColor: colors.surface }]}>
               <View style={styles.cardHeader}>
                 <Text style={styles.cardLabel}>Total Employees</Text>
-                <Users size={20} color="#0f3d82" />
+                <Users size={20} color={colors.accent} />
               </View>
               <Text style={styles.cardValueLarge}>{k.totalEmployees}</Text>
             </View>
@@ -7069,8 +8928,8 @@ const DashboardScreen = ({ navigation }: any) => {
             {/* Card 2: Wallet Balance */}
             <View style={[styles.dashboardCard, { backgroundColor: colors.surface }]}>
               <View style={styles.cardHeader}>
-                <Text style={[styles.cardLabel, { color: '#0f3d82' }]}>Wallet Balance</Text>
-                <Wallet size={20} color="#0f3d82" />
+                <Text style={[styles.cardLabel, { color: colors.accent }]}>Wallet Balance</Text>
+                <Wallet size={20} color={colors.accent} />
               </View>
               <Text style={styles.cardValueLarge}>₹{k.walletBalance.toLocaleString()}</Text>
             </View>
@@ -7122,7 +8981,7 @@ const DashboardScreen = ({ navigation }: any) => {
             {/* present */}
             <View style={styles.attendanceStatCard}>
               <View style={[styles.iconBadge, { backgroundColor: 'rgba(16, 185, 129, 0.1)' }]}>
-                <UserCheck size={16} color="#10b981" />
+                <UserCheck size={16} color={colors.success} />
               </View>
               <Text style={styles.attendanceStatLabel}>Present</Text>
               <Text style={styles.attendanceStatVal}>{k.attendanceStats.present}</Text>
@@ -7131,7 +8990,7 @@ const DashboardScreen = ({ navigation }: any) => {
             {/* absent */}
             <View style={styles.attendanceStatCard}>
               <View style={[styles.iconBadge, { backgroundColor: 'rgba(239, 68, 68, 0.1)' }]}>
-                <UserX size={16} color="#ef4444" />
+                <UserX size={16} color={colors.danger} />
               </View>
               <Text style={styles.attendanceStatLabel}>Absent</Text>
               <Text style={styles.attendanceStatVal}>{k.attendanceStats.absent}</Text>
@@ -7140,7 +8999,7 @@ const DashboardScreen = ({ navigation }: any) => {
             {/* late */}
             <View style={styles.attendanceStatCard}>
               <View style={[styles.iconBadge, { backgroundColor: 'rgba(245, 158, 11, 0.1)' }]}>
-                <AlertCircle size={16} color="#f59e0b" />
+                <AlertCircle size={16} color={colors.warning} />
               </View>
               <Text style={styles.attendanceStatLabel}>Late</Text>
               <Text style={styles.attendanceStatVal}>{k.attendanceStats.late}</Text>
@@ -7149,7 +9008,7 @@ const DashboardScreen = ({ navigation }: any) => {
             {/* on leave */}
             <View style={styles.attendanceStatCard}>
               <View style={[styles.iconBadge, { backgroundColor: 'rgba(59, 130, 246, 0.1)' }]}>
-                <CalendarDays size={16} color="#3b82f6" />
+                <CalendarDays size={16} color={colors.info} />
               </View>
               <Text style={styles.attendanceStatLabel}>On Leave</Text>
               <Text style={styles.attendanceStatVal}>{k.attendanceStats.leave}</Text>
@@ -7218,14 +9077,14 @@ const DashboardScreen = ({ navigation }: any) => {
                       const isLate = record.isLate || status.toLowerCase() === 'late';
 
                       let badgeBg = 'rgba(239,68,68,0.15)';
-                      let badgeTextColor = '#ef4444';
+                      let badgeTextColor = colors.danger;
 
                       if (isPresent) {
                         badgeBg = 'rgba(16,185,129,0.15)';
-                        badgeTextColor = '#10b981';
+                        badgeTextColor = colors.success;
                       } else if (status.toLowerCase().includes('half') || isLate) {
                         badgeBg = 'rgba(245,158,11,0.15)';
-                        badgeTextColor = '#f59e0b';
+                        badgeTextColor = colors.warning;
                       }
 
                       return (
@@ -7321,11 +9180,11 @@ const DashboardScreen = ({ navigation }: any) => {
               </View>
               <View style={styles.chartLegend}>
                 <View style={styles.legendItem}>
-                  <View style={[styles.legendColor, { backgroundColor: '#0f3d82' }]} />
+                  <View style={[styles.legendColor, { backgroundColor: colors.accent }]} />
                   <Text style={styles.legendText}>Avg Present</Text>
                 </View>
                 <View style={styles.legendItem}>
-                  <View style={[styles.legendColor, { backgroundColor: '#10b981' }]} />
+                  <View style={[styles.legendColor, { backgroundColor: colors.success }]} />
                   <Text style={styles.legendText}>Salary Payout</Text>
                 </View>
               </View>
@@ -7342,15 +9201,15 @@ const DashboardScreen = ({ navigation }: any) => {
               </View>
               <View style={styles.chartLegend}>
                 <View style={styles.legendItem}>
-                  <View style={[styles.legendColor, { backgroundColor: '#ef4444' }]} />
+                  <View style={[styles.legendColor, { backgroundColor: colors.danger }]} />
                   <Text style={styles.legendText}>Lost</Text>
                 </View>
                 <View style={styles.legendItem}>
-                  <View style={[styles.legendColor, { backgroundColor: '#3b82f6' }]} />
+                  <View style={[styles.legendColor, { backgroundColor: colors.info }]} />
                   <Text style={styles.legendText}>Open</Text>
                 </View>
                 <View style={styles.legendItem}>
-                  <View style={[styles.legendColor, { backgroundColor: '#10b981' }]} />
+                  <View style={[styles.legendColor, { backgroundColor: colors.success }]} />
                   <Text style={styles.legendText}>Won</Text>
                 </View>
               </View>
@@ -7360,7 +9219,7 @@ const DashboardScreen = ({ navigation }: any) => {
           {/* Row 4: Upcoming Birthdays */}
           <View style={[styles.chartCard, { marginBottom: spacing.xl }]}>
             <View style={styles.birthdayHeader}>
-              <Gift size={18} color="#ef4444" style={{ marginRight: 8 }} />
+              <Gift size={18} color={colors.danger} style={{ marginRight: 8 }} />
               <Text style={styles.chartTitle}>Upcoming Birthdays (Next 30 Days)</Text>
             </View>
             {data?.upcomingBirthdays && data.upcomingBirthdays.length > 0 ? (
@@ -7379,41 +9238,44 @@ const DashboardScreen = ({ navigation }: any) => {
             )}
           </View>
         </ScrollView>
-      ) : activeSection === 'Employees' ? (
-        <EmployeesView />
-      ) : activeSection === 'Wallet' ? (
-        <CompanyWalletView />
-      ) : activeSection === 'Payroll' ? (
-        <PayrollView />
-      ) : activeSection === 'Attendance' ? (
-        <AttendanceView />
-      ) : activeSection === 'Leave' ? (
-        <LeaveView />
-      ) : activeSection === 'Holidays' ? (
-        <HolidaysView />
-      ) : activeSection === 'Leads' ? (
-        <LeadsView />
-      ) : activeSection === 'Reports' ? (
-        <ReportsView />
-      ) : activeSection === 'Settings' ? (
-        <SettingsView />
-      ) : activeSection === 'Notifications' ? (
-        <NotificationsView />
-      ) : activeSection === 'Investors' ? (
-        <InvestorsAdminView />
-      ) : activeSection === 'Investor Details' ? (
-        <InvestorPortalView />
-      ) : activeSection === 'Debenture Form' || activeSection === 'Debenture' ? (
-        <DebentureFormView />
-      ) : activeSection === 'Profile' ? (
-        <EmployeeProfileView />
-      )
-        : (
-          <View style={styles.placeholderSection}>
-            <Text style={styles.placeholderTitle}>{activeSection} Module</Text>
-            <Text style={styles.placeholderSubtitle}>This panel is currently active. Mobile integration coming soon.</Text>
-          </View>
-        )}
+      ) : (
+        <View style={{ flex: 1 }}>
+          {activeSection === 'Employees' ? (
+            <EmployeesView />
+          ) : activeSection === 'Wallet' ? (
+            <CompanyWalletView />
+          ) : activeSection === 'Payroll' ? (
+            <PayrollView />
+          ) : activeSection === 'Attendance' ? (
+            <AttendanceView />
+          ) : activeSection === 'Leave' ? (
+            <LeaveView />
+          ) : activeSection === 'Holidays' ? (
+            <HolidaysView />
+          ) : activeSection === 'Leads' ? (
+            <LeadsView />
+          ) : activeSection === 'Reports' ? (
+            <ReportsView />
+          ) : activeSection === 'Settings' ? (
+            <SettingsView />
+          ) : activeSection === 'Notifications' ? (
+            <NotificationsView />
+          ) : activeSection === 'Investors' ? (
+            <InvestorsAdminView />
+          ) : activeSection === 'Investor Details' ? (
+            <InvestorPortalView />
+          ) : activeSection === 'Debenture Form' || activeSection === 'Debenture' ? (
+            <DebentureFormView />
+          ) : activeSection === 'Profile' ? (
+            <EmployeeProfileView />
+          ) : (
+            <View style={styles.placeholderSection}>
+              <Text style={styles.placeholderTitle}>{activeSection} Module</Text>
+              <Text style={styles.placeholderSubtitle}>This panel is currently active. Mobile integration coming soon.</Text>
+            </View>
+          )}
+        </View>
+      )}
 
       {/* --- Sidebar Overlay --- */}
       {sidebarOpen && (
@@ -7602,14 +9464,14 @@ const styles = createDynamicStyleSheet(() => ({
     width: 34,
     height: 34,
     borderRadius: 17,
-    backgroundColor: '#2563eb',
+    backgroundColor: colors.info,
     alignItems: 'center',
     justifyContent: 'center',
     marginRight: spacing.s,
     marginLeft: 'auto',
   },
   headerAvatarText: {
-    color: '#ffffff',
+    color: colors.background,
     fontSize: 13,
     fontWeight: 'bold',
   },
@@ -7835,7 +9697,7 @@ const styles = createDynamicStyleSheet(() => ({
   },
   attendanceBar: {
     width: 14,
-    backgroundColor: '#0f3d82',
+    backgroundColor: colors.accent,
     borderRadius: 3,
     position: 'absolute',
     bottom: 0,
@@ -7843,7 +9705,7 @@ const styles = createDynamicStyleSheet(() => ({
   },
   salaryLineIndicator: {
     width: 4,
-    backgroundColor: '#10b981',
+    backgroundColor: colors.success,
     borderRadius: 2,
     position: 'absolute',
     bottom: 0,
@@ -7885,7 +9747,7 @@ const styles = createDynamicStyleSheet(() => ({
     height: 90,
     borderRadius: 45,
     borderWidth: 6,
-    borderColor: '#ef4444',
+    borderColor: colors.danger,
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -8164,10 +10026,10 @@ const styles = createDynamicStyleSheet(() => ({
     fontWeight: 'bold',
   },
   statusTextActive: {
-    color: '#10b981',
+    color: colors.success,
   },
   statusTextInactive: {
-    color: '#ef4444',
+    color: colors.danger,
   },
   empCardBody: {
     flexDirection: 'row',
@@ -8455,13 +10317,13 @@ const styles = createDynamicStyleSheet(() => ({
     marginLeft: spacing.s,
   },
   detailBtnEdit: {
-    backgroundColor: '#1e3a8a', // Dark blue matching screenshot Edit Employee
+    backgroundColor: colors.accent, // Dark blue matching screenshot Edit Employee
   },
   detailBtnDelete: {
-    backgroundColor: '#1e3a8a', // Dark blue matching screenshot Delete Employee
+    backgroundColor: colors.accent, // Dark blue matching screenshot Delete Employee
   },
   detailBtnText: {
-    color: '#fff',
+    color: colors.background,
     fontSize: 13,
     fontWeight: 'bold',
     marginLeft: 4,
@@ -8521,7 +10383,7 @@ const styles = createDynamicStyleSheet(() => ({
     marginRight: spacing.s,
   },
   resetBtn: {
-    backgroundColor: '#1e3a8a',
+    backgroundColor: colors.accent,
     height: 40,
     paddingHorizontal: spacing.m,
     borderRadius: borderRadius.m,
@@ -8598,7 +10460,7 @@ const styles = createDynamicStyleSheet(() => ({
   },
   netSalaryCardLabel: {
     fontSize: 12,
-    color: '#10b981',
+    color: colors.success,
     fontWeight: 'bold',
   },
   netSalaryCardValue: {
@@ -8695,7 +10557,7 @@ const styles = createDynamicStyleSheet(() => ({
     bottom: 20,
     left: spacing.m,
     right: spacing.m,
-    backgroundColor: '#111827',
+    backgroundColor: colors.text,
     borderRadius: borderRadius.xl,
     paddingVertical: 12,
     paddingHorizontal: spacing.m,
@@ -8717,7 +10579,7 @@ const styles = createDynamicStyleSheet(() => ({
     textTransform: 'uppercase',
   },
   bulkBarVal: {
-    color: '#fff',
+    color: colors.background,
     fontSize: 18,
     fontWeight: 'bold',
   },
@@ -8911,13 +10773,13 @@ const styles = createDynamicStyleSheet(() => ({
     borderRadius: borderRadius.m,
   },
   punchInBtn: {
-    backgroundColor: '#10b981', // Emerald green matching screenshot
+    backgroundColor: colors.success, // Emerald green matching screenshot
   },
   punchOutBtn: {
-    backgroundColor: '#ef4444', // Rose red
+    backgroundColor: colors.danger, // Rose red
   },
   punchBtnText: {
-    color: '#fff',
+    color: colors.background,
     fontSize: 16,
     fontWeight: 'bold',
   },
@@ -8930,7 +10792,7 @@ const styles = createDynamicStyleSheet(() => ({
     borderRadius: borderRadius.round,
   },
   shiftCompletedText: {
-    color: '#10b981',
+    color: colors.success,
     fontWeight: 'bold',
     fontSize: 14,
   },
@@ -8962,7 +10824,7 @@ const styles = createDynamicStyleSheet(() => ({
     marginTop: spacing.m,
   },
   lateAlertText: {
-    color: '#d97706', // Warm amber
+    color: colors.warning, // Warm amber
     fontSize: 13,
     fontWeight: '500',
   },
@@ -9017,13 +10879,13 @@ const styles = createDynamicStyleSheet(() => ({
     fontWeight: 'bold',
   },
   statusPresentText: {
-    color: '#10b981',
+    color: colors.success,
   },
   statusAbsentText: {
-    color: '#ef4444',
+    color: colors.danger,
   },
   lateStatusTextBadge: {
-    color: '#d97706',
+    color: colors.warning,
     fontSize: 11,
     fontWeight: 'bold',
     marginLeft: 6,
@@ -9051,7 +10913,7 @@ const styles = createDynamicStyleSheet(() => ({
     alignItems: 'center',
   },
   teamApprovalsBtn: {
-    backgroundColor: '#1e3a8a', // Dark blue matching screenshot Team Approvals button
+    backgroundColor: colors.accent, // Dark blue matching screenshot Team Approvals button
     paddingVertical: 8,
     paddingHorizontal: 12,
     borderRadius: borderRadius.m,
@@ -9061,7 +10923,7 @@ const styles = createDynamicStyleSheet(() => ({
     backgroundColor: colors.accent,
   },
   teamApprovalsText: {
-    color: '#fff',
+    color: colors.background,
     fontSize: 12,
     fontWeight: 'bold',
   },
@@ -9069,7 +10931,7 @@ const styles = createDynamicStyleSheet(() => ({
     color: colors.background,
   },
   applyLeaveBtn: {
-    backgroundColor: '#1e3a8a', // Dark blue matching + Apply Leave button
+    backgroundColor: colors.accent, // Dark blue matching + Apply Leave button
     flexDirection: 'row',
     alignItems: 'center',
     paddingVertical: 8,
@@ -9077,7 +10939,7 @@ const styles = createDynamicStyleSheet(() => ({
     borderRadius: borderRadius.m,
   },
   applyLeaveBtnText: {
-    color: '#fff',
+    color: colors.background,
     fontSize: 12,
     fontWeight: 'bold',
   },
@@ -9120,7 +10982,7 @@ const styles = createDynamicStyleSheet(() => ({
     backgroundColor: 'rgba(245, 158, 11, 0.15)',
   },
   statusPendingText: {
-    color: '#f59e0b',
+    color: colors.warning,
   },
   halfDayCheckboxRow: {
     flexDirection: 'row',
@@ -9134,14 +10996,14 @@ const styles = createDynamicStyleSheet(() => ({
     fontWeight: 'bold',
   },
   approveSmallBtn: {
-    backgroundColor: '#10b981',
+    backgroundColor: colors.success,
     paddingVertical: 4,
     paddingHorizontal: 8,
     borderRadius: borderRadius.s,
     marginRight: 4,
   },
   approveSmallText: {
-    color: '#fff',
+    color: colors.background,
     fontSize: 10,
     fontWeight: 'bold',
   },
@@ -9170,7 +11032,7 @@ const styles = createDynamicStyleSheet(() => ({
     marginBottom: spacing.m,
   },
   addHolidayBtn: {
-    backgroundColor: '#1e3a8a', // Dark blue matching + Add Holiday button in screenshot
+    backgroundColor: colors.accent, // Dark blue matching + Add Holiday button in screenshot
     flexDirection: 'row',
     alignItems: 'center',
     paddingVertical: 8,
@@ -9178,7 +11040,7 @@ const styles = createDynamicStyleSheet(() => ({
     borderRadius: borderRadius.m,
   },
   addHolidayBtnText: {
-    color: '#fff',
+    color: colors.background,
     fontSize: 12,
     fontWeight: 'bold',
   },
@@ -9271,7 +11133,7 @@ const styles = createDynamicStyleSheet(() => ({
     marginBottom: spacing.m,
   },
   addLeadBtn: {
-    backgroundColor: '#1e3a8a', // Dark blue matching screenshot + Add Lead button
+    backgroundColor: colors.accent, // Dark blue matching screenshot + Add Lead button
     flexDirection: 'row',
     alignItems: 'center',
     paddingVertical: 8,
@@ -9279,7 +11141,7 @@ const styles = createDynamicStyleSheet(() => ({
     borderRadius: borderRadius.m,
   },
   addLeadBtnText: {
-    color: '#fff',
+    color: colors.background,
     fontSize: 12,
     fontWeight: 'bold',
   },
@@ -9330,14 +11192,14 @@ const styles = createDynamicStyleSheet(() => ({
     fontWeight: 'bold',
   },
   filterSubmitBtn: {
-    backgroundColor: '#1e3a8a',
+    backgroundColor: colors.accent,
     paddingVertical: 8,
     paddingHorizontal: 14,
     borderRadius: borderRadius.m,
     justifyContent: 'center',
   },
   filterSubmitText: {
-    color: '#fff',
+    color: colors.background,
     fontSize: 12,
     fontWeight: 'bold',
   },
@@ -9345,7 +11207,7 @@ const styles = createDynamicStyleSheet(() => ({
     backgroundColor: 'rgba(59, 130, 246, 0.15)',
   },
   stageBlueText: {
-    color: '#3b82f6',
+    color: colors.info,
     fontSize: 11,
     fontWeight: 'bold',
   },
@@ -9383,7 +11245,7 @@ const styles = createDynamicStyleSheet(() => ({
     fontSize: 13,
   },
   generateReportBtn: {
-    backgroundColor: '#1e3a8a', // Dark blue matching screenshot Generate button
+    backgroundColor: colors.accent, // Dark blue matching screenshot Generate button
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
@@ -9392,7 +11254,7 @@ const styles = createDynamicStyleSheet(() => ({
     marginTop: spacing.s,
   },
   generateReportBtnText: {
-    color: '#fff',
+    color: colors.background,
     fontSize: 14,
     fontWeight: 'bold',
   },
@@ -9436,13 +11298,13 @@ const styles = createDynamicStyleSheet(() => ({
     marginBottom: spacing.m,
   },
   saveSettingsBtn: {
-    backgroundColor: '#1e3a8a', // Dark blue matching screenshot Save Changes button
+    backgroundColor: colors.accent, // Dark blue matching screenshot Save Changes button
     paddingVertical: 8,
     paddingHorizontal: 14,
     borderRadius: borderRadius.m,
   },
   saveSettingsBtnText: {
-    color: '#fff',
+    color: colors.background,
     fontSize: 12,
     fontWeight: 'bold',
   },
@@ -9515,7 +11377,7 @@ const styles = createDynamicStyleSheet(() => ({
     marginBottom: spacing.s,
   },
   templateBadgeText: {
-    color: '#0f3d82',
+    color: colors.accent,
     fontSize: 12,
     fontWeight: 'bold',
   },
@@ -9528,7 +11390,7 @@ const styles = createDynamicStyleSheet(() => ({
     marginBottom: spacing.s,
   },
   smsTemplateBadgeText: {
-    color: '#10b981',
+    color: colors.success,
     fontSize: 12,
     fontWeight: 'bold',
   },
@@ -9575,7 +11437,7 @@ const styles = createDynamicStyleSheet(() => ({
     backgroundColor: 'rgba(99, 102, 241, 0.15)',
   },
   roleAdminText: {
-    color: '#0f3d82',
+    color: colors.accent,
     fontSize: 11,
     fontWeight: 'bold',
   },
@@ -9583,7 +11445,7 @@ const styles = createDynamicStyleSheet(() => ({
     backgroundColor: 'rgba(168, 85, 247, 0.15)',
   },
   roleKeyAdminText: {
-    color: '#a855f7',
+    color: colors.accent,
     fontSize: 11,
     fontWeight: 'bold',
   },
@@ -9647,7 +11509,7 @@ const styles = createDynamicStyleSheet(() => ({
     marginBottom: spacing.m,
   },
   exportStatementBtn: {
-    backgroundColor: '#1e3a8a',
+    backgroundColor: colors.accent,
     flexDirection: 'row',
     alignItems: 'center',
     paddingVertical: 8,
@@ -9656,12 +11518,12 @@ const styles = createDynamicStyleSheet(() => ({
     marginRight: 6,
   },
   exportStatementText: {
-    color: '#fff',
+    color: colors.background,
     fontSize: 11,
     fontWeight: 'bold',
   },
   walletBalanceCard: {
-    backgroundColor: '#134086', // Dark black card matching user screenshot
+    backgroundColor: colors.accent, // Dark black card matching user screenshot
     borderRadius: borderRadius.l,
     padding: spacing.xl,
     marginBottom: spacing.m,
@@ -9676,14 +11538,14 @@ const styles = createDynamicStyleSheet(() => ({
   walletBalanceLabel: {
     fontSize: 11,
     fontWeight: 'bold',
-    color: '#9ca3af',
+    color: colors.textMuted,
     letterSpacing: 1,
     marginBottom: spacing.s,
   },
   walletBalanceValue: {
     fontSize: 42,
     fontWeight: '900',
-    color: '#ffffff',
+    color: colors.background,
   },
   /* --- Module Access Checkbox Styles --- */
   moduleAccessSection: {
@@ -9715,7 +11577,7 @@ const styles = createDynamicStyleSheet(() => ({
     alignItems: 'center',
   },
   checkmarkIcon: {
-    color: '#ffffff',
+    color: colors.background,
     fontSize: 11,
     fontWeight: 'bold',
     lineHeight: 13,
@@ -9754,7 +11616,7 @@ const styles = createDynamicStyleSheet(() => ({
     marginBottom: 4,
   },
   changePhotoText: {
-    color: '#2563eb',
+    color: colors.info,
     fontSize: 14,
     fontWeight: 'bold',
   },
@@ -9783,7 +11645,7 @@ const styles = createDynamicStyleSheet(() => ({
     borderBottomColor: colors.border,
   },
   aboutHeaderLogo: {
-    fontSize: 26,
+    fontSize: 25,
     fontWeight: 'bold',
     color: colors.accent,
     letterSpacing: 1.5,
@@ -9933,7 +11795,7 @@ const styles = createDynamicStyleSheet(() => ({
 
 const loginStyles = createDynamicStyleSheet(() => ({
   cardContainer: {
-    backgroundColor: '#FFFFFF',
+    backgroundColor: colors.surface,
     borderRadius: 16,
     padding: 24,
     shadowColor: '#000',
@@ -9942,7 +11804,7 @@ const loginStyles = createDynamicStyleSheet(() => ({
     shadowRadius: 12,
     elevation: 3,
     borderWidth: 1,
-    borderColor: '#E2E8F0',
+    borderColor: colors.border,
   },
   logoBadgeWrapper: {
     alignItems: 'center',
@@ -9952,15 +11814,15 @@ const loginStyles = createDynamicStyleSheet(() => ({
     width: 60,
     height: 60,
     borderRadius: 30,
-    backgroundColor: '#0F3D82',
+    backgroundColor: colors.accent,
     justifyContent: 'center',
     alignItems: 'center',
     borderWidth: 2,
-    borderColor: '#D6AF37',
+    borderColor: colors.borderGold,
     position: 'relative',
   },
   logoTextNC: {
-    color: '#FFFFFF',
+    color: colors.background,
     fontSize: 22,
     fontWeight: 'bold',
     fontStyle: 'italic',
@@ -9973,27 +11835,27 @@ const loginStyles = createDynamicStyleSheet(() => ({
   welcomeTitle: {
     fontSize: 24,
     fontWeight: 'bold',
-    color: '#0F172A',
+    color: colors.text,
     textAlign: 'center',
     marginBottom: 6,
   },
   welcomeSubtitle: {
     fontSize: 13,
-    color: '#64748B',
+    color: colors.textMuted,
     textAlign: 'center',
     marginBottom: 24,
     lineHeight: 18,
   },
   errorBox: {
-    backgroundColor: '#FEF2F2',
+    backgroundColor: 'rgba(239, 68, 68, 0.1)',
     borderWidth: 1,
-    borderColor: '#FCA5A5',
+    borderColor: colors.danger,
     borderRadius: 8,
     padding: 10,
     marginBottom: 16,
   },
   errorText: {
-    color: '#DC2626',
+    color: colors.danger,
     fontSize: 13,
     textAlign: 'center',
   },
@@ -10003,7 +11865,7 @@ const loginStyles = createDynamicStyleSheet(() => ({
   fieldLabel: {
     fontSize: 14,
     fontWeight: '600',
-    color: '#334155',
+    color: colors.text,
     marginBottom: 6,
   },
   passwordLabelRow: {
@@ -10015,22 +11877,22 @@ const loginStyles = createDynamicStyleSheet(() => ({
   forgotText: {
     fontSize: 13,
     fontWeight: '600',
-    color: '#2563EB',
+    color: colors.accent,
   },
   inputContainer: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#EFF6FF',
+    backgroundColor: colors.surfaceLight,
     borderRadius: 10,
     paddingHorizontal: 14,
     height: 48,
     borderWidth: 1,
-    borderColor: '#DBEAFE',
+    borderColor: colors.border,
   },
   textInput: {
     flex: 1,
     fontSize: 14,
-    color: '#0F172A',
+    color: colors.text,
     height: '100%',
   },
   eyeIconButton: {
@@ -10047,28 +11909,28 @@ const loginStyles = createDynamicStyleSheet(() => ({
     height: 18,
     borderRadius: 4,
     borderWidth: 1.5,
-    borderColor: '#94A3B8',
+    borderColor: colors.border,
     justifyContent: 'center',
     alignItems: 'center',
     marginRight: 10,
-    backgroundColor: '#FFFFFF',
+    backgroundColor: colors.surface,
   },
   checkboxChecked: {
-    backgroundColor: '#0F3D82',
-    borderColor: '#0F3D82',
+    backgroundColor: colors.accent,
+    borderColor: colors.accent,
   },
   checkmarkText: {
-    color: '#FFFFFF',
+    color: colors.background,
     fontSize: 12,
     fontWeight: 'bold',
     lineHeight: 14,
   },
   checkboxLabel: {
     fontSize: 14,
-    color: '#000000',
+    color: colors.text,
   },
   signInBtn: {
-    backgroundColor: '#0F3D82',
+    backgroundColor: colors.accent,
     height: 48,
     borderRadius: 10,
     justifyContent: 'center',
@@ -10076,23 +11938,10 @@ const loginStyles = createDynamicStyleSheet(() => ({
     marginBottom: 20,
   },
   signInBtnText: {
-    color: '#FFFFFF',
-    fontSize: 16,
-    fontWeight: 'bold',
-  },
-  footerContainer: {
-    alignItems: 'center',
-    paddingTop: 14,
-    borderTopWidth: 1,
-    borderTopColor: '#F1F5F9',
-  },
-  footerText: {
-    fontSize: 13,
-    color: '#64748B',
     textAlign: 'center',
   },
   footerLink: {
-    color: '#0f3d82',
+    color: colors.accent,
     fontWeight: 'bold',
   },
 }));
@@ -10101,45 +11950,45 @@ const registerStyles = createDynamicStyleSheet(() => ({
   portalTitle: {
     fontSize: 26,
     fontWeight: '900',
-    color: '#0f3d82',
+    color: colors.accent,
     textAlign: 'center',
     letterSpacing: 1.5,
   },
   portalSubtitle: {
     fontSize: 13,
-    color: '#94A3B8',
+    color: colors.textMuted,
     textAlign: 'center',
     marginTop: 4,
     marginBottom: 20,
   },
   cardContainer: {
-    backgroundColor: '#fff',
+    backgroundColor: colors.surface,
     borderRadius: 16,
     padding: 22,
     borderWidth: 1,
-    borderColor: '#eee',
+    borderColor: colors.border,
   },
   formTitle: {
     fontSize: 20,
     fontWeight: 'bold',
-    color: '#F8FAFC',
+    color: colors.text,
     marginBottom: 4,
   },
   formSubtitle: {
     fontSize: 13,
-    color: '#64748B',
+    color: colors.textMuted,
     marginBottom: 20,
   },
   errorBox: {
-    backgroundColor: '#FEF2F2',
+    backgroundColor: 'rgba(239, 68, 68, 0.1)',
     borderWidth: 1,
-    borderColor: '#FCA5A5',
+    borderColor: colors.danger,
     borderRadius: 8,
     padding: 10,
     marginBottom: 16,
   },
   errorText: {
-    color: '#DC2626',
+    color: colors.danger,
     fontSize: 13,
     textAlign: 'center',
   },
@@ -10149,27 +11998,27 @@ const registerStyles = createDynamicStyleSheet(() => ({
   fieldLabel: {
     fontSize: 13,
     fontWeight: '600',
-    color: '#94A3B8',
+    color: colors.textMuted,
     marginBottom: 6,
   },
   inputContainer: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#fff',
+    backgroundColor: colors.surfaceLight,
     borderRadius: 10,
     paddingHorizontal: 14,
     height: 48,
     borderWidth: 1,
-    borderColor: '#eee',
+    borderColor: colors.border,
   },
   textInput: {
     flex: 1,
     fontSize: 14,
-    color: '#F8FAFC',
+    color: colors.text,
     height: '100%',
   },
   submitBtn: {
-    backgroundColor: '#0f3d82',
+    backgroundColor: colors.accent,
     height: 48,
     borderRadius: 10,
     justifyContent: 'center',
@@ -10178,7 +12027,7 @@ const registerStyles = createDynamicStyleSheet(() => ({
     marginBottom: 20,
   },
   submitBtnText: {
-    color: '#FFFFFF',
+    color: colors.background,
     fontSize: 16,
     fontWeight: 'bold',
   },
@@ -10186,15 +12035,15 @@ const registerStyles = createDynamicStyleSheet(() => ({
     alignItems: 'center',
     paddingTop: 14,
     borderTopWidth: 1,
-    borderTopColor: '#fff',
+    borderTopColor: colors.border,
   },
   footerText: {
     fontSize: 13,
-    color: '#94A3B8',
+    color: colors.textMuted,
     textAlign: 'center',
   },
   footerLink: {
-    color: '#0f3d82',
+    color: colors.accent,
     fontWeight: 'bold',
   },
 }));

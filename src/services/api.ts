@@ -1,4 +1,5 @@
 import { Platform } from 'react-native';
+import Constants from 'expo-constants';
 import { useAuthStore } from './authStore';
 
 export interface ApiResponse<T = any> {
@@ -7,15 +8,36 @@ export interface ApiResponse<T = any> {
   error?: string;
 }
 
+export function getApiBaseUrl(): string {
+  if (process.env.EXPO_PUBLIC_API_URL && !process.env.EXPO_PUBLIC_API_URL.includes('localhost') && !process.env.EXPO_PUBLIC_API_URL.includes('127.0.0.1')) {
+    return process.env.EXPO_PUBLIC_API_URL;
+  }
+
+  if (Platform.OS === 'web') {
+    return process.env.EXPO_PUBLIC_API_URL || 'http://localhost:3000';
+  }
+
+  // Dynamic host detection for Mobile (Android Emulator / Physical Device via Expo Go)
+  const hostUri = Constants.expoConfig?.hostUri || (Constants as any).manifest?.debuggerHost || (Constants as any).manifest2?.extra?.expoGo?.developer?.extra?.hostUri;
+  if (hostUri) {
+    const hostIp = hostUri.split(':')[0];
+    if (hostIp && hostIp !== 'localhost' && hostIp !== '127.0.0.1') {
+      return `http://${hostIp}:3000`;
+    }
+  }
+
+  if (Platform.OS === 'android') {
+    return 'http://10.0.2.2:3000';
+  }
+
+  return 'http://localhost:3000';
+}
+
 export async function apiCall<T = any>(
   endpoint: string,
   options: RequestInit = {}
 ): Promise<ApiResponse<T>> {
-  let baseUrl = process.env.EXPO_PUBLIC_API_URL || 'http://localhost:3000';
-  if (Platform.OS !== 'web' && (baseUrl.includes('localhost') || baseUrl.includes('127.0.0.1'))) {
-    baseUrl = 'http://localhost:3000';
-  }
-
+  const baseUrl = getApiBaseUrl();
   const url = `${baseUrl}${endpoint}`;
   const token = useAuthStore.getState().token;
   const headers: any = {

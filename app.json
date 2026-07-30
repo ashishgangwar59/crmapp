@@ -31,6 +31,10 @@
       "eas": {
         "projectId": "87157252-0a43-40db-bd9a-c593b220ae8f"
       }
-    }
+    },
+    "plugins": [
+      "expo-sharing",
+      "expo-mail-composer"
+    ]
   }
 }
