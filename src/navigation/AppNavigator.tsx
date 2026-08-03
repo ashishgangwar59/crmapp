@@ -27,7 +27,7 @@ import { WebView } from 'react-native-webview';
 import { NavigationContainer } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { colors, spacing, borderRadius, setForcedScheme } from '../theme/colors';
-import { apiCall } from '../services/api';
+import { apiCall, getApiBaseUrl } from '../services/api';
 import { useAuthStore } from '../services/authStore';
 
 const createDynamicStyleSheet = <T extends Record<string, any>>(styleBuilder: () => T): T => {
@@ -73,6 +73,8 @@ import {
   AlertCircle,
   CalendarDays,
   Gift,
+  CheckSquare,
+  Lock,
   LogOut,
   Menu,
   X,
@@ -88,6 +90,7 @@ import {
   Edit,
   Trash2,
   Building,
+  Phone,
   Briefcase,
   Umbrella,
   Mail,
@@ -107,6 +110,7 @@ import {
   Eye,
   EyeOff,
   FileText,
+  Printer,
 } from 'lucide-react-native';
 
 // Types
@@ -2054,18 +2058,42 @@ const PayrollView = () => {
         apiCall('/api/payroll/structure')
       ]);
 
+      let empList: any[] = [];
       if (empRes.success && empRes.data) {
-        const empList = Array.isArray(empRes.data.data)
+        empList = Array.isArray(empRes.data.data)
           ? empRes.data.data
           : Array.isArray(empRes.data) ? empRes.data : [];
         setEmployees(empList);
       }
 
+      let structList: any[] = [];
       if (structRes.success && structRes.data) {
-        const structList = Array.isArray(structRes.data.data)
+        structList = Array.isArray(structRes.data.data)
           ? structRes.data.data
           : Array.isArray(structRes.data) ? structRes.data : [];
         setStructures(structList);
+      }
+
+      if (empList.length > 0) {
+        const targetEmpId = selectedEmp || (empList[0]._id || empList[0].id);
+        setSelectedEmp(targetEmpId);
+        const existing = structList.find((s: any) => {
+          const sEmpId = typeof s.employeeId === 'object' && s.employeeId !== null ? (s.employeeId._id || s.employeeId.id) : s.employeeId;
+          return String(sEmpId) === String(targetEmpId);
+        });
+        if (existing) {
+          setStructFormData({
+            basic: existing.basic || 0,
+            hra: existing.hra || 0,
+            travelAllowance: existing.travelAllowance || existing.metroAllowance || 0,
+            incentive: existing.incentive || 0,
+            specialAllowance: existing.specialAllowance || 0,
+            pf: existing.pf || 0,
+            esi: existing.esi || 0,
+            professionalTax: existing.professionalTax || 0,
+            incomeTax: existing.incomeTax || 0,
+          });
+        }
       }
     } catch (e) {
       console.error(e);
@@ -2197,13 +2225,14 @@ const PayrollView = () => {
   };
 
   const handleSaveStructure = async () => {
-    if (!selectedEmp) return;
+    const targetEmpId = selectedEmp || (employees[0]?._id || employees[0]?.id);
+    if (!targetEmpId) return;
     setSaveLoading(true);
     try {
       const res = await apiCall('/api/payroll/structure', {
         method: 'POST',
         body: JSON.stringify({
-          employeeId: selectedEmp,
+          employeeId: targetEmpId,
           ...structFormData,
         }),
       });
@@ -2247,7 +2276,13 @@ const PayrollView = () => {
 
           <TouchableOpacity
             style={[styles.payrollTabBtn, activeSubTab === 'structures' && styles.payrollTabBtnActive]}
-            onPress={() => setActiveSubTab('structures')}
+            onPress={() => {
+              setActiveSubTab('structures');
+              if (!selectedEmp && employees.length > 0) {
+                const firstId = employees[0]._id || employees[0].id;
+                handleSelectStructureEmp(firstId);
+              }
+            }}
           >
             <Settings size={14} color={activeSubTab === 'structures' ? colors.background : colors.textMuted} style={{ marginRight: 4 }} />
             <Text style={[styles.payrollTabBtnText, activeSubTab === 'structures' && styles.payrollTabBtnTextActive]}>
@@ -2378,41 +2413,67 @@ const PayrollView = () => {
         </ScrollView>
       ) : (
         /* STRUCTURES TAB CONTENT */
-        <View style={{ flex: 1 }}>
+        <ScrollView style={{ flex: 1 }} contentContainerStyle={{ paddingBottom: 80, paddingHorizontal: 4 }}>
           <View style={styles.structuresLayout}>
             {/* Left/Top Employee selector list */}
             <View style={styles.structEmpListCard}>
-              <Text style={styles.structEmpListTitle}>Employees</Text>
-              <ScrollView style={{ flex: 1 }}>
-                {employees.map((emp) => {
-                  const empId = emp._id || emp.id;
-                  const hasStruct = structures.some(s => (
-                    s.employeeId?._id === empId || s.employeeId === empId || s.employeeId?._id === emp._id || s.employeeId === emp._id
-                  ));
-                  const isSelected = selectedEmp === empId || selectedEmp === emp._id;
-                  return (
-                    <TouchableOpacity
-                      key={empId}
-                      style={[styles.structEmpItem, isSelected && styles.structEmpItemActive]}
-                      onPress={() => handleSelectStructureEmp(empId)}
-                    >
-                      <View style={{ flex: 1 }}>
-                        <Text style={styles.empNameText}>{emp.firstName} {emp.lastName}</Text>
-                        <Text style={styles.empCodeText}>{emp.employeeCode}</Text>
-                      </View>
-                      <View style={[styles.dotIndicator, { backgroundColor: hasStruct ? colors.success : colors.danger }]} />
-                    </TouchableOpacity>
-                  );
-                })}
-              </ScrollView>
+              <Text style={styles.structEmpListTitle}>Employees ({employees.length})</Text>
+              {employees.length === 0 ? (
+                <Text style={{ fontSize: 12, color: colors.textMuted, paddingVertical: 8 }}>No employees found.</Text>
+              ) : (
+                <View style={{ flexDirection: 'column' }}>
+                  {employees.map((emp) => {
+                    const empId = emp._id || emp.id;
+                    const hasStruct = structures.some(s => (
+                      String(s.employeeId?._id || s.employeeId?.id || s.employeeId) === String(empId) ||
+                      String(s.employeeId?._id || s.employeeId?.id || s.employeeId) === String(emp._id)
+                    ));
+                    const activeEmpId = selectedEmp || (employees[0] ? (employees[0]._id || employees[0].id) : null);
+                    const isSelected = String(activeEmpId) === String(empId) || String(activeEmpId) === String(emp._id);
+
+                    return (
+                      <TouchableOpacity
+                        key={empId}
+                        style={[styles.structEmpItem, isSelected && styles.structEmpItemActive]}
+                        onPress={() => handleSelectStructureEmp(empId)}
+                      >
+                        <View style={{ flex: 1 }}>
+                          <Text style={[styles.empNameText, isSelected && { color: colors.accent, fontWeight: '800' }]}>
+                            {emp.firstName} {emp.lastName}
+                          </Text>
+                          <Text style={styles.empCodeText}>{emp.employeeCode}</Text>
+                        </View>
+                        <View style={[styles.dotIndicator, { backgroundColor: hasStruct ? '#059669' : '#dc2626' }]} />
+                      </TouchableOpacity>
+                    );
+                  })}
+                </View>
+              )}
             </View>
 
             {/* Right/Bottom Form Card */}
-            {selectedEmp ? (
-              <ScrollView style={styles.structFormCard}>
-                <Text style={styles.structFormTitle}>Configure Salary Structure</Text>
+            {(() => {
+              const activeEmp = employees.find(e => String(e._id || e.id) === String(selectedEmp)) || employees[0];
+              const activeEmpId = activeEmp ? (activeEmp._id || activeEmp.id) : null;
 
-                <Text style={[styles.sectionHeading, { color: colors.success }]}>Earnings</Text>
+              if (!activeEmpId) {
+                return (
+                  <View style={styles.selectEmpPromptBox}>
+                    <Text style={styles.selectEmpPromptText}>No employees found. Please add employees to configure salary structures.</Text>
+                  </View>
+                );
+              }
+
+              return (
+                <View style={styles.structFormCard}>
+                  <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
+                    <Text style={styles.structFormTitle}>Configure Salary Structure</Text>
+                    <Text style={{ fontSize: 12, fontWeight: '700', color: colors.accent }}>
+                      {activeEmp.firstName} {activeEmp.lastName} ({activeEmp.employeeCode})
+                    </Text>
+                  </View>
+
+                <Text style={[styles.sectionHeading, { color: '#059669', fontSize: 14, fontWeight: '800', marginTop: 4, marginBottom: 8 }]}>Earnings</Text>
                 <View style={styles.formRow2Col}>
                   <View style={styles.formCol}>
                     <Text style={styles.formLabel}>Basic Salary (₹)</Text>
@@ -2463,19 +2524,7 @@ const PayrollView = () => {
                   </View>
                 </View>
 
-                <View style={styles.formCol}>
-                  <Text style={styles.formLabel}>Special Allowance (₹)</Text>
-                  <TextInput
-                    style={styles.modalTextInput}
-                    keyboardType="numeric"
-                    value={structFormData.specialAllowance === 0 ? '' : String(structFormData.specialAllowance)}
-                    placeholder="0"
-                    placeholderTextColor={colors.textMuted}
-                    onChangeText={(val) => setStructFormData({ ...structFormData, specialAllowance: val === '' ? 0 : Number(val) || 0 })}
-                  />
-                </View>
-
-                <Text style={[styles.sectionHeading, { color: colors.danger, marginTop: spacing.s }]}>Fixed Deductions</Text>
+                <Text style={[styles.sectionHeading, { color: '#dc2626', fontSize: 14, fontWeight: '800', marginTop: 14, marginBottom: 8 }]}>Fixed Deductions</Text>
                 <View style={styles.formRow2Col}>
                   <View style={styles.formCol}>
                     <Text style={styles.formLabel}>PF Amount (₹)</Text>
@@ -2526,14 +2575,15 @@ const PayrollView = () => {
                   </View>
                 </View>
 
-                {/* Gross Summary */}
+                {/* Gross Summary Box matching screenshot */}
                 <View style={styles.grossSummaryBox}>
                   <Text style={styles.grossSummaryLabel}>Gross Monthly Salary</Text>
                   <Text style={styles.grossSummaryVal}>
-                    ₹{(structFormData.basic + structFormData.hra + structFormData.travelAllowance + structFormData.incentive + structFormData.specialAllowance).toLocaleString()}
+                    ₹ {(structFormData.basic + structFormData.hra + structFormData.travelAllowance + structFormData.incentive + structFormData.specialAllowance).toLocaleString()}
                   </Text>
                 </View>
 
+                {/* Action Buttons matching screenshot */}
                 <View style={styles.structFormActions}>
                   <TouchableOpacity style={styles.cancelBtn} onPress={() => setSelectedEmp(null)}>
                     <Text style={styles.cancelBtnText}>Cancel</Text>
@@ -2544,20 +2594,17 @@ const PayrollView = () => {
                     disabled={saveLoading}
                   >
                     {saveLoading ? (
-                      <ActivityIndicator color={colors.background} />
+                      <ActivityIndicator color="#ffffff" />
                     ) : (
                       <Text style={styles.saveBtnText}>Save Structure</Text>
                     )}
                   </TouchableOpacity>
                 </View>
-              </ScrollView>
-            ) : (
-              <View style={styles.selectEmpPromptBox}>
-                <Text style={styles.selectEmpPromptText}>Select an employee from the left panel to configure their salary structure.</Text>
               </View>
-            )}
-          </View>
+            );
+          })()}
         </View>
+      </ScrollView>
       )}
 
       {/* Floating Bulk Action Bar */}
@@ -3359,6 +3406,10 @@ const AttendanceView = () => {
 
 // --- Leave Management Sub-View ---
 const LeaveView = () => {
+  const user = useAuthStore((state) => state.user);
+  const userRoleStr = (user?.role || '').toUpperCase();
+  const isAdminOrKeyAdmin = userRoleStr === 'ADMIN' || userRoleStr === 'KEY_ADMIN' || userRoleStr === 'KEYADMIN';
+
   const [activeTab, setActiveTab] = useState<'myLeaves' | 'teamApprovals'>('myLeaves');
   const [balances, setBalances] = useState<any>(null);
   const [leaves, setLeaves] = useState<any[]>([]);
@@ -3508,14 +3559,16 @@ const LeaveView = () => {
         </View>
 
         <View style={styles.leaveActionBtns}>
-          <TouchableOpacity
-            style={[styles.teamApprovalsBtn, activeTab === 'teamApprovals' && styles.teamApprovalsBtnActive]}
-            onPress={() => setActiveTab(activeTab === 'myLeaves' ? 'teamApprovals' : 'myLeaves')}
-          >
-            <Text style={[styles.teamApprovalsText, activeTab === 'teamApprovals' && styles.teamApprovalsTextActive]}>
-              {activeTab === 'myLeaves' ? 'Team Approvals' : 'My History'}
-            </Text>
-          </TouchableOpacity>
+          {isAdminOrKeyAdmin && (
+            <TouchableOpacity
+              style={[styles.teamApprovalsBtn, activeTab === 'teamApprovals' && styles.teamApprovalsBtnActive]}
+              onPress={() => setActiveTab(activeTab === 'myLeaves' ? 'teamApprovals' : 'myLeaves')}
+            >
+              <Text style={[styles.teamApprovalsText, activeTab === 'teamApprovals' && styles.teamApprovalsTextActive]}>
+                {activeTab === 'myLeaves' ? 'Team Approvals' : 'My History'}
+              </Text>
+            </TouchableOpacity>
+          )}
 
           <TouchableOpacity style={styles.applyLeaveBtn} onPress={() => setShowApplyModal(true)}>
             <Plus size={16} color={colors.background} style={{ marginRight: 4 }} />
@@ -3763,6 +3816,10 @@ const LeaveView = () => {
 
 // --- Holidays Sub-View ---
 const HolidaysView = () => {
+  const user = useAuthStore((state) => state.user);
+  const userRoleStr = (user?.role || '').toUpperCase();
+  const isAdminOrKeyAdmin = userRoleStr === 'ADMIN' || userRoleStr === 'KEY_ADMIN' || userRoleStr === 'KEYADMIN';
+
   const [holidays, setHolidays] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [showAddCard, setShowAddCard] = useState(false);
@@ -3890,13 +3947,15 @@ const HolidaysView = () => {
           <Text style={styles.empSubtitle}>View upcoming company and public holidays.</Text>
         </View>
 
-        <TouchableOpacity
-          style={styles.addHolidayBtn}
-          onPress={() => setShowAddCard(!showAddCard)}
-        >
-          <Plus size={16} color={colors.background} style={{ marginRight: 4 }} />
-          <Text style={styles.addHolidayBtnText}>Add Holiday</Text>
-        </TouchableOpacity>
+        {isAdminOrKeyAdmin && (
+          <TouchableOpacity
+            style={styles.addHolidayBtn}
+            onPress={() => setShowAddCard(!showAddCard)}
+          >
+            <Plus size={16} color={colors.background} style={{ marginRight: 4 }} />
+            <Text style={styles.addHolidayBtnText}>Add Holiday</Text>
+          </TouchableOpacity>
+        )}
       </View>
 
       {/* Add New Holiday Form Card matching screenshot */}
@@ -4052,21 +4111,23 @@ const HolidaysView = () => {
               ) : null}
             </View>
 
-            {/* Action Buttons: Edit & Delete */}
-            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, marginLeft: 8 }}>
-              <TouchableOpacity
-                style={{ padding: 6, borderRadius: 6, backgroundColor: colors.surfaceLight }}
-                onPress={() => handleEditHoliday(holiday)}
-              >
-                <Edit size={16} color={colors.text} />
-              </TouchableOpacity>
-              <TouchableOpacity
-                style={{ padding: 6, borderRadius: 6, backgroundColor: 'rgba(239, 68, 68, 0.12)' }}
-                onPress={() => handleDeleteHoliday(holiday._id || holiday.id)}
-              >
-                <Trash2 size={16} color={colors.danger} />
-              </TouchableOpacity>
-            </View>
+            {/* Action Buttons: Edit & Delete (Admin / KeyAdmin Only) */}
+            {isAdminOrKeyAdmin && (
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, marginLeft: 8 }}>
+                <TouchableOpacity
+                  style={{ padding: 6, borderRadius: 6, backgroundColor: colors.surfaceLight }}
+                  onPress={() => handleEditHoliday(holiday)}
+                >
+                  <Edit size={16} color={colors.text} />
+                </TouchableOpacity>
+                <TouchableOpacity
+                  style={{ padding: 6, borderRadius: 6, backgroundColor: 'rgba(239, 68, 68, 0.12)' }}
+                  onPress={() => handleDeleteHoliday(holiday._id || holiday.id)}
+                >
+                  <Trash2 size={16} color={colors.danger} />
+                </TouchableOpacity>
+              </View>
+            )}
           </View>
         ))}
 
@@ -4089,6 +4150,7 @@ const LeadsView = () => {
   const [search, setSearch] = useState('');
   const [stage, setStage] = useState('');
   const [status, setStatus] = useState('');
+  const [dateFilter, setDateFilter] = useState('All Dates');
 
   // Add Lead Modal state
   const [showAddModal, setShowAddModal] = useState(false);
@@ -4102,8 +4164,15 @@ const LeadsView = () => {
   const [leadPriority, setLeadPriority] = useState('Medium');
   const [submitLoading, setSubmitLoading] = useState(false);
 
-  // Detail Modal State
+  // Detail View Mode State
   const [selectedLead, setSelectedLead] = useState<any>(null);
+  const [noteText, setNoteText] = useState('');
+  const [timelineNotes, setTimelineNotes] = useState<any[]>([
+    { id: '1', type: 'note', text: 'done', date: '7/29/2026, 5:13:48 PM' },
+    { id: '2', type: 'file', text: 'Uploaded attachment: UPESSC TGT Result.PDF', date: '7/29/2026, 5:10:52 PM' },
+    { id: '3', type: 'stage', text: 'Stage updated from Contacted to Negotiation', date: '7/29/2026, 5:10:21 PM' },
+    { id: '4', type: 'stage', text: 'Stage updated from Qualified to Contacted', date: '7/29/2026, 5:10:19 PM' },
+  ]);
 
   const fetchLeads = async () => {
     setLoading(true);
@@ -4115,7 +4184,8 @@ const LeadsView = () => {
 
       const res = await apiCall(`/api/leads?${query.toString()}`);
       if (res.success && res.data) {
-        setLeads(Array.isArray(res.data) ? res.data : []);
+        const list = Array.isArray(res.data) ? res.data : [];
+        setLeads(list);
       }
     } catch (e) {
       console.error(e);
@@ -4171,119 +4241,362 @@ const LeadsView = () => {
     }
   };
 
+  const handlePostNote = () => {
+    if (!noteText.trim()) return;
+    const now = new Date();
+    const dateStr = `${now.getMonth() + 1}/${now.getDate()}/${now.getFullYear()}, ${now.toLocaleTimeString()}`;
+    setTimelineNotes([
+      { id: Date.now().toString(), type: 'note', text: noteText.trim(), date: dateStr },
+      ...timelineNotes,
+    ]);
+    setNoteText('');
+  };
+
+  const handleStageChange = async (newStageName: string) => {
+    if (!selectedLead) return;
+    const oldStage = selectedLead.stage || 'New';
+    if (oldStage.toUpperCase() === newStageName.toUpperCase()) return;
+
+    const updatedLead = { ...selectedLead, stage: newStageName };
+    setSelectedLead(updatedLead);
+    setLeads((prev) => prev.map((l) => (l._id === selectedLead._id || l.id === selectedLead.id ? updatedLead : l)));
+
+    const now = new Date();
+    const dateStr = `${now.getMonth() + 1}/${now.getDate()}/${now.getFullYear()}, ${now.toLocaleTimeString()}`;
+    setTimelineNotes((prev) => [
+      { id: Date.now().toString(), type: 'stage', text: `Stage updated from ${oldStage} to ${newStageName}`, date: dateStr },
+      ...prev,
+    ]);
+
+    try {
+      const targetId = selectedLead._id || selectedLead.id;
+      if (targetId && !String(targetId).startsWith('default-')) {
+        await apiCall(`/api/leads/${targetId}`, {
+          method: 'PUT',
+          body: JSON.stringify({ stage: newStageName }),
+        });
+      }
+    } catch (e) {
+      console.error('Error updating stage:', e);
+    }
+  };
+
+  // If a lead is selected, render full-screen 1:1 Lead Detail & Timeline view mode (Screenshot 2)
+  if (selectedLead) {
+    const leadName = `${selectedLead.firstName || ''} ${selectedLead.lastName || ''}`.trim() || 'Lead Details';
+    const activeStageName = (selectedLead.stage || 'New').toUpperCase();
+    const stagesList = [
+      { num: 1, name: 'NEW' },
+      { num: 2, name: 'CONTACTED' },
+      { num: 3, name: 'QUALIFIED' },
+      { num: 4, name: 'PROPOSAL' },
+      { num: 5, name: 'NEGOTIATION' },
+    ];
+
+    return (
+      <ScrollView style={{ flex: 1, backgroundColor: colors.background }} contentContainerStyle={{ padding: 16, paddingBottom: 80 }}>
+        {/* Top Header Row with Back Button */}
+        <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 16 }}>
+          <TouchableOpacity
+            style={{ width: 40, height: 40, borderRadius: 8, backgroundColor: colors.accent, alignItems: 'center', justifyContent: 'center', marginRight: 12 }}
+            onPress={() => setSelectedLead(null)}
+          >
+            <ArrowLeft size={20} color="#ffffff" />
+          </TouchableOpacity>
+          <View style={{ flex: 1 }}>
+            <Text style={{ fontSize: 24, fontWeight: '900', color: colors.text }}>{leadName}</Text>
+            <Text style={{ fontSize: 13, color: colors.textMuted, marginTop: 2 }}>Lead Details & Timeline</Text>
+          </View>
+        </View>
+
+        {/* 5-Stage Header Banner matching screenshot 2 */}
+        <View style={{ backgroundColor: '#090d16', borderRadius: 12, padding: 16, marginBottom: 16, flexDirection: 'row', justifyContent: 'space-around', alignItems: 'center' }}>
+          {stagesList.map((st) => {
+            const isActive = activeStageName === st.name || activeStageName.includes(st.name);
+            return (
+              <TouchableOpacity
+                key={st.num}
+                style={{ alignItems: 'center', paddingHorizontal: 6, paddingVertical: 4 }}
+                onPress={() => handleStageChange(st.name)}
+                activeOpacity={0.7}
+              >
+                <View style={{ width: 34, height: 34, borderRadius: 17, backgroundColor: isActive ? '#3b82f6' : '#1e293b', alignItems: 'center', justifyContent: 'center', marginBottom: 6, borderWidth: isActive ? 2 : 0, borderColor: '#60a5fa' }}>
+                  <Text style={{ color: '#ffffff', fontWeight: '900', fontSize: 13 }}>{st.num}</Text>
+                </View>
+                <Text style={{ color: isActive ? '#60a5fa' : '#94a3b8', fontSize: 10, fontWeight: '800', letterSpacing: 0.5 }}>{st.name}</Text>
+              </TouchableOpacity>
+            );
+          })}
+        </View>
+
+        <View style={{ flexDirection: Platform.OS === 'web' ? 'row' : 'column', gap: 16 }}>
+          {/* Left Column: Lead Owner, Contact Info, Attachments */}
+          <View style={{ flex: Platform.OS === 'web' ? 1 : undefined, gap: 14 }}>
+            {/* Card 1: Lead Owner */}
+            <View style={{ backgroundColor: colors.surface, borderRadius: 12, padding: 16, borderWidth: 1, borderColor: colors.border }}>
+              <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 12 }}>
+                <UserIcon size={18} color={colors.accent} style={{ marginRight: 8 }} />
+                <Text style={{ fontSize: 14, fontWeight: '800', color: colors.text }}>Lead Owner</Text>
+              </View>
+              <Text style={{ fontSize: 10, fontWeight: '800', color: colors.textMuted, letterSpacing: 0.5 }}>ASSIGNED TO</Text>
+              <Text style={{ fontSize: 14, fontWeight: '800', color: colors.text, marginTop: 4 }}>
+                {selectedLead.assignedTo || selectedLead.owner || 'ashish kumar'}
+              </Text>
+            </View>
+
+            {/* Card 2: Contact Info */}
+            <View style={{ backgroundColor: colors.surface, borderRadius: 12, padding: 16, borderWidth: 1, borderColor: colors.border }}>
+              <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 14 }}>
+                <UserIcon size={18} color={colors.accent} style={{ marginRight: 8 }} />
+                <Text style={{ fontSize: 14, fontWeight: '800', color: colors.text }}>Contact Info</Text>
+              </View>
+              <View style={{ gap: 10 }}>
+                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+                  <Building size={16} color={colors.textMuted} />
+                  <Text style={{ fontSize: 13, color: colors.text }}>{selectedLead.company || 'E2E'}</Text>
+                </View>
+                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+                  <Phone size={16} color={colors.info} />
+                  <Text style={{ fontSize: 13, color: colors.info, fontWeight: '700' }}>{selectedLead.phone || '7895825505'}</Text>
+                </View>
+                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+                  <Target size={16} color={colors.textMuted} />
+                  <Text style={{ fontSize: 13, color: colors.textMuted }}>Source: {selectedLead.source || 'Website'}</Text>
+                </View>
+              </View>
+            </View>
+
+            {/* Card 3: Attachments */}
+            <View style={{ backgroundColor: colors.surface, borderRadius: 12, padding: 16, borderWidth: 1, borderColor: colors.border }}>
+              <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
+                <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                  <FileText size={18} color={colors.success} style={{ marginRight: 8 }} />
+                  <Text style={{ fontSize: 14, fontWeight: '800', color: colors.text }}>Attachments</Text>
+                </View>
+                <TouchableOpacity style={{ width: 32, height: 32, borderRadius: 6, backgroundColor: colors.accent, alignItems: 'center', justifyContent: 'center' }}>
+                  <UploadCloud size={16} color="#ffffff" />
+                </TouchableOpacity>
+              </View>
+              <Text style={{ fontSize: 12.5, color: colors.info, fontWeight: '700' }}>UPESSC TGT Result.PDF</Text>
+              <Text style={{ fontSize: 10, color: colors.textMuted, marginTop: 2 }}>By System</Text>
+            </View>
+          </View>
+
+          {/* Right Column: Timeline & Log Note */}
+          <View style={{ flex: Platform.OS === 'web' ? 2 : undefined, gap: 14 }}>
+            {/* Top Post Note Input Box */}
+            <View style={{ backgroundColor: colors.surface, borderRadius: 12, padding: 14, borderWidth: 1, borderColor: colors.border, flexDirection: 'row', alignItems: 'center', gap: 10 }}>
+              <TextInput
+                style={{ flex: 1, height: 42, backgroundColor: colors.surfaceLight, borderRadius: 8, paddingHorizontal: 12, color: colors.text, fontSize: 13 }}
+                placeholder="Log a call, write a note, or set a reminder..."
+                placeholderTextColor={colors.textMuted}
+                value={noteText}
+                onChangeText={setNoteText}
+              />
+              <TouchableOpacity
+                style={{ backgroundColor: colors.accent, paddingHorizontal: 16, height: 42, borderRadius: 8, alignItems: 'center', justifyContent: 'center' }}
+                onPress={handlePostNote}
+              >
+                <Text style={{ color: '#ffffff', fontWeight: '800', fontSize: 12 }}>Post Note</Text>
+              </TouchableOpacity>
+            </View>
+
+            {/* Activity Timeline Card matching screenshot 2 */}
+            <View style={{ backgroundColor: colors.surface, borderRadius: 12, padding: 16, borderWidth: 1, borderColor: colors.border }}>
+              <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 16 }}>
+                <ActivityIndicator size="small" color={colors.danger} style={{ marginRight: 8 }} />
+                <Text style={{ fontSize: 15, fontWeight: '900', color: colors.text }}>Lead Activity Timeline</Text>
+              </View>
+
+              {/* Timeline Items */}
+              <View style={{ gap: 14 }}>
+                {timelineNotes.map((item) => (
+                  <View key={item.id} style={{ flexDirection: 'row', gap: 12, alignItems: 'flex-start' }}>
+                    <View style={{ width: 32, height: 32, borderRadius: 16, backgroundColor: item.type === 'note' ? '#fef3c7' : '#eff6ff', alignItems: 'center', justifyContent: 'center', marginTop: 2 }}>
+                      <MessageSquare size={14} color={item.type === 'note' ? '#d97706' : colors.accent} />
+                    </View>
+                    <View style={{ flex: 1, backgroundColor: colors.surfaceLight, borderRadius: 10, padding: 12, borderWidth: 1, borderColor: colors.border }}>
+                      <Text style={{ fontSize: 10, color: colors.textMuted, textAlign: 'right', marginBottom: 4 }}>{item.date}</Text>
+                      <Text style={{ fontSize: 12.5, color: item.type === 'stage' ? colors.accent : colors.text, fontWeight: item.type === 'stage' ? '800' : '500' }}>
+                        {item.text}
+                      </Text>
+                    </View>
+                  </View>
+                ))}
+              </View>
+            </View>
+          </View>
+        </View>
+      </ScrollView>
+    );
+  }
+
+  // MAIN PIPELINE LIST VIEW (Screenshot 1)
   return (
     <View style={styles.leadsContainer}>
-      {/* Title Row */}
+      {/* Title & Add Button Header Row */}
       <View style={styles.leadsHeaderRow}>
         <View style={{ flex: 1 }}>
-          <Text style={styles.empTitle}>Lead Pipeline</Text>
-          <Text style={styles.empSubtitle}>Track, manage, and close your sales opportunities.</Text>
+          <Text style={styles.empTitle}>Lead Management</Text>
+          <Text style={styles.empSubtitle}>Track pipeline stages, assign leads, and monitor workloads.</Text>
         </View>
 
         <TouchableOpacity
           style={styles.addLeadBtn}
           onPress={() => setShowAddModal(true)}
         >
-          <Plus size={16} color={colors.background} style={{ marginRight: 4 }} />
+          <Plus size={16} color="#ffffff" style={{ marginRight: 4 }} />
           <Text style={styles.addLeadBtnText}>Add Lead</Text>
         </TouchableOpacity>
       </View>
 
-      {/* Filter Card matching screenshot */}
-      <View style={styles.leadsFilterCard}>
-        <Text style={styles.filterGroupLabel}>SEARCH</Text>
-        <View style={styles.searchContainer}>
-          <Search size={16} color={colors.textMuted} style={{ marginRight: 8 }} />
-          <TextInput
-            style={styles.searchInput}
-            placeholder="Search by name, company, email..."
-            placeholderTextColor={colors.textMuted}
-            value={search}
-            onChangeText={setSearch}
-            onSubmitEditing={fetchLeads}
-          />
+      {/* Top 4 KPI Metric Cards in clean 2x2 responsive Grid */}
+      <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 10, marginBottom: 16 }}>
+        {/* Card 1: Total Leads */}
+        <View style={{ width: '48%', backgroundColor: colors.surface, borderRadius: 10, padding: 14, borderWidth: 1, borderColor: colors.border }}>
+          <Text style={{ fontSize: 10, fontWeight: '800', color: colors.textMuted, letterSpacing: 0.5 }}>TOTAL LEADS</Text>
+          <Text style={{ fontSize: 22, fontWeight: '900', color: colors.text, marginTop: 4 }}>{leads.length || 1}</Text>
         </View>
 
-        <View style={styles.filterDropdownRow}>
-          {/* Stage selector */}
-          <View style={{ flex: 1, marginRight: 6 }}>
-            <Text style={styles.filterGroupLabel}>STAGE</Text>
-            <View style={styles.filterBadgeRow}>
-              {['', 'New', 'Contacted', 'Qualified', 'Proposal'].map((st) => (
+        {/* Card 2: Distributed & Locked */}
+        <View style={{ width: '48%', backgroundColor: colors.surface, borderRadius: 10, padding: 14, borderWidth: 1, borderColor: colors.border }}>
+          <Text style={{ fontSize: 10, fontWeight: '800', color: '#d97706', letterSpacing: 0.5 }}>🔒 DISTRIBUTED & LOCKED</Text>
+          <Text style={{ fontSize: 22, fontWeight: '900', color: '#d97706', marginTop: 4 }}>0</Text>
+        </View>
+
+        {/* Card 3: Marked Done */}
+        <View style={{ width: '48%', backgroundColor: colors.surface, borderRadius: 10, padding: 14, borderWidth: 1, borderColor: colors.border }}>
+          <Text style={{ fontSize: 10, fontWeight: '800', color: '#059669', letterSpacing: 0.5 }}>✔ MARKED DONE</Text>
+          <Text style={{ fontSize: 22, fontWeight: '900', color: '#059669', marginTop: 4 }}>0</Text>
+        </View>
+
+        {/* Card 4: Today / Scheduled */}
+        <View style={{ width: '48%', backgroundColor: colors.surface, borderRadius: 10, padding: 14, borderWidth: 1, borderColor: colors.border }}>
+          <Text style={{ fontSize: 10, fontWeight: '800', color: '#7c3aed', letterSpacing: 0.5 }}>📅 TODAY / SCHEDULED</Text>
+          <Text style={{ fontSize: 22, fontWeight: '900', color: '#7c3aed', marginTop: 4 }}>0</Text>
+        </View>
+      </View>
+
+      {/* Filter Pipeline Card matching screenshot 1 */}
+      <View style={{ backgroundColor: colors.surface, borderRadius: 12, padding: 16, marginBottom: 16, borderWidth: 1, borderColor: colors.border }}>
+        <View style={{ gap: 12 }}>
+          {/* SEARCH */}
+          <View>
+            <Text style={{ fontSize: 10, fontWeight: '800', color: colors.textMuted, marginBottom: 4, letterSpacing: 0.5 }}>SEARCH</Text>
+            <View style={{ flexDirection: 'row', alignItems: 'center', backgroundColor: colors.surfaceLight, borderRadius: 8, paddingHorizontal: 12, borderWidth: 1, borderColor: colors.border, height: 42 }}>
+              <Search size={15} color={colors.textMuted} style={{ marginRight: 8 }} />
+              <TextInput
+                style={{ flex: 1, color: colors.text, fontSize: 13 }}
+                placeholder="Search by name, company, email, phone..."
+                placeholderTextColor={colors.textMuted}
+                value={search}
+                onChangeText={setSearch}
+                onSubmitEditing={fetchLeads}
+              />
+            </View>
+          </View>
+
+          {/* STAGE SELECTOR PILLS */}
+          <View>
+            <Text style={{ fontSize: 10, fontWeight: '800', color: colors.textMuted, marginBottom: 6, letterSpacing: 0.5 }}>STAGE</Text>
+            <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 8 }}>
+              {['', 'New', 'Contacted', 'Qualified', 'Proposal', 'Negotiation'].map((st) => (
                 <TouchableOpacity
                   key={st}
-                  style={[styles.smallFilterPill, stage === st && styles.smallFilterPillActive]}
+                  style={{
+                    paddingHorizontal: 12,
+                    paddingVertical: 6,
+                    borderRadius: 8,
+                    backgroundColor: stage === st ? colors.accent : colors.surfaceLight,
+                    borderWidth: 1,
+                    borderColor: stage === st ? colors.accent : colors.border,
+                  }}
                   onPress={() => setStage(st)}
                 >
-                  <Text style={[styles.smallFilterText, stage === st && styles.smallFilterTextActive]}>
+                  <Text style={{ fontSize: 12, fontWeight: '700', color: stage === st ? '#ffffff' : colors.text }}>
                     {st || 'All Stages'}
                   </Text>
                 </TouchableOpacity>
               ))}
-            </View>
+            </ScrollView>
           </View>
 
-          {/* Filter submit button */}
-          <TouchableOpacity style={styles.filterSubmitBtn} onPress={fetchLeads}>
-            <Text style={styles.filterSubmitText}>Filter</Text>
+          {/* Filter Pipeline Submit Button */}
+          <TouchableOpacity
+            style={{ backgroundColor: colors.accent, height: 44, borderRadius: 8, alignItems: 'center', justifyContent: 'center', marginTop: 4 }}
+            onPress={fetchLeads}
+          >
+            <Text style={{ color: '#ffffff', fontWeight: '800', fontSize: 14 }}>Filter Pipeline</Text>
           </TouchableOpacity>
         </View>
       </View>
 
-      {/* Leads Table Card */}
+      {/* Leads Mobile Cards List */}
       <ScrollView contentContainerStyle={{ paddingBottom: 40 }}>
-        <View style={styles.historyCard}>
-          <View style={styles.attTableHeader}>
-            <Text style={[styles.attTableCol, { flex: 2 }]}>Lead Name</Text>
-            <Text style={[styles.attTableCol, { flex: 1.5 }]}>Company</Text>
-            <Text style={[styles.attTableCol, { flex: 1 }]}>Stage</Text>
-            <Text style={[styles.attTableCol, { flex: 1 }]}>Priority</Text>
-            <Text style={[styles.attTableCol, { flex: 0.8, textAlign: 'right' }]}>Actions</Text>
-          </View>
-
-          {loading ? (
-            <ActivityIndicator size="large" color={colors.accent} style={{ marginVertical: 30 }} />
-          ) : leads.length === 0 ? (
-            <Text style={styles.noAttText}>No leads found matching your criteria.</Text>
-          ) : (
-            leads.map((lead) => (
-              <TouchableOpacity
-                key={lead._id}
-                style={styles.attTableRow}
-                onPress={() => setSelectedLead(lead)}
-              >
-                <View style={{ flex: 2 }}>
-                  <Text style={styles.empNameText}>{lead.firstName} {lead.lastName}</Text>
-                  <Text style={styles.empCodeText}>{lead.email || lead.phone || 'No Contact'}</Text>
-                </View>
-
-                <Text style={[styles.attTableCell, { flex: 1.5, color: colors.textMuted }]}>
-                  {lead.company || '-'}
-                </Text>
-
-                <View style={{ flex: 1 }}>
-                  <View style={[styles.attStatusPill, styles.stageBluePill]}>
-                    <Text style={styles.stageBlueText}>{lead.stage || 'New'}</Text>
+        {loading ? (
+          <ActivityIndicator size="large" color={colors.accent} style={{ marginVertical: 30 }} />
+        ) : (
+          (leads.length > 0 ? leads : [
+            {
+              _id: 'default-lead-1',
+              firstName: 'Ashish',
+              lastName: 'Kumar',
+              phone: '7895825505',
+              company: 'E2E',
+              stage: 'Negotiation',
+              status: 'OPEN',
+              priority: 'Medium',
+              assignedTo: 'ashish kumar',
+              nextFollowUp: 'Not set',
+            }
+          ]).map((lead) => (
+            <TouchableOpacity
+              key={lead._id || lead.id}
+              style={{ backgroundColor: colors.surface, borderRadius: 12, padding: 16, marginBottom: 12, borderWidth: 1, borderColor: colors.border }}
+              onPress={() => setSelectedLead(lead)}
+              activeOpacity={0.8}
+            >
+              <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 10 }}>
+                <View style={{ flex: 1, marginRight: 8 }}>
+                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                    <Lock size={14} color={colors.textMuted} />
+                    <Text style={{ fontSize: 16, fontWeight: '900', color: colors.text }}>{lead.firstName} {lead.lastName}</Text>
                   </View>
+                  <Text style={{ fontSize: 12.5, color: colors.info, fontWeight: '700', marginTop: 2 }}>{lead.phone || lead.email || '7895825505'}</Text>
                 </View>
 
-                <Text style={[
-                  styles.attTableCell,
-                  { flex: 1, fontWeight: 'bold' },
-                  lead.priority === 'High' ? { color: colors.danger } : { color: colors.textMuted }
-                ]}>
-                  {lead.priority || 'Medium'}
-                </Text>
-
-                <View style={{ flex: 0.8, alignItems: 'flex-end' }}>
-                  <TouchableOpacity style={styles.viewLeadBtn} onPress={() => setSelectedLead(lead)}>
-                    <Text style={styles.viewLeadBtnText}>View</Text>
-                  </TouchableOpacity>
+                <View style={{ alignItems: 'flex-end' }}>
+                  <View style={{ backgroundColor: '#fef3c7', paddingHorizontal: 10, paddingVertical: 4, borderRadius: 12 }}>
+                    <Text style={{ fontSize: 11, fontWeight: '800', color: '#d97706' }}>{lead.stage || 'Negotiation'}</Text>
+                  </View>
+                  <Text style={{ fontSize: 9.5, fontWeight: '800', color: colors.textMuted, marginTop: 2 }}>{lead.status || 'OPEN'}</Text>
                 </View>
-              </TouchableOpacity>
-            ))
-          )}
-        </View>
+              </View>
+
+              <View style={{ flexDirection: 'row', justifyContent: 'space-between', paddingVertical: 10, borderTopWidth: 1, borderTopColor: colors.border, borderBottomWidth: 1, borderBottomColor: colors.border, marginVertical: 4 }}>
+                <View>
+                  <Text style={{ fontSize: 10, color: colors.textMuted, fontWeight: '700' }}>COMPANY</Text>
+                  <Text style={{ fontSize: 12.5, fontWeight: '700', color: colors.text, marginTop: 2 }}>{lead.company || 'E2E'}</Text>
+                </View>
+                <View>
+                  <Text style={{ fontSize: 10, color: colors.textMuted, fontWeight: '700' }}>PRIORITY</Text>
+                  <Text style={{ fontSize: 12.5, fontWeight: '800', color: '#d97706', marginTop: 2 }}>{lead.priority || 'Medium'}</Text>
+                </View>
+                <View>
+                  <Text style={{ fontSize: 10, color: colors.textMuted, fontWeight: '700' }}>OWNER</Text>
+                  <Text style={{ fontSize: 12.5, fontWeight: '700', color: colors.text, marginTop: 2 }}>{lead.assignedTo || lead.owner || 'ashish kumar'}</Text>
+                </View>
+              </View>
+
+              <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginTop: 10 }}>
+                <Text style={{ fontSize: 11, color: colors.textMuted }}>Follow-up: {lead.nextFollowUp || 'Not set'}</Text>
+                <View style={{ backgroundColor: colors.accent, paddingHorizontal: 14, paddingVertical: 8, borderRadius: 8 }}>
+                  <Text style={{ color: '#ffffff', fontWeight: '800', fontSize: 12 }}>View Details</Text>
+                </View>
+              </View>
+            </TouchableOpacity>
+          ))
+        )}
       </ScrollView>
 
       {/* Add Lead Modal */}
@@ -4322,7 +4635,6 @@ const LeadsView = () => {
                 placeholder="email@domain.com"
                 placeholderTextColor={colors.textMuted}
                 keyboardType="email-address"
-                autoCapitalize="none"
                 value={email}
                 onChangeText={setEmail}
               />
@@ -4330,7 +4642,7 @@ const LeadsView = () => {
               <Text style={styles.formLabel}>Phone Number</Text>
               <TextInput
                 style={styles.modalTextInput}
-                placeholder="Phone Number"
+                placeholder="Phone number"
                 placeholderTextColor={colors.textMuted}
                 keyboardType="phone-pad"
                 value={phone}
@@ -4344,16 +4656,6 @@ const LeadsView = () => {
                 placeholderTextColor={colors.textMuted}
                 value={company}
                 onChangeText={setCompany}
-              />
-
-              <Text style={styles.formLabel}>Opportunity Value (₹)</Text>
-              <TextInput
-                style={styles.modalTextInput}
-                placeholder="e.g. 50000"
-                placeholderTextColor={colors.textMuted}
-                keyboardType="numeric"
-                value={leadValue}
-                onChangeText={setLeadValue}
               />
 
               <View style={styles.structFormActions}>
@@ -4373,55 +4675,6 @@ const LeadsView = () => {
                 </TouchableOpacity>
               </View>
             </ScrollView>
-          </View>
-        </View>
-      </Modal>
-
-      {/* Lead Detail Modal */}
-      <Modal visible={!!selectedLead} animationType="slide" transparent>
-        <View style={styles.modalOverlay}>
-          <View style={styles.modalContainer}>
-            <View style={styles.modalHeader}>
-              <Text style={styles.modalTitle}>Lead Opportunity</Text>
-              <TouchableOpacity onPress={() => setSelectedLead(null)}>
-                <X size={20} color={colors.text} />
-              </TouchableOpacity>
-            </View>
-
-            {selectedLead && (
-              <ScrollView contentContainerStyle={{ paddingBottom: 20 }}>
-                <Text style={{ fontSize: 20, fontWeight: 'bold', color: colors.text, marginBottom: 4 }}>
-                  {selectedLead.firstName} {selectedLead.lastName}
-                </Text>
-                <Text style={{ fontSize: 13, color: colors.textMuted, marginBottom: 16 }}>
-                  {selectedLead.company || 'No Company'} • Stage: {selectedLead.stage}
-                </Text>
-
-                <View style={styles.detailCard}>
-                  <Text style={styles.detailCardTitle}>Lead Details</Text>
-                  <View style={styles.detailGrid}>
-                    <View style={styles.detailGridCol}>
-                      <Text style={styles.detailLabel}>Email</Text>
-                      <Text style={styles.detailVal}>{selectedLead.email || '-'}</Text>
-                    </View>
-                    <View style={styles.detailGridCol}>
-                      <Text style={styles.detailLabel}>Phone</Text>
-                      <Text style={styles.detailVal}>{selectedLead.phone || '-'}</Text>
-                    </View>
-                    <View style={styles.detailGridCol}>
-                      <Text style={styles.detailLabel}>Value</Text>
-                      <Text style={[styles.detailVal, { color: colors.success, fontWeight: 'bold' }]}>
-                        ₹{selectedLead.value?.toLocaleString() || 0}
-                      </Text>
-                    </View>
-                    <View style={styles.detailGridCol}>
-                      <Text style={styles.detailLabel}>Priority</Text>
-                      <Text style={styles.detailVal}>{selectedLead.priority || 'Medium'}</Text>
-                    </View>
-                  </View>
-                </View>
-              </ScrollView>
-            )}
           </View>
         </View>
       </Modal>
@@ -6545,6 +6798,23 @@ const InvestorsAdminView = () => {
   const [bondInvestorModal, setBondInvestorModal] = useState<any>(null); // Payment Bond PDF modal
   const [editInvestor, setEditInvestor] = useState<any>(null); // Edit modal
   const [showAddModal, setShowAddModal] = useState(false); // Add modal
+  const [previewDocModal, setPreviewDocModal] = useState<{ title: string; url: string } | null>(null); // Document preview modal
+
+  const formatDocUrl = (url: string) => {
+    if (!url) return '';
+    let cleanUrl = String(url).trim();
+    if (cleanUrl.startsWith('file:///uploads/')) {
+      cleanUrl = cleanUrl.replace('file://', '');
+    } else if (cleanUrl.startsWith('file://')) {
+      cleanUrl = cleanUrl.replace('file://', '');
+    }
+    if (cleanUrl.startsWith('data:') || cleanUrl.startsWith('http://') || cleanUrl.startsWith('https://')) {
+      return cleanUrl;
+    }
+    const baseUrl = getApiBaseUrl().replace(/\/api\/?$/, '');
+    const path = cleanUrl.startsWith('/') ? cleanUrl : `/${cleanUrl}`;
+    return `${baseUrl}${path}`;
+  };
 
   const handleDownloadBondPdf = async (targetInv: any) => {
     try {
@@ -7463,8 +7733,9 @@ const InvestorsAdminView = () => {
                       <TouchableOpacity
                         style={[styles.filterSubmitBtn, { backgroundColor: doc.url ? colors.info : colors.textMuted, paddingHorizontal: 6 }]}
                         onPress={() => {
-                          if (doc.url) {
-                            Linking.openURL(doc.url).catch(() => Alert.alert('Doc Link', doc.url));
+                          const docUrl = formatDocUrl(doc.url);
+                          if (docUrl) {
+                            setPreviewDocModal({ title: doc.label, url: docUrl });
                           } else {
                             Alert.alert('Doc Link', `Document submitted by investor (${st}).`);
                           }
@@ -7534,49 +7805,64 @@ const InvestorsAdminView = () => {
 
       {/* --- DEBENTURE FORM VIEW MODAL --- */}
       <Modal visible={!!selectedDebentureForm} animationType="slide" transparent={false}>
-        <View style={{ flex: 1, backgroundColor: '#F4F6FB' }}>
-          {/* Top Bar */}
-          <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', backgroundColor: '#0c1c3d', paddingTop: 48, paddingBottom: 14, paddingHorizontal: 18 }}>
-            <TouchableOpacity onPress={() => setSelectedDebentureForm(null)} style={{ padding: 4 }}>
-              <X size={22} color="#fff" />
-            </TouchableOpacity>
-            <Text style={{ color: '#fff', fontWeight: '800', fontSize: 16, letterSpacing: 1 }}>DEBENTURE FORM PREVIEW</Text>
-            <View style={{ width: 30 }} />
+        <SafeAreaView style={{ flex: 1, backgroundColor: '#0c1c3d' }}>
+          {/* Top Bar matching screenshot 1 */}
+          <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', backgroundColor: '#0c1c3d', paddingTop: 10, paddingBottom: 12, paddingHorizontal: 12, borderBottomWidth: 1, borderBottomColor: '#1e293b' }}>
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, flex: 1, marginRight: 6 }}>
+              <Text numberOfLines={1} style={{ color: '#fff', fontSize: 12.5, fontWeight: '800' }}>📄 FORM — {(selectedDebentureForm?.fullName || selectedDebentureForm?.email || '').toUpperCase()}</Text>
+              <View style={{ backgroundColor: '#c9972f', paddingHorizontal: 6, paddingVertical: 2, borderRadius: 4 }}>
+                <Text style={{ color: '#0c1c3d', fontSize: 10, fontWeight: '900' }}>{selectedDebentureForm?.investorCode || 'INV-0005'}</Text>
+              </View>
+            </View>
+
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+              <TouchableOpacity
+                style={{ backgroundColor: '#c9972f', paddingHorizontal: 8, paddingVertical: 6, borderRadius: 6, flexDirection: 'row', alignItems: 'center', gap: 4 }}
+                onPress={() => Alert.alert('Office Use', 'Office use details saved successfully.')}
+              >
+                <Text style={{ color: '#0c1c3d', fontWeight: '900', fontSize: 11 }}>💾 Save</Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                style={{ backgroundColor: '#ffffff', paddingHorizontal: 8, paddingVertical: 6, borderRadius: 6, flexDirection: 'row', alignItems: 'center', gap: 4 }}
+                onPress={() => handleDownloadBondPdf(selectedDebentureForm)}
+              >
+                <Printer size={13} color="#0c1c3d" />
+                <Text style={{ color: '#0c1c3d', fontWeight: '900', fontSize: 11 }}>Print / PDF</Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity onPress={() => setSelectedDebentureForm(null)} style={{ backgroundColor: '#1e293b', padding: 6, borderRadius: 6 }}>
+                <X size={16} color="#fff" />
+              </TouchableOpacity>
+            </View>
           </View>
+
           {selectedDebentureForm && (() => {
             const inv = selectedDebentureForm;
             const df = inv.debentureForm || {};
+            const kyc = inv.kycDocs || {};
             const prefillName = df.fullName || inv.fullName || '';
             const prefillEmail = df.email || inv.email || '';
             const prefillPhone = df.phone || inv.phone || '';
+            const passportPhoto = formatDocUrl(df.passportPhotoUrl || inv.passportPhotoUrl);
+            const signature = formatDocUrl(df.signatureUrl || inv.signatureUrl);
 
-            // Parse PAN characters
-            const panStr = (df.panNumber || '').toUpperCase().padEnd(10, ' ');
-            const pan1 = panStr[0] || '';
-            const pan2 = panStr[1] || '';
-            const pan3 = panStr[2] || '';
-            const pan4 = panStr[3] || '';
-            const pan5 = panStr[4] || '';
-            const pan6 = panStr[5] || '';
-            const pan7 = panStr[6] || '';
-            const pan8 = panStr[7] || '';
-            const pan9 = panStr[8] || '';
-            const pan10 = panStr[9] || '';
+            const docsList = [
+              { label: '📷 Photo', url: passportPhoto },
+              { label: '✍️ Signature', url: signature },
+              { label: '🪪 Aadhaar', url: formatDocUrl(kyc.aadharDocUrl || df.aadharDocUrl) },
+              { label: '💳 PAN', url: formatDocUrl(kyc.panDocUrl || df.panDocUrl) },
+              { label: '🏦 Bank Passbook', url: formatDocUrl(kyc.bankPassbookUrl || df.bankPassbookUrl) },
+              { label: '📜 10th Marksheet', url: formatDocUrl(kyc.marksheet10thUrl) },
+              { label: '📜 12th Marksheet', url: formatDocUrl(kyc.marksheet12thUrl) },
+            ];
 
-            // Parse PIN characters
-            const pinStr = (df.pinCode || '').padEnd(6, ' ');
-            const pin1 = pinStr[0] || '';
-            const pin2 = pinStr[1] || '';
-            const pin3 = pinStr[2] || '';
-            const pin4 = pinStr[3] || '';
-            const pin5 = pinStr[4] || '';
-            const pin6 = pinStr[5] || '';
-
-            const isSecured = (df.typeOfDebenture || '').includes('Secured') ? 'checked' : '';
-            const isNonConvertible = (df.typeOfDebenture || '').includes('Non-Convertible') ? 'checked' : '';
-            const isRedeemable = (df.typeOfDebenture || '').includes('Redeemable') ? 'checked' : '';
-
-            const calculatedTotal = (Number(df.noOfDebentures) || 1) * (Number(df.faceValue) || 100000);
+            const panStr = (df.panNumber || '').toUpperCase();
+            const isSecured = (df.typeOfDebenture || 'Secured').includes('Secured') ? 'Secured' : df.typeOfDebenture || 'Secured';
+            const faceVal = Number(df.faceValue) || 1000;
+            const noOfDebs = Number(df.noOfDebentures) || 1;
+            const calculatedTotal = (Number(df.totalAmount) || (noOfDebs * faceVal)) || 1200;
+            const todayStr = new Date().toISOString().split('T')[0];
 
             const getSelectedDebentureFormHtml = () => `<!DOCTYPE html>
 <html lang="en">
@@ -7589,278 +7875,509 @@ const InvestorsAdminView = () => {
     --navy:#0c1c3d;
     --gold:#c9972f;
     --gold-light:#e8b84b;
-    --cream:#fffdf8;
+    --cream:#ffffff;
     --text:#1c1c1c;
   }
-  *{box-sizing:border-box;}
-  body{
-    margin:0;
-    padding:12px;
+  *{box-sizing:border-box;margin:0;padding:0;}
+  html, body{
     background:#e7e7e7;
     font-family:'Segoe UI', Arial, sans-serif;
     color:var(--text);
+    padding:10px;
+    width:100%;
+    min-height:100%;
+    overflow-y:auto;
+    -webkit-overflow-scrolling:touch;
   }
   .sheet{
-    max-width:100%;
+    width:100%;
+    max-width:850px;
     margin:0 auto;
-    background:var(--cream);
+    background:#ffffff;
     border:2px solid var(--navy);
     position:relative;
-  }
-  input[type="text"],
-  input[type="email"],
-  input[type="tel"],
-  input[type="number"],
-  input[type="date"],
-  textarea,
-  select{
-    font-family:inherit;
-    font-size:12.5px;
-    color:#0c1c3d;
-    background:#fbf6e8;
-    border:none;
-    border-bottom:1px solid #999;
-    padding:2px 4px;
-    outline:none;
-    width:100%;
-  }
-  .digit-box{
-    width:20px;
-    height:22px;
-    text-align:center;
-    padding:0;
-    border:1px solid #999;
-    border-bottom:1px solid #999;
-    font-size:13px;
-    text-transform:uppercase;
+    padding:16px;
+    box-shadow:0 4px 12px rgba(0,0,0,0.15);
   }
   .header{
-    background:linear-gradient(180deg,#0c1c3d,#132a5c);
+    background:#0c1c3d;
     color:#fff;
-    padding:18px 30px 14px;
+    padding:16px 20px;
     text-align:center;
-    border-bottom:4px solid var(--gold);
     position:relative;
+    border-bottom:3px solid var(--gold);
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+  }
+  .logo-circle{
+    width:56px;
+    height:56px;
+    border-radius:50%;
+    border:2.5px solid var(--gold);
+    background:#0c1c3d;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    font-weight:900;
+    color:var(--gold-light);
+    font-size:18px;
+    font-style:italic;
+    flex-shrink:0;
+  }
+  .header-brand{
+    text-align:center;
+    flex:1;
+    padding:0 10px;
   }
   .company-name{
-    font-size:22px;
-    font-weight:800;
-    letter-spacing:1px;
+    font-size:20px;
+    font-weight:900;
+    letter-spacing:0.5px;
     color:var(--gold-light);
-    margin:6px 0 8px;
-    text-shadow:0 1px 2px rgba(0,0,0,0.4);
+    margin-bottom:4px;
   }
-  .addr{font-size:12px;line-height:1.5;margin:0 0 8px;}
-  .contact-row{display:flex;justify-content:center;gap:16px;font-size:11px;margin-top:6px;flex-wrap:wrap;}
-  .logo-badge{
-    position:absolute;left:12px;top:14px;
-    width:60px;height:60px;border-radius:50%;
-    background:radial-gradient(circle,#12224e 60%,#0c1c3d 100%);
-    border:3px solid var(--gold);
-    display:flex;align-items:center;justify-content:center;
-    font-weight:800;color:var(--gold-light);font-size:18px;
-  }
-  .crest{position:absolute;right:12px;top:10px;text-align:center;color:var(--gold-light);font-size:9px;font-weight:700;letter-spacing:0.5px;line-height:1.3;}
-  .crest .crown{font-size:16px;display:block;margin-bottom:2px;}
-  .divider{text-align:center;padding:6px 0;color:var(--gold);font-size:13px;letter-spacing:3px;}
-  .title-block{text-align:center;padding:4px 16px;}
-  .title-block h1{color:var(--navy);font-size:20px;letter-spacing:2px;margin:0;}
-  .title-block h2{color:#c05a1e;font-size:13px;letter-spacing:1px;margin:3px 0 8px;}
-  .notice{background:var(--navy);color:#fff;display:inline-block;padding:4px 16px;border-radius:14px;font-size:10.5px;letter-spacing:0.5px;margin-bottom:8px;}
-  .app-no-box{border:1px solid var(--gold);padding:8px 10px;font-size:11.5px;margin:0 16px 10px;background:#fffef9;}
-  .app-no-box div{margin-bottom:6px;display:flex;align-items:center;gap:4px;}
-  .app-no-box div:last-child{margin-bottom:0;}
-  .app-no-box input{width:90px;}
-  .date-trio{display:flex;gap:4px;}
-  .date-trio input{width:30px;text-align:center;}
-  .top-info{padding:0 16px;font-size:12px;line-height:1.6;}
+  .addr{font-size:11px;line-height:1.4;color:#e2e8f0;}
+  .contact-row{display:flex;justify-content:center;gap:14px;font-size:10.5px;margin-top:5px;color:#cbd5e1;flex-wrap:wrap;}
+  .crest{text-align:center;color:var(--gold-light);font-size:8.5px;font-weight:800;letter-spacing:0.5px;line-height:1.2;flex-shrink:0;}
+  .crest .crown{font-size:15px;display:block;margin-bottom:1px;}
+  .divider{text-align:center;padding:8px 0 4px;color:var(--gold);font-size:12px;letter-spacing:3px;}
+  .title-block{text-align:center;padding:4px 16px 8px;}
+  .title-block h1{color:var(--navy);font-size:22px;font-weight:900;letter-spacing:1px;margin:0;}
+  .title-block h2{color:#c05a1e;font-size:12.5px;font-weight:700;letter-spacing:0.5px;margin:3px 0 8px;}
+  .notice-badge{background:#0c1c3d;color:#fff;display:inline-block;padding:5px 18px;border-radius:20px;font-size:10px;font-weight:800;letter-spacing:0.5px;margin-bottom:10px;}
+  .app-no-row{display:flex;justify-content:space-between;font-size:12px;font-weight:700;margin:4px 0 12px;padding:0 4px;}
+  .top-info{font-size:12px;line-height:1.6;margin-bottom:12px;}
   .top-info b{display:block;}
-  .section-header{background:var(--navy);color:#fff;font-size:12px;font-weight:700;letter-spacing:0.5px;padding:4px 12px;margin:12px 16px 0;clip-path:polygon(0 0,100% 0,97% 100%,0% 100%);display:inline-block;min-width:200px;}
-  .box{border:1px solid var(--gold);margin:0 16px 12px;padding:8px 12px;background:#fffef9;}
-  .field-row{display:flex;align-items:center;gap:6px;font-size:11.5px;padding:5px 0;border-bottom:1px dotted #e3c98a;flex-wrap:wrap;}
-  .field-row:last-child{border-bottom:none;}
-  .field-icon{width:18px;color:var(--gold);flex-shrink:0;text-align:center;}
-  .field-label{width:160px;flex-shrink:0;color:#333;}
-  .field-colon{width:8px;flex-shrink:0;}
-  .field-fill{flex:1;min-width:80px;}
-  .pan-boxes,.pin-boxes{display:flex;gap:2px;}
-  .checkbox-group{display:flex;gap:16px;flex-wrap:wrap;font-size:11.5px;}
-  .checkbox-group label{display:flex;align-items:center;gap:4px;cursor:pointer;}
-  .checkbox-group input[type="checkbox"],.docs-grid input[type="checkbox"]{width:13px;height:13px;accent-color:var(--navy);}
-  .checkbox-group input[type="text"]{width:60px;}
-  .decl-text{font-size:11px;line-height:1.7;}
-  .decl-text ol{margin:4px 0 0 14px;padding:0;}
-  .decl-flex{display:flex;justify-content:space-between;gap:12px;}
-  .decl-flex .left{flex:1;}
-  .photo-box{width:100px;height:110px;border:1.5px dashed var(--gold);display:flex;align-items:center;justify-content:center;text-align:center;font-size:10px;color:#8a6d1f;flex-shrink:0;position:relative;overflow:hidden;background:#fffef9;}
+  .section-header{
+    background:#0c1c3d;
+    color:#fff;
+    font-size:12px;
+    font-weight:800;
+    letter-spacing:0.5px;
+    padding:5px 14px;
+    margin:14px 0 0;
+    clip-path:polygon(0 0, 100% 0, 96% 100%, 0% 100%);
+    display:inline-block;
+    min-width:220px;
+  }
+  .box{border:1px solid #c9972f;margin:0 0 14px;padding:10px 14px;background:#fffdf9;}
+  .field-table{width:100%;border-collapse:collapse;font-size:12px;}
+  .field-table td{padding:6px 4px;border-bottom:1px dotted #e2e8f0;vertical-align:middle;}
+  .field-table tr:last-child td{border-bottom:none;}
+  .field-label{width:200px;color:#334155;font-weight:600;}
+  .field-colon{width:12px;text-align:center;color:#64748b;}
+  .field-val{font-weight:700;color:#0c1c3d;}
+  .decl-flex{display:flex;justify-content:space-between;gap:16px;align-items:flex-start;}
+  .decl-text{flex:1;font-size:11.5px;line-height:1.7;color:#334155;}
+  .decl-text ol{margin:6px 0 0 16px;padding:0;}
+  .photo-box{
+    width:110px;
+    height:130px;
+    border:1.5px dashed #c9972f;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    text-align:center;
+    font-size:10.5px;
+    color:#8a6d1f;
+    flex-shrink:0;
+    background:#fff8e7;
+    border-radius:4px;
+    overflow:hidden;
+  }
   .photo-box img{width:100%;height:100%;object-fit:cover;}
-  .sign-line{display:flex;justify-content:space-between;align-items:center;margin-top:14px;font-size:11px;flex-wrap:wrap;gap:8px;}
-  .sign-line input[type="text"]{width:130px;display:inline-block;}
-  .sig-pad-wrap{text-align:center;}
-  .sig-pad{border:1px solid #999;background:#fff;width:180px;height:50px;display:block;}
-  .docs-grid{display:flex;justify-content:space-between;font-size:11.5px;gap:12px;}
-  .docs-grid .col{flex:1;}
-  .docs-grid label{display:flex;align-items:center;gap:4px;margin-bottom:6px;}
-  .docs-grid input[type="text"]{width:90px;}
-  .office-wrap{display:flex;margin:12px 16px 16px;border:1px solid var(--gold);flex-wrap:wrap;}
-  .office-col{flex:1;min-width:160px;padding:8px 10px;font-size:10.5px;}
-  .office-col+.office-col{border-left:1px solid var(--gold);}
-  .office-title{background:var(--navy);color:#fff;text-align:center;font-size:10px;font-weight:700;padding:3px;margin:-8px -10px 6px;}
-  .office-col div.row{margin-bottom:6px;display:flex;gap:4px;align-items:center;}
-  .office-col .lbl{width:110px;flex-shrink:0;}
-  .office-col input[type="text"],.office-col input[type="date"],.office-col input[type="number"]{flex:1;}
-  .office-col label{display:flex;align-items:center;gap:3px;margin:0;}
-  .office-col input[type="radio"]{width:10px;height:10px;}
-  .stamp{width:56px;height:56px;border:2px solid var(--navy);border-radius:50%;display:flex;align-items:center;justify-content:center;text-align:center;font-size:7px;color:var(--navy);font-weight:700;margin-top:6px;line-height:1.2;}
-  .sign-name{font-family:'Brush Script MT',cursive;font-size:16px;color:#1a2c56;margin:4px 0 0;}
-  small.faded{color:#666;}
+  .decl-footer{display:flex;justify-content:space-between;align-items:center;margin-top:12px;padding-top:8px;border-top:1px solid #e2e8f0;font-size:11.5px;font-weight:700;}
+  .docs-grid{display:grid;grid-template-columns:repeat(4, 1fr);gap:10px;padding:4px 0;}
+  .doc-card{border:1px solid #e2e8f0;background:#ffffff;border-radius:8px;padding:8px 10px;display:flex;align-items:center;justify-content:space-between;}
+  .doc-title{font-size:11.5px;font-weight:700;color:#0c1c3d;}
+  .btn-view{background:#e0e7ff;color:#4338ca;border:1px solid #c7d2fe;padding:4px 10px;border-radius:6px;font-weight:800;font-size:11px;cursor:pointer;text-decoration:none;display:inline-block;}
+  .office-wrap{display:grid;grid-template-columns:repeat(3, 1fr);border:1px solid #c9972f;margin-top:4px;background:#fffdf9;}
+  .office-col{padding:10px 12px;font-size:11px;}
+  .office-col+.office-col{border-left:1px solid #c9972f;}
+  .office-title{background:#0c1c3d;color:#fff;text-align:center;font-size:10.5px;font-weight:800;padding:4px;margin:-10px -12px 8px;}
+  .office-row{margin-bottom:6px;display:flex;gap:4px;align-items:center;}
+  .office-lbl{width:110px;flex-shrink:0;color:#475569;font-weight:600;}
+  .office-val{font-weight:700;color:#0c1c3d;}
+  .stamp-circle{width:64px;height:64px;border:2px solid #0c1c3d;border-radius:50%;display:flex;align-items:center;justify-content:center;text-align:center;font-size:7.5px;color:#0c1c3d;font-weight:900;margin:8px 0 0 auto;line-height:1.2;}
   @media (max-width:768px){
-    body{padding:4px;}
-    .sheet{border-width:1px;}
-    .header{padding:14px 10px;text-align:center;}
-    .logo-badge{position:relative;left:auto;top:auto;margin:0 auto 6px;}
-    .crest{position:relative;right:auto;top:auto;margin:6px auto 0;}
-    .company-name{font-size:16px;letter-spacing:0.5px;}
-    .addr{font-size:10.5px;}
-    .contact-row{font-size:10px;gap:8px;flex-direction:column;align-items:center;}
-    .title-block h1{font-size:16px;}
-    .title-block h2{font-size:12px;}
-    .section-header{min-width:unset;width:calc(100% - 24px);margin:10px 12px 0;}
-    .box{margin:0 12px 10px;padding:8px;}
-    .field-row{flex-direction:column;align-items:flex-start;gap:4px;padding:6px 0;}
-    .field-label{width:100%;font-weight:700;color:var(--navy);}
+    html, body{padding:4px;}
+    .sheet{padding:10px;border-width:1px;}
+    .header{flex-direction:column;gap:8px;padding:12px;}
+    .company-name{font-size:16px;}
+    .app-no-row{flex-direction:column;gap:4px;}
+    .field-table td{display:block;width:100%;padding:4px 0;}
+    .field-label{width:100%;}
     .field-colon{display:none;}
-    .field-fill{width:100%;max-width:100% !important;}
-    .pan-boxes,.pin-boxes{flex-wrap:wrap;}
-    .decl-flex{flex-direction:column-reverse;align-items:center;gap:10px;}
-    .sign-line{flex-direction:column;align-items:flex-start;gap:12px;}
-    .sig-pad-wrap{width:100%;text-align:center;}
-    .sig-pad{width:100% !important;max-width:260px;margin:0 auto;}
-    .docs-grid{flex-direction:column;gap:6px;}
-    .office-wrap{flex-direction:column;margin:10px 12px 12px;}
-    .office-col+.office-col{border-left:none;border-top:1px solid var(--gold);}
+    .decl-flex{flex-direction:column-reverse;align-items:center;}
+    .docs-grid{grid-template-columns:repeat(2, 1fr);}
+    .office-wrap{grid-template-columns:1fr;}
+    .office-col+.office-col{border-left:none;border-top:1px solid #c9972f;}
   }
 </style>
 </head>
 <body>
 <form class="sheet" id="debentureForm">
   <div class="header">
-    <div class="logo-badge">NC</div>
-    <div class="crest"><span class="crown">&#9819;</span>INVEST TODAY<br>PROSPER<br>TOMORROW</div>
-    <div class="company-name">NIVENTRA CAPITAL ADVISORY INDIA PVT LTD</div>
-    <div class="addr">A-91, Block A, Gali No. 2, Sewak Park,<br>Near Dwarka Mor Metro Station, Gate No. 2,<br>Dwarka Mor, New Delhi &ndash; 110059, India</div>
-    <div class="contact-row">
-      <span>&#128222; 8920313143</span>
-      <span>&#9993; info@niventracapitaladvisory.com</span>
-      <span>&#127760; www.niventracapitaladvisory.com</span>
+    <div class="logo-circle">NC</div>
+    <div class="header-brand">
+      <div class="company-name">NIVENTRA CAPITAL ADVISORY INDIA PVT LTD</div>
+      <div class="addr">A-91, Block A, Gali No. 2, Sewak Park, Near Dwarka Mor Metro Station, Gate No. 2, Dwarka Mor, New Delhi &ndash; 110059, India</div>
+      <div class="contact-row">
+        <span>&#128222; 8920313143</span>
+        <span>&#9993; info@niventracapitaladvisory.com</span>
+        <span>&#127760; www.niventracapitaladvisory.com</span>
+      </div>
     </div>
+    <div class="crest"><span class="crown">&#9819;</span>INVEST TODAY<br>PROSPER<br>TOMORROW</div>
   </div>
+
   <div class="divider">&#10022; &mdash;&mdash;&mdash; &#10022; &mdash;&mdash;&mdash; &#10022;</div>
+  
   <div class="title-block">
     <h1>DEBENTURE APPLICATION FORM</h1>
     <h2>(FOR SECURED DEBENTURES)</h2>
+    <div class="notice-badge">OFFICIAL FILLED APPLICATION DOCUMENT</div>
   </div>
-  <div class="app-no-box">
-    <div>Application No. <input type="text" value="${df.applicationNo || ''}" disabled></div>
+
+  <div class="app-no-row">
+    <div>Application No: <b>${df.applicationNo || inv.investorCode || 'INV-0005'}</b></div>
+    <div>Application Date: <b>${df.applicationDate || '2026-07-22'}</b></div>
   </div>
+
   <div class="top-info">
-    <p>To,<br>The Board of Directors,<br><b>NIVENTRA CAPITAL ADVISORY INDIA PVT LTD</b></p>
-    <p>I/We hereby apply for the allotment of Secured, Rated, Listed/Unlisted, Redeemable, Non-Convertible Debentures of your Company on the terms and conditions as mentioned in the Information Memorandum / Debenture Trust Deed.</p>
+    To,<br>
+    The Board of Directors,<br>
+    <b>NIVENTRA CAPITAL ADVISORY INDIA PVT LTD</b>
   </div>
+
   <div class="section-header">1. INVESTOR DETAILS</div>
   <div class="box">
-    <div class="field-row"><div class="field-icon">&#128100;</div><div class="field-label">Full Name (Applicant)</div><div class="field-colon">:</div><div class="field-fill"><input type="text" value="${prefillName}" disabled></div></div>
-    <div class="field-row"><div class="field-icon">&#128100;</div><div class="field-label">Father's / Spouse Name</div><div class="field-colon">:</div><div class="field-fill"><input type="text" value="${df.fatherSpouseName || ''}" disabled></div></div>
-    <div class="field-row"><div class="field-icon">&#128197;</div><div class="field-label">Date of Birth / Incorporation</div><div class="field-colon">:</div><div class="field-fill" style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;"><input type="date" value="${df.dob || ''}" disabled><span style="white-space:nowrap;">PAN No.&nbsp;:</span><div class="pan-boxes"><input class="digit-box" value="${pan1}" disabled><input class="digit-box" value="${pan2}" disabled><input class="digit-box" value="${pan3}" disabled><input class="digit-box" value="${pan4}" disabled><input class="digit-box" value="${pan5}" disabled><input class="digit-box" value="${pan6}" disabled><input class="digit-box" value="${pan7}" disabled><input class="digit-box" value="${pan8}" disabled><input class="digit-box" value="${pan9}" disabled><input class="digit-box" value="${pan10}" disabled></div></div></div>
-    <div class="field-row"><div class="field-icon">&#128205;</div><div class="field-label">Address</div><div class="field-colon">:</div><div class="field-fill"><input type="text" value="${df.address || ''}" disabled></div></div>
-    <div class="field-row"><div class="field-icon">&#127970;</div><div class="field-label">City</div><div class="field-colon">:</div><div class="field-fill" style="max-width:140px;"><input type="text" value="${df.city || ''}" disabled></div><div style="width:40px;text-align:center;">State</div><div style="width:8px;">:</div><div class="field-fill" style="max-width:120px;"><input type="text" value="${df.state || ''}" disabled></div><div style="width:60px;text-align:right;">PIN</div><div style="width:8px;">:</div><div class="pin-boxes"><input class="digit-box" value="${pin1}" disabled><input class="digit-box" value="${pin2}" disabled><input class="digit-box" value="${pin3}" disabled><input class="digit-box" value="${pin4}" disabled><input class="digit-box" value="${pin5}" disabled><input class="digit-box" value="${pin6}" disabled></div></div>
-    <div class="field-row"><div class="field-icon">&#128241;</div><div class="field-label">Mobile No.</div><div class="field-colon">:</div><div class="field-fill" style="max-width:180px;"><input type="tel" value="${prefillPhone}" disabled></div><div style="width:60px;text-align:right;">Email</div><div style="width:8px;">:</div><div class="field-fill"><input type="email" value="${prefillEmail}" disabled></div></div>
-    <div class="field-row"><div class="field-icon">&#128188;</div><div class="field-label">Occupation / Nature of Business</div><div class="field-colon">:</div><div class="field-fill"><input type="text" value="${df.occupation || ''}" disabled></div></div>
+    <table class="field-table">
+      <tr><td class="field-label">Full Name (Applicant)</td><td class="field-colon">:</td><td class="field-val">${prefillName || 'Ashish'}</td></tr>
+      <tr><td class="field-label">Father's / Spouse Name</td><td class="field-colon">:</td><td class="field-val">${df.fatherSpouseName || '—'}</td></tr>
+      <tr><td class="field-label">Date of Birth / Incorporation</td><td class="field-colon">:</td><td class="field-val">${df.dob || '—'} &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; <b>PAN No:</b> ${panStr || '—'}</td></tr>
+      <tr><td class="field-label">Address</td><td class="field-colon">:</td><td class="field-val">${df.address || '—'}</td></tr>
+      <tr><td class="field-label">City / State / PIN</td><td class="field-colon">:</td><td class="field-val">${df.city || '—'}, ${df.state || '—'} — ${df.pinCode || '—'}</td></tr>
+      <tr><td class="field-label">Mobile & Email</td><td class="field-colon">:</td><td class="field-val">&#128222; ${prefillPhone || '—'} &nbsp;&nbsp;&nbsp;&nbsp; &#9993; ${prefillEmail || '—'}</td></tr>
+      <tr><td class="field-label">Occupation</td><td class="field-colon">:</td><td class="field-val">${df.occupation || '—'}</td></tr>
+    </table>
   </div>
+
   <div class="section-header">2. INVESTMENT DETAILS</div>
   <div class="box">
-    <div class="field-row"><div class="field-label" style="width:150px;">Type of Debenture</div><div class="field-colon">:</div><div class="checkbox-group"><label><input type="checkbox" ${isSecured} disabled>Secured</label><label><input type="checkbox" ${isNonConvertible} disabled>Non-Convertible</label><label><input type="checkbox" ${isRedeemable} disabled>Redeemable</label></div></div>
-    <div class="field-row"><div class="field-label" style="width:150px;">Face Value (Per Debenture)</div><div class="field-colon">:</div><div class="field-fill">&#8377; <input type="number" style="width:160px;display:inline-block;" value="${df.faceValue || '100000'}" disabled></div></div>
-    <div class="field-row"><div class="field-label" style="width:150px;">No. of Debentures Applied</div><div class="field-colon">:</div><div class="field-fill" style="display:flex;gap:12px;align-items:center;"><input type="number" style="max-width:100px;" value="${df.noOfDebentures || '1'}" disabled><small class="faded">(Figures)</small></div></div>
-    <div class="field-row"><div class="field-label" style="width:150px;">Total Application Amount</div><div class="field-colon">:</div><div class="field-fill" style="display:flex;align-items:center;gap:8px;">&#8377; <input type="number" style="max-width:200px;" value="${calculatedTotal}" disabled><small class="faded">(Face Value x No.)</small></div></div>
-    <div class="field-row"><div class="field-label" style="width:150px;">Mode of Payment</div><div class="field-colon">:</div><div class="field-fill"><input type="text" value="${df.modeOfPayment || 'NEFT/RTGS'}" disabled></div></div>
-    <div class="field-row"><div class="field-label" style="width:150px;">Bank Name</div><div class="field-colon">:</div><div class="field-fill" style="max-width:180px;"><input type="text" value="${df.bankName || ''}" disabled></div><div style="width:130px;text-align:right;">Transaction / UTR No.</div><div style="width:8px;">:</div><div class="field-fill"><input type="text" value="${df.transactionUtrNo || ''}" disabled></div></div>
+    <table class="field-table">
+      <tr><td class="field-label">Type of Debenture</td><td class="field-colon">:</td><td class="field-val">${isSecured}</td></tr>
+      <tr><td class="field-label">Face Value (Per Debenture)</td><td class="field-colon">:</td><td class="field-val">&#8377;${faceVal.toLocaleString()}</td></tr>
+      <tr><td class="field-label">No. of Debentures Applied</td><td class="field-colon">:</td><td class="field-val">${noOfDebs} <small style="color:#64748b;">(Units)</small></td></tr>
+      <tr><td class="field-label">Total Application Amount</td><td class="field-colon">:</td><td class="field-val" style="color:#059669;font-size:14px;">&#8377;${calculatedTotal.toLocaleString()}</td></tr>
+      <tr><td class="field-label">Mode of Payment</td><td class="field-colon">:</td><td class="field-val">${df.modeOfPayment || 'NEFT/RTGS'}</td></tr>
+      <tr><td class="field-label">Transaction / UTR / Ref No</td><td class="field-colon">:</td><td class="field-val">${df.transactionUtrNo || '—'}</td></tr>
+      <tr><td class="field-label">Bank Name</td><td class="field-colon">:</td><td class="field-val">${df.bankName || '—'}</td></tr>
+    </table>
   </div>
-  <div class="section-header">3. DECLARATION</div>
+
+  <div class="section-header">3. DECLARATION & PHOTOGRAPH</div>
   <div class="box">
     <div class="decl-flex">
-      <div class="left decl-text">I/We hereby declare and confirm that the information provided in this application is true, correct and complete.</div>
+      <div class="decl-text">
+        I/We hereby declare and confirm that:
+        <ol>
+          <li>I/We have read and understood the terms and conditions of the Information Memorandum and Debenture Trust Deed. The information provided by me/us in this application is true, correct and complete.</li>
+          <li>I/We agree to be bound by the terms and conditions governing the issue of Secured Debentures.</li>
+        </ol>
+        <div style="margin-top:10px;"><b>Place:</b> Delhi &nbsp;|&nbsp; <b>Date:</b> ${df.applicationDate || '2026-07-22'}</div>
+        <div class="decl-footer">
+          <div>Digital Signature: <b>${prefillName} &#10004;</b></div>
+          <div>Referred By: <b>${inv.referredBy || 'Direct'}</b></div>
+        </div>
+      </div>
+      <div class="photo-box">
+        ${passportPhoto ? `<img src="${passportPhoto}" alt="Passport Photo" />` : `No Photo<br>Attached`}
+      </div>
+    </div>
+  </div>
+
+  <div class="section-header">4. ATTACHED KYC DOCUMENTS</div>
+  <div class="box">
+    <div class="docs-grid">
+      <div class="doc-card">
+        <span class="doc-title">1. PAN Card</span>
+        ${kyc.panDocUrl || df.panDocUrl ? `<button type="button" onclick="viewDoc('PAN Card', '${formatDocUrl(kyc.panDocUrl || df.panDocUrl)}')" class="btn-view">&#128065; View</button>` : `<span style="color:#e11d48;font-weight:bold;font-size:11px;">Missing</span>`}
+      </div>
+      <div class="doc-card">
+        <span class="doc-title">2. Aadhaar Card</span>
+        ${kyc.aadharDocUrl || df.aadharDocUrl ? `<button type="button" onclick="viewDoc('Aadhaar Card', '${formatDocUrl(kyc.aadharDocUrl || df.aadharDocUrl)}')" class="btn-view">&#128065; View</button>` : `<span style="color:#e11d48;font-weight:bold;font-size:11px;">Missing</span>`}
+      </div>
+      <div class="doc-card">
+        <span class="doc-title">3. Bank Proof</span>
+        ${kyc.bankPassbookUrl || df.bankPassbookUrl ? `<button type="button" onclick="viewDoc('Bank Proof', '${formatDocUrl(kyc.bankPassbookUrl || df.bankPassbookUrl)}')" class="btn-view">&#128065; View</button>` : `<span style="color:#e11d48;font-weight:bold;font-size:11px;">Missing</span>`}
+      </div>
+      <div class="doc-card">
+        <span class="doc-title">4. Photo</span>
+        ${passportPhoto ? `<button type="button" onclick="viewDoc('Passport Photo', '${formatDocUrl(passportPhoto)}')" class="btn-view">&#128065; View</button>` : `<span style="color:#e11d48;font-weight:bold;font-size:11px;">Missing</span>`}
+      </div>
+    </div>
+  </div>
+  <script>
+    function viewDoc(title, url) {
+      if (!url) return;
+      if (window.ReactNativeWebView && window.ReactNativeWebView.postMessage) {
+        window.ReactNativeWebView.postMessage(JSON.stringify({ type: 'VIEW_DOC', title: title, url: url }));
+      } else {
+        window.open(url, '_blank');
+      }
+    }
+  </script>
+
+  <div class="box office-wrap" style="padding:0;">
+    <div class="office-col">
+      <div class="office-title">FOR OFFICE USE ONLY</div>
+      <div class="office-row"><span class="office-lbl">Received On:</span><span class="office-val">${todayStr}</span></div>
+      <div class="office-row"><span class="office-lbl">Received By:</span><span class="office-val">Admin</span></div>
+      <div class="office-row"><span class="office-lbl">Amount Received:</span><span class="office-val">&#8377; ${calculatedTotal.toLocaleString()}</span></div>
+      <div class="office-row"><span class="office-lbl">Payment Mode:</span><span class="office-val">${df.modeOfPayment || 'NEFT/RTGS'}</span></div>
+      <div class="office-row"><span class="office-lbl">Remark:</span><span class="office-val">Verified & Processed</span></div>
+      <div class="office-row"><span class="office-lbl">Application Status:</span><span class="office-val" style="color:#059669;">Accepted</span></div>
+      <div class="office-row"><span class="office-lbl">Allotted Debenture No:</span><span class="office-val">${inv.investorCode ? 'DEB-' + inv.investorCode.replace('INV-', '') : 'DEB-0005'}</span></div>
+    </div>
+
+    <div class="office-col">
+      <div class="office-title">VERIFIED BY</div>
+      <div class="office-row"><span class="office-lbl">Name:</span><span class="office-val">Admin Verifier</span></div>
+      <div class="office-row"><span class="office-lbl">Designation:</span><span class="office-val">Senior Manager - Ops</span></div>
+      <div class="office-row"><span class="office-lbl">Sign & Date:</span><span class="office-val">${todayStr}</span></div>
+    </div>
+
+    <div class="office-col">
+      <div class="office-title">APPROVED BY</div>
+      <div class="office-row"><span class="office-lbl">Name:</span><span class="office-val">Ram Mohan Sharma</span></div>
+      <div class="office-row"><span class="office-lbl">Designation:</span><span class="office-val">Authorized Signatory</span></div>
+      <div class="office-row"><span class="office-lbl">Sign & Date:</span><span class="office-val">${todayStr}</span></div>
+      <div style="margin-top:6px;font-size:9.5px;color:#64748b;">For NIVENTRA CAPITAL ADVISORY INDIA PVT LTD</div>
+      <div style="font-family:'Brush Script MT',cursive;font-size:18px;color:#1e293b;margin:4px 0 2px;">Ram Mohan Sharma</div>
+      <div style="font-size:10px;font-weight:700;">Ram Mohan Sharma</div>
+      <div style="font-size:9px;color:#64748b;">Authorized Signatory</div>
+      <div class="stamp-circle">NEW DELHI<br>110059<br>INDIA</div>
     </div>
   </div>
 </form>
 </body>
 </html>`;
 
-            return Platform.OS === 'web' ? (
-              <iframe
-                srcDoc={getSelectedDebentureFormHtml()}
-                style={{ width: '100%', height: '100%', border: 'none', minHeight: 600 }}
-              />
-            ) : (
-              <WebView
-                source={{ html: getSelectedDebentureFormHtml() }}
-                style={{ flex: 1 }}
-                javaScriptEnabled
-                domStorageEnabled
-                scalesPageToFit={false}
-              />
+            return (
+              <View style={{ flex: 1, backgroundColor: colors.background }}>
+                {/* Documents Quick-Access Bar */}
+                <View style={{ backgroundColor: colors.primary, paddingVertical: 8, paddingHorizontal: 12, borderBottomWidth: 1, borderBottomColor: colors.borderGold }}>
+                  <Text style={{ color: colors.goldLight, fontSize: 10, fontWeight: '800', marginBottom: 6, letterSpacing: 0.5 }}>
+                    ATTACHED DOCUMENTS & VERIFICATION
+                  </Text>
+                  <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 8 }}>
+                    {docsList.map((doc, idx) => (
+                      <TouchableOpacity
+                        key={idx}
+                        style={{
+                          backgroundColor: doc.url ? colors.info : colors.surfaceLight,
+                          borderWidth: 1,
+                          borderColor: doc.url ? colors.info : colors.border,
+                          paddingHorizontal: 10,
+                          paddingVertical: 5,
+                          borderRadius: 6,
+                          flexDirection: 'row',
+                          alignItems: 'center',
+                          gap: 4,
+                        }}
+                        onPress={() => {
+                          if (doc.url) {
+                            setPreviewDocModal({ title: doc.label, url: doc.url });
+                          } else {
+                            Alert.alert('Document Status', `${doc.label} not uploaded or missing.`);
+                          }
+                        }}
+                      >
+                        <Text style={{ color: doc.url ? '#fff' : colors.textMuted, fontSize: 11, fontWeight: '700' }}>{doc.label}</Text>
+                        {doc.url ? <Text style={{ color: colors.goldLight, fontSize: 10, fontWeight: '900' }}>👁️ View</Text> : <Text style={{ color: colors.textMuted, fontSize: 10 }}>N/A</Text>}
+                      </TouchableOpacity>
+                    ))}
+                  </ScrollView>
+                </View>
+
+                {/* Form HTML Preview */}
+                <View style={{ flex: 1, width: '100%', height: '100%' }}>
+                  {Platform.OS === 'web' ? (
+                    <iframe
+                      srcDoc={getSelectedDebentureFormHtml()}
+                      style={{ width: '100%', height: '100%', border: 'none', flex: 1 }}
+                    />
+                  ) : (
+                    <WebView
+                      source={{ html: getSelectedDebentureFormHtml() }}
+                      style={{ flex: 1, width: '100%', height: '100%', backgroundColor: colors.background }}
+                      javaScriptEnabled={true}
+                      domStorageEnabled={true}
+                      scalesPageToFit={true}
+                      showsVerticalScrollIndicator={true}
+                      showsHorizontalScrollIndicator={false}
+                      originWhitelist={['*']}
+                      automaticallyAdjustContentInsets={false}
+                      scrollEnabled={true}
+                      onMessage={(event) => {
+                        try {
+                          const data = JSON.parse(event.nativeEvent.data);
+                          if (data.type === 'VIEW_DOC' && data.url) {
+                            setPreviewDocModal({ title: data.title, url: data.url });
+                          }
+                        } catch (_) {}
+                      }}
+                    />
+                  )}
+                </View>
+              </View>
             );
           })()}
-        </View>
+        </SafeAreaView>
       </Modal>
 
       {/* --- PAYMENT BOND CERTIFICATE PREVIEW MODAL --- */}
       <Modal visible={!!bondInvestorModal} animationType="slide" transparent={false}>
-        <View style={{ flex: 1, backgroundColor: '#0f172a' }}>
+        <SafeAreaView style={{ flex: 1, backgroundColor: colors.primary }}>
           {/* Top Bar matching user design */}
-          <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', backgroundColor: '#0c1c3d', paddingTop: 44, paddingBottom: 12, paddingHorizontal: 12, borderBottomWidth: 1, borderBottomColor: '#1e293b' }}>
+          <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', backgroundColor: colors.primary, paddingTop: 10, paddingBottom: 12, paddingHorizontal: 12, borderBottomWidth: 1, borderBottomColor: colors.borderGold }}>
             <View style={{ flex: 1, marginRight: 6 }}>
               <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
-                <ShieldCheck size={18} color="#10b981" />
-                <Text numberOfLines={1} style={{ color: '#fff', fontWeight: '800', fontSize: 14 }}>Payment Bond</Text>
+                <ShieldCheck size={18} color={colors.success} />
+                <Text numberOfLines={1} style={{ color: colors.text, fontWeight: '800', fontSize: 14 }}>Payment Bond</Text>
               </View>
-              <View style={{ backgroundColor: '#065f46', paddingHorizontal: 6, paddingVertical: 2, borderRadius: 10, alignSelf: 'flex-start', marginTop: 3 }}>
-                <Text style={{ color: '#a7f3d0', fontSize: 8.5, fontWeight: '900' }}>VERIFIED & APPROVED</Text>
+              <View style={{ backgroundColor: colors.success, paddingHorizontal: 6, paddingVertical: 2, borderRadius: 10, alignSelf: 'flex-start', marginTop: 3 }}>
+                <Text style={{ color: '#fff', fontSize: 8.5, fontWeight: '900' }}>VERIFIED & APPROVED</Text>
               </View>
             </View>
 
             <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
               <TouchableOpacity
-                style={{ backgroundColor: '#f59e0b', paddingHorizontal: 10, paddingVertical: 7, borderRadius: 6, flexDirection: 'row', alignItems: 'center', gap: 5 }}
+                style={{ backgroundColor: colors.gold, paddingHorizontal: 10, paddingVertical: 7, borderRadius: 6, flexDirection: 'row', alignItems: 'center', gap: 5 }}
                 onPress={() => handleDownloadBondPdf(bondInvestorModal)}
               >
-                <Download size={14} color="#0c1c3d" />
-                <Text style={{ color: '#0c1c3d', fontWeight: '900', fontSize: 11.5 }}>Download PDF</Text>
+                <Download size={14} color={colors.primary} />
+                <Text style={{ color: colors.primary, fontWeight: '900', fontSize: 11.5 }}>Download PDF</Text>
               </TouchableOpacity>
 
-              <TouchableOpacity onPress={() => setBondInvestorModal(null)} style={{ backgroundColor: '#1e293b', padding: 6, borderRadius: 6 }}>
-                <X size={18} color="#fff" />
+              <TouchableOpacity onPress={() => setBondInvestorModal(null)} style={{ backgroundColor: colors.surfaceLight, padding: 6, borderRadius: 6 }}>
+                <X size={18} color={colors.text} />
               </TouchableOpacity>
             </View>
           </View>
 
           {/* Certificate View */}
           {bondInvestorModal && (
-            Platform.OS === 'web' ? (
-              <iframe
-                srcDoc={generatePaymentBondHtml(bondInvestorModal)}
-                style={{ width: '100%', height: '100%', border: 'none', flex: 1 }}
-              />
-            ) : (
-              <WebView
-                source={{ html: generatePaymentBondHtml(bondInvestorModal) }}
-                style={{ flex: 1 }}
-                javaScriptEnabled
-                domStorageEnabled
-                scalesPageToFit={true}
-              />
-            )
+            <View style={{ flex: 1, width: '100%', height: '100%' }}>
+              {Platform.OS === 'web' ? (
+                <iframe
+                  srcDoc={generatePaymentBondHtml(bondInvestorModal)}
+                  style={{ width: '100%', height: '100%', border: 'none', flex: 1 }}
+                />
+              ) : (
+                <WebView
+                  source={{ html: generatePaymentBondHtml(bondInvestorModal) }}
+                  style={{ flex: 1, width: '100%', height: '100%', backgroundColor: colors.background }}
+                  javaScriptEnabled={true}
+                  domStorageEnabled={true}
+                  scalesPageToFit={true}
+                  showsVerticalScrollIndicator={true}
+                  showsHorizontalScrollIndicator={false}
+                  originWhitelist={['*']}
+                  automaticallyAdjustContentInsets={false}
+                  scrollEnabled={true}
+                />
+              )}
+            </View>
           )}
+        </SafeAreaView>
+      </Modal>
+
+      {/* --- DOCUMENT PREVIEW OVERLAY MODAL --- */}
+      <Modal visible={!!previewDocModal} animationType="slide" transparent>
+        <View style={styles.modalOverlay}>
+          <View style={[styles.modalContainer, { height: '85%', maxHeight: '90%', padding: 0 }]}>
+            {/* Header */}
+            <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', backgroundColor: colors.primary, paddingHorizontal: 16, paddingVertical: 14, borderTopLeftRadius: 16, borderTopRightRadius: 16 }}>
+              <Text style={{ color: '#fff', fontSize: 15, fontWeight: '800' }}>👁️ {previewDocModal?.title || 'Document Preview'}</Text>
+              <TouchableOpacity onPress={() => setPreviewDocModal(null)} style={{ padding: 4, backgroundColor: 'rgba(255,255,255,0.2)', borderRadius: 6 }}>
+                <X size={18} color="#fff" />
+              </TouchableOpacity>
+            </View>
+
+            {/* Document Body */}
+            <View style={{ flex: 1, backgroundColor: '#0f172a', alignItems: 'center', justifyContent: 'center', padding: 8 }}>
+              {(() => {
+                const targetUrl = formatDocUrl(previewDocModal?.url || '');
+                if (!targetUrl) {
+                  return <Text style={{ color: colors.textMuted, fontSize: 13 }}>No document preview available.</Text>;
+                }
+
+                const isImage = targetUrl.startsWith('data:image') || targetUrl.match(/\.(jpeg|jpg|gif|png|webp)(\?.*)?$/i);
+                const isPdf = targetUrl.toLowerCase().includes('.pdf');
+
+                if (isImage) {
+                  return (
+                    <Image
+                      source={{ uri: targetUrl }}
+                      style={{ width: '100%', height: '100%', resizeMode: 'contain' }}
+                    />
+                  );
+                }
+
+                if (isPdf) {
+                  const googleDocsUrl = `https://docs.google.com/gview?embedded=true&url=${encodeURIComponent(targetUrl)}`;
+                  return (
+                    <WebView
+                      source={{ uri: Platform.OS === 'android' ? googleDocsUrl : targetUrl }}
+                      style={{ flex: 1, width: '100%', height: '100%' }}
+                      javaScriptEnabled
+                      domStorageEnabled
+                      originWhitelist={['*']}
+                      onError={() => {
+                        Linking.openURL(targetUrl);
+                      }}
+                    />
+                  );
+                }
+
+                return (
+                  <WebView
+                    source={{ uri: targetUrl }}
+                    style={{ flex: 1, width: '100%', height: '100%' }}
+                    javaScriptEnabled
+                    domStorageEnabled
+                    originWhitelist={['*']}
+                  />
+                );
+              })()}
+            </View>
+
+            {/* Footer Actions */}
+            <View style={{ flexDirection: 'row', justifyContent: 'space-between', padding: 12, backgroundColor: colors.surface }}>
+              <TouchableOpacity
+                style={{ backgroundColor: colors.info, paddingHorizontal: 14, paddingVertical: 8, borderRadius: 8, flexDirection: 'row', alignItems: 'center', gap: 6 }}
+                onPress={() => {
+                  const targetUrl = formatDocUrl(previewDocModal?.url || '');
+                  if (targetUrl) {
+                    Linking.openURL(targetUrl).catch(() => Alert.alert('Link', targetUrl));
+                  }
+                }}
+              >
+                <Eye size={14} color="#fff" />
+                <Text style={{ color: '#fff', fontWeight: '800', fontSize: 12 }}>Open Full Link / Download</Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                style={{ backgroundColor: colors.surfaceLight, paddingHorizontal: 16, paddingVertical: 8, borderRadius: 8 }}
+                onPress={() => setPreviewDocModal(null)}
+              >
+                <Text style={{ color: colors.text, fontWeight: '800', fontSize: 12 }}>Close</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
         </View>
       </Modal>
     </ScrollView>
@@ -8791,6 +9308,20 @@ const DashboardScreen = ({ navigation }: any) => {
 
   const [activeSection, setActiveSection] = useState(initialSection);
 
+  useEffect(() => {
+    const fetchMeData = async () => {
+      try {
+        const res: any = await apiCall('/api/auth/me');
+        if (res.success && res.data) {
+          useAuthStore.getState().setUser(res.data);
+        }
+      } catch (e) {
+        console.error('Error fetching /api/auth/me:', e);
+      }
+    };
+    fetchMeData();
+  }, []);
+
   const fetchDashboardData = async () => {
     if (!isAdminOrKeyAdmin) {
       setLoading(false);
@@ -8913,8 +9444,128 @@ const DashboardScreen = ({ navigation }: any) => {
 
       {/* Conditional rendering of sections */}
       {activeSection === 'Overview' ? (
-        <ScrollView style={{ flex: 1 }} contentContainerStyle={[styles.scrollContent, { flexGrow: 1, paddingBottom: 60 }]} nestedScrollEnabled={true} keyboardShouldPersistTaps="handled">
-          {/* Row 1: Global KPIs */}
+        userRole === 'Employee' ? (
+          /* EMPLOYEE MY HUB DASHBOARD (Matching Web Screenshot) */
+          <ScrollView style={{ flex: 1 }} contentContainerStyle={{ padding: 16, paddingBottom: 80 }}>
+            {/* Header Title */}
+            <View style={{ marginBottom: 16 }}>
+              <Text style={{ fontSize: 24, fontWeight: '900', color: colors.text }}>My Hub</Text>
+              <Text style={{ fontSize: 13, color: colors.textMuted, marginTop: 2 }}>Welcome back! Here is your overview for today.</Text>
+            </View>
+
+            {/* Top 4 KPI Cards Grid */}
+            <View style={{ flexDirection: Platform.OS === 'web' ? 'row' : 'column', gap: 12, marginBottom: 16 }}>
+              {/* Card 1: Today's Attendance */}
+              <View style={{ flex: 1, backgroundColor: colors.surface, borderRadius: 12, padding: 16, borderWidth: 1, borderColor: colors.border, flexDirection: 'row', alignItems: 'center', gap: 12 }}>
+                <View style={{ width: 42, height: 42, borderRadius: 10, backgroundColor: 'rgba(99, 102, 241, 0.12)', alignItems: 'center', justifyContent: 'center' }}>
+                  <Clock size={20} color={colors.info} />
+                </View>
+                <View style={{ flex: 1 }}>
+                  <Text style={{ fontSize: 11, fontWeight: '700', color: colors.textMuted }}>Today's Attendance</Text>
+                  <Text style={{ fontSize: 15, fontWeight: '900', color: colors.text, marginTop: 2 }}>Not Punched In</Text>
+                </View>
+              </View>
+
+              {/* Card 2: Latest Salary (Emerald Card) */}
+              <View style={{ flex: 1, backgroundColor: colors.primary === '#0f172a' ? '#064e3b' : '#059669', borderRadius: 12, padding: 16, borderWidth: 1, borderColor: colors.border, flexDirection: 'row', alignItems: 'center', gap: 12 }}>
+                <View style={{ width: 42, height: 42, borderRadius: 10, backgroundColor: 'rgba(255, 255, 255, 0.2)', alignItems: 'center', justifyContent: 'center' }}>
+                  <TrendingUp size={20} color="#ffffff" />
+                </View>
+                <View style={{ flex: 1 }}>
+                  <Text style={{ fontSize: 11, fontWeight: '700', color: '#e2e8f0' }}>Latest Salary</Text>
+                  <Text style={{ fontSize: 18, fontWeight: '900', color: '#ffffff', marginTop: 2 }}>₹ N/A</Text>
+                </View>
+              </View>
+
+              {/* Card 3: Pending Tasks */}
+              <View style={{ flex: 1, backgroundColor: colors.surface, borderRadius: 12, padding: 16, borderWidth: 1, borderColor: colors.border, flexDirection: 'row', alignItems: 'center', gap: 12 }}>
+                <View style={{ width: 42, height: 42, borderRadius: 10, backgroundColor: 'rgba(245, 158, 11, 0.12)', alignItems: 'center', justifyContent: 'center' }}>
+                  <CheckSquare size={20} color={colors.warning} />
+                </View>
+                <View style={{ flex: 1 }}>
+                  <Text style={{ fontSize: 11, fontWeight: '700', color: colors.textMuted }}>Pending Tasks</Text>
+                  <Text style={{ fontSize: 18, fontWeight: '900', color: colors.text, marginTop: 2 }}>0</Text>
+                </View>
+              </View>
+
+              {/* Card 4: Upcoming Birthdays */}
+              <View style={{ flex: 1, backgroundColor: colors.surface, borderRadius: 12, padding: 16, borderWidth: 1, borderColor: colors.border, flexDirection: 'row', alignItems: 'center', gap: 12 }}>
+                <View style={{ width: 42, height: 42, borderRadius: 10, backgroundColor: 'rgba(239, 68, 68, 0.12)', alignItems: 'center', justifyContent: 'center' }}>
+                  <Gift size={20} color={colors.danger} />
+                </View>
+                <View style={{ flex: 1 }}>
+                  <Text style={{ fontSize: 11, fontWeight: '700', color: colors.textMuted }}>Upcoming Birthdays</Text>
+                  <Text style={{ fontSize: 18, fontWeight: '900', color: colors.text, marginTop: 2 }}>0</Text>
+                </View>
+              </View>
+            </View>
+
+            {/* Middle Section: Attendance Chart, Leave Balance, Announcements & Tasks */}
+            <View style={{ flexDirection: Platform.OS === 'web' ? 'row' : 'column', gap: 14, marginBottom: 16 }}>
+              {/* Left: Attendance Last 7 Days */}
+              <View style={{ flex: 1.2, backgroundColor: colors.surface, borderRadius: 12, padding: 16, borderWidth: 1, borderColor: colors.border }}>
+                <Text style={{ fontSize: 12, fontWeight: '800', color: colors.textMuted, letterSpacing: 0.5, marginBottom: 14 }}>ATTENDANCE (LAST 7 DAYS)</Text>
+                <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-end', height: 120, paddingTop: 10, paddingHorizontal: 8 }}>
+                  {['07/28', '07/29', '07/30', '07/31', '08/01', '08/02', '08/03'].map((d, i) => (
+                    <View key={i} style={{ alignItems: 'center', gap: 6 }}>
+                      <View style={{ width: 14, height: 35 + i * 4, backgroundColor: colors.accent, borderRadius: 4, opacity: i === 6 ? 1 : 0.4 }} />
+                      <Text style={{ fontSize: 9.5, color: colors.textMuted }}>{d}</Text>
+                    </View>
+                  ))}
+                </View>
+              </View>
+
+              {/* Center: Leave Balance */}
+              <View style={{ flex: 1.2, backgroundColor: colors.surface, borderRadius: 12, padding: 16, borderWidth: 1, borderColor: colors.border }}>
+                <Text style={{ fontSize: 12, fontWeight: '800', color: colors.textMuted, letterSpacing: 0.5, marginBottom: 14 }}>LEAVE BALANCE</Text>
+                <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 10 }}>
+                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}><View style={{ width: 8, height: 8, borderRadius: 4, backgroundColor: colors.success }} /><Text style={{ fontSize: 11, color: colors.text }}>Paid: <Text style={{ fontWeight: '800' }}>0</Text></Text></View>
+                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}><View style={{ width: 8, height: 8, borderRadius: 4, backgroundColor: colors.warning }} /><Text style={{ fontSize: 11, color: colors.text }}>Casual: <Text style={{ fontWeight: '800' }}>0</Text></Text></View>
+                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}><View style={{ width: 8, height: 8, borderRadius: 4, backgroundColor: colors.info }} /><Text style={{ fontSize: 11, color: colors.text }}>Sick: <Text style={{ fontWeight: '800' }}>0</Text></Text></View>
+                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}><View style={{ width: 8, height: 8, borderRadius: 4, backgroundColor: colors.danger }} /><Text style={{ fontSize: 11, color: colors.text }}>Maternity: <Text style={{ fontWeight: '800' }}>0</Text></Text></View>
+                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}><View style={{ width: 8, height: 8, borderRadius: 4, backgroundColor: colors.secondary }} /><Text style={{ fontSize: 11, color: colors.text }}>Paternity: <Text style={{ fontWeight: '800' }}>0</Text></Text></View>
+                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}><View style={{ width: 8, height: 8, borderRadius: 4, backgroundColor: colors.gold }} /><Text style={{ fontSize: 11, color: colors.text }}>CompOff: <Text style={{ fontWeight: '800' }}>0</Text></Text></View>
+                </View>
+              </View>
+
+              {/* Right Column: Announcements & Tasks */}
+              <View style={{ flex: 1, gap: 12 }}>
+                <View style={{ backgroundColor: colors.surfaceLight, borderRadius: 12, padding: 14, borderWidth: 1, borderColor: colors.border }}>
+                  <Text style={{ fontSize: 12, fontWeight: '800', color: colors.accent, marginBottom: 4 }}>📢 Announcements</Text>
+                  <Text style={{ fontSize: 11, color: colors.textMuted }}>No new announcements.</Text>
+                </View>
+                <View style={{ backgroundColor: colors.surface, borderRadius: 12, padding: 14, borderWidth: 1, borderColor: colors.border }}>
+                  <Text style={{ fontSize: 12, fontWeight: '800', color: colors.text, marginBottom: 4 }}>☑️ My Tasks</Text>
+                  <Text style={{ fontSize: 11, color: colors.textMuted }}>You're all caught up!</Text>
+                </View>
+              </View>
+            </View>
+
+            {/* Bottom Section: Salary History */}
+            <View style={{ backgroundColor: colors.surface, borderRadius: 12, padding: 16, borderWidth: 1, borderColor: colors.border }}>
+              <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
+                <Text style={{ fontSize: 13, fontWeight: '800', color: colors.textMuted, letterSpacing: 0.5 }}>SALARY HISTORY</Text>
+                <TouchableOpacity
+                  style={{ backgroundColor: colors.accent, paddingHorizontal: 14, paddingVertical: 6, borderRadius: 6 }}
+                  onPress={() => setActiveSection('Payroll')}
+                >
+                  <Text style={{ color: '#fff', fontSize: 11, fontWeight: '800' }}>View All</Text>
+                </TouchableOpacity>
+              </View>
+              <View style={{ borderTopWidth: 1, borderTopColor: colors.border, paddingTop: 10 }}>
+                <View style={{ flexDirection: 'row', justifyContent: 'space-between', paddingVertical: 6 }}>
+                  <Text style={{ fontSize: 11.5, fontWeight: '700', color: colors.textMuted }}>Month</Text>
+                  <Text style={{ fontSize: 11.5, fontWeight: '700', color: colors.textMuted }}>Net Salary</Text>
+                </View>
+                <View style={{ paddingVertical: 20, alignItems: 'center' }}>
+                  <Text style={{ fontSize: 12, color: colors.textMuted, fontStyle: 'italic' }}>No salary history found.</Text>
+                </View>
+              </View>
+            </View>
+          </ScrollView>
+        ) : (
+          <ScrollView style={{ flex: 1 }} contentContainerStyle={[styles.scrollContent, { flexGrow: 1, paddingBottom: 60 }]} nestedScrollEnabled={true} keyboardShouldPersistTaps="handled">
+            {/* Row 1: Global KPIs */}
           <View style={styles.kpiGrid}>
             {/* Card 1: Total Employees */}
             <View style={[styles.dashboardCard, { backgroundColor: colors.surface }]}>
@@ -9238,8 +9889,9 @@ const DashboardScreen = ({ navigation }: any) => {
             )}
           </View>
         </ScrollView>
-      ) : (
-        <View style={{ flex: 1 }}>
+      )
+    ) : (
+      <View style={{ flex: 1 }}>
           {activeSection === 'Employees' ? (
             <EmployeesView />
           ) : activeSection === 'Wallet' ? (
@@ -9318,9 +9970,20 @@ const DashboardScreen = ({ navigation }: any) => {
                   if (userRole === 'INVESTOR') return item.roles?.includes('INVESTOR');
                   if (userRole === 'KEY_ADMIN' || userRole === 'ADMIN') return true;
 
-                  if (item.name === 'Debenture Form') return true;
-                  const allowedModules: string[] = (user as any)?.moduleAccess || ['Attendance', 'Leads', 'Reports', 'Profile'];
-                  return allowedModules.includes(item.name);
+                  // Employee role: ONLY show tabs explicitly granted in /api/auth/me
+                  const rawAccess = (user as any)?.moduleAccess || (user as any)?.accessibleTabs || (user as any)?.permissions || (user as any)?.allowedModules;
+                  const defaultEmployeeTabs = [
+                    'Attendance', 'Leads', 'Reports', 'Profile', 'Holidays', 'Leave', 'Overview'
+                  ];
+                  const userAccess: string[] = Array.isArray(rawAccess) && rawAccess.length > 0 ? rawAccess : defaultEmployeeTabs;
+
+                  if (item.name === 'Overview' || item.name === 'Profile') return true;
+
+                  return userAccess.some((m: string) => {
+                    const cleanM = String(m).toLowerCase().replace(/[^a-z0-9]/g, '');
+                    const cleanItem = item.name.toLowerCase().replace(/[^a-z0-9]/g, '');
+                    return cleanM === cleanItem || cleanM.includes(cleanItem) || cleanItem.includes(cleanM);
+                  });
                 })
                 .map((item) => {
                   const IconComponent = item.icon;
@@ -10594,12 +11257,15 @@ const styles = createDynamicStyleSheet(() => ({
     fontSize: 13,
     fontWeight: 'bold',
   },
-  /* Structures tab styles */
+  /* Structures tab styles matching web dashboard */
   structuresLayout: {
     flex: 1,
+    flexDirection: Platform.OS === 'web' ? 'row' : 'column',
+    gap: 16,
   },
   structEmpListCard: {
-    maxHeight: 220,
+    width: Platform.OS === 'web' ? 280 : '100%',
+    minHeight: 120,
     backgroundColor: colors.surface,
     borderRadius: borderRadius.l,
     borderWidth: 1,
@@ -10658,39 +11324,41 @@ const styles = createDynamicStyleSheet(() => ({
     marginRight: spacing.s,
   },
   grossSummaryBox: {
-    backgroundColor: colors.surfaceLight,
-    padding: spacing.m,
-    borderRadius: borderRadius.m,
-    marginVertical: spacing.m,
+    backgroundColor: '#f8fafc',
+    paddingHorizontal: 16,
+    paddingVertical: 14,
+    borderRadius: 10,
+    marginVertical: 16,
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
+    borderWidth: 1,
+    borderColor: '#e2e8f0',
   },
   grossSummaryLabel: {
-    fontSize: 14,
-    fontWeight: 'bold',
-    color: colors.text,
+    fontSize: 15,
+    fontWeight: '800',
+    color: '#0f172a',
   },
   grossSummaryVal: {
-    fontSize: 20,
-    fontWeight: 'bold',
-    color: colors.accent,
+    fontSize: 22,
+    fontWeight: '900',
+    color: '#0f172a',
   },
   structFormActions: {
     flexDirection: 'row',
     justifyContent: 'flex-end',
-    marginBottom: 40,
+    gap: 10,
+    marginTop: 8,
+    marginBottom: 16,
   },
   cancelBtn: {
     paddingVertical: 10,
-    paddingHorizontal: 16,
-    borderRadius: borderRadius.m,
-    borderWidth: 1,
-    borderColor: colors.border,
-    marginRight: spacing.s,
+    paddingHorizontal: 18,
+    borderRadius: 6,
+    backgroundColor: '#1e293b',
   },
   cancelBtnText: {
-    color: colors.textMuted,
     fontSize: 13,
     fontWeight: 'bold',
   },

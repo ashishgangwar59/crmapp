@@ -15,6 +15,7 @@ interface AuthState {
   isAuthenticated: boolean;
   themeMode: 'system' | 'light' | 'dark';
   setAuth: (user: User, token: string) => void;
+  setUser: (user: User) => void;
   clearAuth: () => void;
   setThemeMode: (mode: 'system' | 'light' | 'dark') => void;
 }
@@ -27,6 +28,7 @@ export const useAuthStore = create<AuthState>()(
       isAuthenticated: false,
       themeMode: 'system',
       setAuth: (user, token) => set({ user, token, isAuthenticated: true }),
+      setUser: (user) => set((state) => ({ user: state.user ? { ...state.user, ...user } : user })),
       clearAuth: () => set({ user: null, token: null, isAuthenticated: false }),
       setThemeMode: (themeMode) => set({ themeMode }),
     }),
