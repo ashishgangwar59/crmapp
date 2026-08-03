@@ -4167,12 +4167,143 @@ const LeadsView = () => {
   // Detail View Mode State
   const [selectedLead, setSelectedLead] = useState<any>(null);
   const [noteText, setNoteText] = useState('');
-  const [timelineNotes, setTimelineNotes] = useState<any[]>([
-    { id: '1', type: 'note', text: 'done', date: '7/29/2026, 5:13:48 PM' },
-    { id: '2', type: 'file', text: 'Uploaded attachment: UPESSC TGT Result.PDF', date: '7/29/2026, 5:10:52 PM' },
-    { id: '3', type: 'stage', text: 'Stage updated from Contacted to Negotiation', date: '7/29/2026, 5:10:21 PM' },
-    { id: '4', type: 'stage', text: 'Stage updated from Qualified to Contacted', date: '7/29/2026, 5:10:19 PM' },
-  ]);
+  const [timelineNotes, setTimelineNotes] = useState<any[]>([]);
+
+  const user = useAuthStore((state) => state.user);
+  const userRole = ((user?.role || '') as string).toUpperCase();
+  const isAdminOrKeyAdmin = userRole === 'ADMIN' || userRole === 'KEY_ADMIN';
+
+  // Import / Export / Assign States
+  const [showImportModal, setShowImportModal] = useState(false);
+  const [importCsvText, setImportCsvText] = useState('');
+  const [importing, setImporting] = useState(false);
+
+  const [showAssignModal, setShowAssignModal] = useState(false);
+  const [leadToAssign, setLeadToAssign] = useState<any>(null);
+  const [employeeList, setEmployeeList] = useState<any[]>([]);
+  const [selectedAssignEE, setSelectedAssignEE] = useState('');
+  const [assigning, setAssigning] = useState(false);
+
+  const fetchEmployeesForAssign = async () => {
+    try {
+      const res: any = await apiCall('/api/employees');
+      if (res && res.success && res.data) {
+        setEmployeeList(Array.isArray(res.data) ? res.data : []);
+      } else if (Array.isArray(res)) {
+        setEmployeeList(res);
+      }
+    } catch (e) {
+      console.error('Error fetching employees:', e);
+    }
+  };
+
+  const openAssignModal = (lead: any) => {
+    setLeadToAssign(lead);
+    setSelectedAssignEE(lead.assignedTo || lead.owner || '');
+    setShowAssignModal(true);
+    fetchEmployeesForAssign();
+  };
+
+  const handleAssignLead = async () => {
+    if (!leadToAssign || !selectedAssignEE) {
+      Alert.alert('Selection Error', 'Please select an employee to assign this lead to.');
+      return;
+    }
+    setAssigning(true);
+    try {
+      const targetId = leadToAssign._id || leadToAssign.id;
+      const updatedLead = { ...leadToAssign, assignedTo: selectedAssignEE, owner: selectedAssignEE };
+      if (targetId && !String(targetId).startsWith('default-')) {
+        await apiCall(`/api/leads/${targetId}`, {
+          method: 'PUT',
+          body: JSON.stringify({ assignedTo: selectedAssignEE, owner: selectedAssignEE }),
+        });
+      }
+      setLeads((prev) => prev.map((l) => (l._id === targetId || l.id === targetId ? updatedLead : l)));
+      if (selectedLead && (selectedLead._id === targetId || selectedLead.id === targetId)) {
+        setSelectedLead(updatedLead);
+      }
+      Alert.alert('Lead Assigned', `Lead successfully assigned to ${selectedAssignEE}`);
+      setShowAssignModal(false);
+    } catch (e: any) {
+      Alert.alert('Error', e.message || 'Failed to assign lead');
+    } finally {
+      setAssigning(false);
+    }
+  };
+
+  const handleExportLeads = async () => {
+    const listToExport = leads.length > 0 ? leads : [
+      { firstName: 'Ashish', lastName: 'Kumar', phone: '7895825505', email: 'ashish@example.com', company: 'E2E', stage: 'Negotiation', status: 'OPEN', priority: 'Medium', assignedTo: 'ashish kumar' }
+    ];
+
+    const headers = 'First Name,Last Name,Phone,Email,Company,Stage,Status,Priority,Assigned To\n';
+    const rows = listToExport.map((l) =>
+      `"${l.firstName || ''}","${l.lastName || ''}","${l.phone || ''}","${l.email || ''}","${l.company || ''}","${l.stage || ''}","${l.status || ''}","${l.priority || ''}","${l.assignedTo || l.owner || ''}"`
+    ).join('\n');
+
+    const csvContent = headers + rows;
+
+    if (Platform.OS === 'web') {
+      const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.setAttribute('download', `leads_export_${Date.now()}.csv`);
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+    } else {
+      try {
+        await Sharing.shareAsync(`data:text/csv;base64,${btoa(csvContent)}`, {
+          mimeType: 'text/csv',
+          dialogTitle: 'Export Leads CSV',
+        });
+      } catch (e: any) {
+        Alert.alert('Export Leads', `CSV data ready:\n\n${csvContent.slice(0, 300)}...`);
+      }
+    }
+  };
+
+  const handleImportLeads = async () => {
+    if (!importCsvText.trim()) {
+      Alert.alert('Validation Error', 'Please enter CSV content to import.');
+      return;
+    }
+    setImporting(true);
+    try {
+      const lines = importCsvText.trim().split('\n');
+      let count = 0;
+      for (const line of lines) {
+        const parts = line.split(',').map((p) => p.trim().replace(/^"|"$/g, ''));
+        if (parts.length >= 2 && parts[0].toLowerCase() !== 'first name') {
+          await apiCall('/api/leads', {
+            method: 'POST',
+            body: JSON.stringify({
+              firstName: parts[0] || 'Lead',
+              lastName: parts[1] || 'Imported',
+              phone: parts[2] || '',
+              email: parts[3] || '',
+              company: parts[4] || '',
+              stage: parts[5] || 'New',
+              status: parts[6] || 'Open',
+              priority: parts[7] || 'Medium',
+              assignedTo: parts[8] || '',
+            }),
+          });
+          count++;
+        }
+      }
+      Alert.alert('Import Complete', `Successfully imported ${count} leads.`);
+      setShowImportModal(false);
+      setImportCsvText('');
+      fetchLeads();
+    } catch (e: any) {
+      Alert.alert('Import Error', e.message || 'Failed to import leads');
+    } finally {
+      setImporting(false);
+    }
+  };
 
   const fetchLeads = async () => {
     setLoading(true);
@@ -4340,8 +4471,16 @@ const LeadsView = () => {
               </View>
               <Text style={{ fontSize: 10, fontWeight: '800', color: colors.textMuted, letterSpacing: 0.5 }}>ASSIGNED TO</Text>
               <Text style={{ fontSize: 14, fontWeight: '800', color: colors.text, marginTop: 4 }}>
-                {selectedLead.assignedTo || selectedLead.owner || 'ashish kumar'}
+                {selectedLead.assignedTo || selectedLead.owner || 'Unassigned'}
               </Text>
+              {isAdminOrKeyAdmin && (
+                <TouchableOpacity
+                  style={{ backgroundColor: colors.accent, borderRadius: 8, paddingVertical: 6, alignItems: 'center', marginTop: 8 }}
+                  onPress={() => openAssignModal(selectedLead)}
+                >
+                  <Text style={{ color: '#ffffff', fontWeight: '800', fontSize: 11 }}>Re-assign Lead</Text>
+                </TouchableOpacity>
+              )}
             </View>
 
             {/* Card 2: Contact Info */}
@@ -4353,15 +4492,15 @@ const LeadsView = () => {
               <View style={{ gap: 10 }}>
                 <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
                   <Building size={16} color={colors.textMuted} />
-                  <Text style={{ fontSize: 13, color: colors.text }}>{selectedLead.company || 'E2E'}</Text>
+                  <Text style={{ fontSize: 13, color: colors.text }}>{selectedLead.company || 'N/A'}</Text>
                 </View>
                 <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
                   <Phone size={16} color={colors.info} />
-                  <Text style={{ fontSize: 13, color: colors.info, fontWeight: '700' }}>{selectedLead.phone || '7895825505'}</Text>
+                  <Text style={{ fontSize: 13, color: colors.info, fontWeight: '700' }}>{selectedLead.phone || selectedLead.email || 'N/A'}</Text>
                 </View>
                 <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
                   <Target size={16} color={colors.textMuted} />
-                  <Text style={{ fontSize: 13, color: colors.textMuted }}>Source: {selectedLead.source || 'Website'}</Text>
+                  <Text style={{ fontSize: 13, color: colors.textMuted }}>Source: {selectedLead.source || 'Direct'}</Text>
                 </View>
               </View>
             </View>
@@ -4377,8 +4516,7 @@ const LeadsView = () => {
                   <UploadCloud size={16} color="#ffffff" />
                 </TouchableOpacity>
               </View>
-              <Text style={{ fontSize: 12.5, color: colors.info, fontWeight: '700' }}>UPESSC TGT Result.PDF</Text>
-              <Text style={{ fontSize: 10, color: colors.textMuted, marginTop: 2 }}>By System</Text>
+              <Text style={{ fontSize: 12.5, color: colors.textMuted }}>No attachments uploaded</Text>
             </View>
           </View>
 
@@ -4441,13 +4579,35 @@ const LeadsView = () => {
           <Text style={styles.empSubtitle}>Track pipeline stages, assign leads, and monitor workloads.</Text>
         </View>
 
-        <TouchableOpacity
-          style={styles.addLeadBtn}
-          onPress={() => setShowAddModal(true)}
-        >
-          <Plus size={16} color="#ffffff" style={{ marginRight: 4 }} />
-          <Text style={styles.addLeadBtnText}>Add Lead</Text>
-        </TouchableOpacity>
+        <View style={{ flexDirection: 'row', gap: 8, flexWrap: 'wrap' }}>
+          <TouchableOpacity
+            style={styles.addLeadBtn}
+            onPress={() => setShowAddModal(true)}
+          >
+            <Plus size={16} color="#ffffff" style={{ marginRight: 4 }} />
+            <Text style={styles.addLeadBtnText}>Add Lead</Text>
+          </TouchableOpacity>
+
+          {isAdminOrKeyAdmin && (
+            <>
+              <TouchableOpacity
+                style={[styles.addLeadBtn, { backgroundColor: '#059669' }]}
+                onPress={() => setShowImportModal(true)}
+              >
+                <Download size={16} color="#ffffff" style={{ marginRight: 4 }} />
+                <Text style={styles.addLeadBtnText}>Import CSV</Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                style={[styles.addLeadBtn, { backgroundColor: '#7c3aed' }]}
+                onPress={handleExportLeads}
+              >
+                <UploadCloud size={16} color="#ffffff" style={{ marginRight: 4 }} />
+                <Text style={styles.addLeadBtnText}>Export CSV</Text>
+              </TouchableOpacity>
+            </>
+          )}
+        </View>
       </View>
 
       {/* Top 4 KPI Metric Cards in clean 2x2 responsive Grid */}
@@ -4535,21 +4695,13 @@ const LeadsView = () => {
       <ScrollView contentContainerStyle={{ paddingBottom: 40 }}>
         {loading ? (
           <ActivityIndicator size="large" color={colors.accent} style={{ marginVertical: 30 }} />
+        ) : leads.length === 0 ? (
+          <View style={{ padding: 40, alignItems: 'center', backgroundColor: colors.surface, borderRadius: 12, borderWidth: 1, borderColor: colors.border, marginVertical: 10 }}>
+            <Text style={{ fontSize: 14, fontWeight: '800', color: colors.text }}>No leads found in pipeline.</Text>
+            <Text style={{ fontSize: 12, color: colors.textMuted, marginTop: 4 }}>Click "Add Lead" or "Import CSV" to create leads.</Text>
+          </View>
         ) : (
-          (leads.length > 0 ? leads : [
-            {
-              _id: 'default-lead-1',
-              firstName: 'Ashish',
-              lastName: 'Kumar',
-              phone: '7895825505',
-              company: 'E2E',
-              stage: 'Negotiation',
-              status: 'OPEN',
-              priority: 'Medium',
-              assignedTo: 'ashish kumar',
-              nextFollowUp: 'Not set',
-            }
-          ]).map((lead) => (
+          leads.map((lead) => (
             <TouchableOpacity
               key={lead._id || lead.id}
               style={{ backgroundColor: colors.surface, borderRadius: 12, padding: 16, marginBottom: 12, borderWidth: 1, borderColor: colors.border }}
@@ -4562,12 +4714,12 @@ const LeadsView = () => {
                     <Lock size={14} color={colors.textMuted} />
                     <Text style={{ fontSize: 16, fontWeight: '900', color: colors.text }}>{lead.firstName} {lead.lastName}</Text>
                   </View>
-                  <Text style={{ fontSize: 12.5, color: colors.info, fontWeight: '700', marginTop: 2 }}>{lead.phone || lead.email || '7895825505'}</Text>
+                  <Text style={{ fontSize: 12.5, color: colors.info, fontWeight: '700', marginTop: 2 }}>{lead.phone || lead.email || 'No contact info'}</Text>
                 </View>
 
                 <View style={{ alignItems: 'flex-end' }}>
                   <View style={{ backgroundColor: '#fef3c7', paddingHorizontal: 10, paddingVertical: 4, borderRadius: 12 }}>
-                    <Text style={{ fontSize: 11, fontWeight: '800', color: '#d97706' }}>{lead.stage || 'Negotiation'}</Text>
+                    <Text style={{ fontSize: 11, fontWeight: '800', color: '#d97706' }}>{lead.stage || 'New'}</Text>
                   </View>
                   <Text style={{ fontSize: 9.5, fontWeight: '800', color: colors.textMuted, marginTop: 2 }}>{lead.status || 'OPEN'}</Text>
                 </View>
@@ -4576,7 +4728,7 @@ const LeadsView = () => {
               <View style={{ flexDirection: 'row', justifyContent: 'space-between', paddingVertical: 10, borderTopWidth: 1, borderTopColor: colors.border, borderBottomWidth: 1, borderBottomColor: colors.border, marginVertical: 4 }}>
                 <View>
                   <Text style={{ fontSize: 10, color: colors.textMuted, fontWeight: '700' }}>COMPANY</Text>
-                  <Text style={{ fontSize: 12.5, fontWeight: '700', color: colors.text, marginTop: 2 }}>{lead.company || 'E2E'}</Text>
+                  <Text style={{ fontSize: 12.5, fontWeight: '700', color: colors.text, marginTop: 2 }}>{lead.company || 'N/A'}</Text>
                 </View>
                 <View>
                   <Text style={{ fontSize: 10, color: colors.textMuted, fontWeight: '700' }}>PRIORITY</Text>
@@ -4584,14 +4736,27 @@ const LeadsView = () => {
                 </View>
                 <View>
                   <Text style={{ fontSize: 10, color: colors.textMuted, fontWeight: '700' }}>OWNER</Text>
-                  <Text style={{ fontSize: 12.5, fontWeight: '700', color: colors.text, marginTop: 2 }}>{lead.assignedTo || lead.owner || 'ashish kumar'}</Text>
+                  <Text style={{ fontSize: 12.5, fontWeight: '700', color: colors.text, marginTop: 2 }}>{lead.assignedTo || lead.owner || 'Unassigned'}</Text>
                 </View>
               </View>
 
               <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginTop: 10 }}>
                 <Text style={{ fontSize: 11, color: colors.textMuted }}>Follow-up: {lead.nextFollowUp || 'Not set'}</Text>
-                <View style={{ backgroundColor: colors.accent, paddingHorizontal: 14, paddingVertical: 8, borderRadius: 8 }}>
-                  <Text style={{ color: '#ffffff', fontWeight: '800', fontSize: 12 }}>View Details</Text>
+                <View style={{ flexDirection: 'row', gap: 8 }}>
+                  {isAdminOrKeyAdmin && (
+                    <TouchableOpacity
+                      style={{ backgroundColor: 'rgba(59, 130, 246, 0.15)', paddingHorizontal: 12, paddingVertical: 8, borderRadius: 8, borderWidth: 1, borderColor: '#3b82f6' }}
+                      onPress={() => openAssignModal(lead)}
+                    >
+                      <Text style={{ color: '#3b82f6', fontWeight: '800', fontSize: 12 }}>👤 Assign</Text>
+                    </TouchableOpacity>
+                  )}
+                  <TouchableOpacity
+                    style={{ backgroundColor: colors.accent, paddingHorizontal: 14, paddingVertical: 8, borderRadius: 8 }}
+                    onPress={() => setSelectedLead(lead)}
+                  >
+                    <Text style={{ color: '#ffffff', fontWeight: '800', fontSize: 12 }}>View Details</Text>
+                  </TouchableOpacity>
                 </View>
               </View>
             </TouchableOpacity>
@@ -4602,61 +4767,32 @@ const LeadsView = () => {
       {/* Add Lead Modal */}
       <Modal visible={showAddModal} animationType="slide" transparent>
         <View style={styles.modalOverlay}>
-          <View style={styles.modalContainer}>
-            <View style={styles.modalHeader}>
-              <Text style={styles.modalTitle}>Add New Lead</Text>
+          <View style={styles.structModalBox}>
+            <View style={styles.modalHeaderRow}>
+              <Text style={styles.structModalTitle}>Add New Lead</Text>
               <TouchableOpacity onPress={() => setShowAddModal(false)}>
                 <X size={20} color={colors.text} />
               </TouchableOpacity>
             </View>
 
-            <ScrollView contentContainerStyle={{ paddingBottom: 20 }}>
-              <Text style={styles.formLabel}>First Name *</Text>
-              <TextInput
-                style={styles.modalTextInput}
-                placeholder="Enter First Name"
-                placeholderTextColor={colors.textMuted}
-                value={firstName}
-                onChangeText={setFirstName}
-              />
+            <ScrollView style={{ marginTop: 12 }}>
+              <Text style={styles.inputLabel}>First Name *</Text>
+              <TextInput style={styles.inputField} value={firstName} onChangeText={setFirstName} placeholder="First name" placeholderTextColor={colors.textMuted} />
 
-              <Text style={styles.formLabel}>Last Name *</Text>
-              <TextInput
-                style={styles.modalTextInput}
-                placeholder="Enter Last Name"
-                placeholderTextColor={colors.textMuted}
-                value={lastName}
-                onChangeText={setLastName}
-              />
+              <Text style={styles.inputLabel}>Last Name *</Text>
+              <TextInput style={styles.inputField} value={lastName} onChangeText={setLastName} placeholder="Last name" placeholderTextColor={colors.textMuted} />
 
-              <Text style={styles.formLabel}>Email Address</Text>
-              <TextInput
-                style={styles.modalTextInput}
-                placeholder="email@domain.com"
-                placeholderTextColor={colors.textMuted}
-                keyboardType="email-address"
-                value={email}
-                onChangeText={setEmail}
-              />
+              <Text style={styles.inputLabel}>Email</Text>
+              <TextInput style={styles.inputField} value={email} onChangeText={setEmail} placeholder="Email address" keyboardType="email-address" placeholderTextColor={colors.textMuted} />
 
-              <Text style={styles.formLabel}>Phone Number</Text>
-              <TextInput
-                style={styles.modalTextInput}
-                placeholder="Phone number"
-                placeholderTextColor={colors.textMuted}
-                keyboardType="phone-pad"
-                value={phone}
-                onChangeText={setPhone}
-              />
+              <Text style={styles.inputLabel}>Phone</Text>
+              <TextInput style={styles.inputField} value={phone} onChangeText={setPhone} placeholder="Phone number" keyboardType="phone-pad" placeholderTextColor={colors.textMuted} />
 
-              <Text style={styles.formLabel}>Company Name</Text>
-              <TextInput
-                style={styles.modalTextInput}
-                placeholder="Company Name"
-                placeholderTextColor={colors.textMuted}
-                value={company}
-                onChangeText={setCompany}
-              />
+              <Text style={styles.inputLabel}>Company</Text>
+              <TextInput style={styles.inputField} value={company} onChangeText={setCompany} placeholder="Company name" placeholderTextColor={colors.textMuted} />
+
+              <Text style={styles.inputLabel}>Estimated Value (RS)</Text>
+              <TextInput style={styles.inputField} value={leadValue} onChangeText={setLeadValue} placeholder="100000" keyboardType="numeric" placeholderTextColor={colors.textMuted} />
 
               <View style={styles.structFormActions}>
                 <TouchableOpacity style={styles.cancelBtn} onPress={() => setShowAddModal(false)}>
@@ -4671,6 +4807,121 @@ const LeadsView = () => {
                     <ActivityIndicator color={colors.background} />
                   ) : (
                     <Text style={styles.saveBtnText}>Save Lead</Text>
+                  )}
+                </TouchableOpacity>
+              </View>
+            </ScrollView>
+          </View>
+        </View>
+      </Modal>
+
+      {/* Assign Lead Modal (Admin / KeyAdmin) */}
+      <Modal visible={showAssignModal} animationType="fade" transparent>
+        <View style={styles.modalOverlay}>
+          <View style={styles.structModalBox}>
+            <View style={styles.modalHeaderRow}>
+              <Text style={styles.structModalTitle}>Assign Lead Owner</Text>
+              <TouchableOpacity onPress={() => setShowAssignModal(false)}>
+                <X size={20} color={colors.text} />
+              </TouchableOpacity>
+            </View>
+
+            <ScrollView style={{ marginTop: 12, maxHeight: 300 }}>
+              <Text style={{ fontSize: 13, color: colors.textMuted, marginBottom: 12 }}>
+                Select an employee to assign lead "{leadToAssign?.firstName} {leadToAssign?.lastName}" to:
+              </Text>
+
+              {(employeeList.length > 0 ? employeeList : [
+                { id: '1', name: 'ashish kumar', employeeCode: 'EMP-001', department: 'Sales' },
+                { id: '2', name: 'John Doe', employeeCode: 'EMP-002', department: 'Support' },
+                { id: '3', name: 'Sarah Smith', employeeCode: 'EMP-003', department: 'Marketing' },
+              ]).map((emp: any) => {
+                const empName = emp.name || `${emp.firstName || ''} ${emp.lastName || ''}`.trim() || emp.email;
+                const isSelected = selectedAssignEE === empName;
+                return (
+                  <TouchableOpacity
+                    key={emp.id || emp._id || empName}
+                    style={{
+                      padding: 12,
+                      borderRadius: 8,
+                      backgroundColor: isSelected ? 'rgba(59, 130, 246, 0.15)' : colors.surfaceLight,
+                      borderWidth: 1,
+                      borderColor: isSelected ? '#3b82f6' : colors.border,
+                      marginBottom: 8,
+                      flexDirection: 'row',
+                      alignItems: 'center',
+                      justify: 'space-between',
+                    }}
+                    onPress={() => setSelectedAssignEE(empName)}
+                  >
+                    <View style={{ flex: 1 }}>
+                      <Text style={{ fontSize: 14, fontWeight: '800', color: colors.text }}>{empName}</Text>
+                      <Text style={{ fontSize: 11, color: colors.textMuted }}>{emp.employeeCode || emp.email || 'Employee'} • {emp.department || 'CRM'}</Text>
+                    </View>
+                    {isSelected && <Text style={{ color: '#3b82f6', fontWeight: '900', fontSize: 16 }}>✔</Text>}
+                  </TouchableOpacity>
+                );
+              })}
+            </ScrollView>
+
+            <View style={[styles.structFormActions, { marginTop: 16 }]}>
+              <TouchableOpacity style={styles.cancelBtn} onPress={() => setShowAssignModal(false)}>
+                <Text style={styles.cancelBtnText}>Cancel</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={[styles.saveBtn, { backgroundColor: '#3b82f6' }, assigning && styles.disabledButton]}
+                onPress={handleAssignLead}
+                disabled={assigning}
+              >
+                {assigning ? (
+                  <ActivityIndicator color="#ffffff" />
+                ) : (
+                  <Text style={styles.saveBtnText}>Confirm Assignment</Text>
+                )}
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
+
+      {/* Import CSV Modal (Admin / KeyAdmin) */}
+      <Modal visible={showImportModal} animationType="slide" transparent>
+        <View style={styles.modalOverlay}>
+          <View style={styles.structModalBox}>
+            <View style={styles.modalHeaderRow}>
+              <Text style={styles.structModalTitle}>Import Leads (CSV / Text)</Text>
+              <TouchableOpacity onPress={() => setShowImportModal(false)}>
+                <X size={20} color={colors.text} />
+              </TouchableOpacity>
+            </View>
+
+            <ScrollView style={{ marginTop: 12 }}>
+              <Text style={{ fontSize: 12, color: colors.textMuted, marginBottom: 8 }}>
+                Paste CSV content below (Format: First Name, Last Name, Phone, Email, Company, Stage, Status, Priority, Owner):
+              </Text>
+
+              <TextInput
+                style={[styles.inputField, { height: 140, textAlignVertical: 'top', fontFamily: Platform.OS === 'ios' ? 'Courier' : 'monospace', fontSize: 11 }]}
+                multiline
+                value={importCsvText}
+                onChangeText={setImportCsvText}
+                placeholder={`Ashish, Kumar, 7895825505, ashish@example.com, E2E, Negotiation, Open, Medium, ashish kumar\nRahul, Sharma, 9876543210, rahul@example.com, TechCorp, Qualified, Open, High, ashish kumar`}
+                placeholderTextColor={colors.textMuted}
+              />
+
+              <View style={[styles.structFormActions, { marginTop: 16 }]}>
+                <TouchableOpacity style={styles.cancelBtn} onPress={() => setShowImportModal(false)}>
+                  <Text style={styles.cancelBtnText}>Cancel</Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  style={[styles.saveBtn, { backgroundColor: '#059669' }, importing && styles.disabledButton]}
+                  onPress={handleImportLeads}
+                  disabled={importing}
+                >
+                  {importing ? (
+                    <ActivityIndicator color="#ffffff" />
+                  ) : (
+                    <Text style={styles.saveBtnText}>Import Leads Now</Text>
                   )}
                 </TouchableOpacity>
               </View>
