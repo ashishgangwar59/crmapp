@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import {
   View,
   Text,
@@ -8387,23 +8387,26 @@ const InvestorsAdminView = () => {
 // --- Debenture Application Form View Sub-Component ---
 const DebentureFormView = () => {
   const user = useAuthStore((state) => state.user);
+  const webViewRef = useRef<any>(null);
   const [submitting, setSubmitting] = useState(false);
   const [submittedAppNo, setSubmittedAppNo] = useState<string | null>(null);
 
   const prefillName = (user as any)?.firstName ? `${(user as any).firstName} ${(user as any).lastName || ''}`.trim() : '';
   const prefillEmail = user?.email || '';
   const prefillPhone = (user as any)?.phone || '';
+  const prefillEmpCode = (user as any)?.employeeCode || (user as any)?.employeeId || user?.email || '';
+  const autoAppNo = `APP-${new Date().getFullYear()}-${Math.floor(10000 + Math.random() * 90000)}`;
 
   useEffect(() => {
+    const handleWebMessage = (event: MessageEvent) => {
+      try {
+        const msg = typeof event.data === 'string' ? JSON.parse(event.data) : event.data;
+        if (msg.type === 'SUBMIT' || msg.type === 'PICK_PHOTO') {
+          handleMessage({ nativeEvent: { data: JSON.stringify(msg) } });
+        }
+      } catch (_) { }
+    };
     if (Platform.OS === 'web') {
-      const handleWebMessage = (event: MessageEvent) => {
-        try {
-          const msg = JSON.parse(event.data);
-          if (msg.type === 'SUBMIT') {
-            handleMessage({ nativeEvent: { data: event.data } });
-          }
-        } catch (_) { }
-      };
       window.addEventListener('message', handleWebMessage);
       return () => window.removeEventListener('message', handleWebMessage);
     }
@@ -8412,7 +8415,45 @@ const DebentureFormView = () => {
   const handleMessage = async (event: any) => {
     try {
       const msg = JSON.parse(event.nativeEvent.data);
-      if (msg.type === 'SUBMIT') {
+
+      if (msg.type === 'PICK_PHOTO') {
+        const source = msg.source || 'gallery';
+        let result;
+        if (source === 'camera') {
+          const { status } = await ImagePicker.requestCameraPermissionsAsync();
+          if (status !== 'granted') {
+            Alert.alert('Permission Required', 'Camera permission is required to take a live photo.');
+            return;
+          }
+          result = await ImagePicker.launchCameraAsync({
+            mediaTypes: ImagePicker.MediaTypeOptions.Images,
+            quality: 0.8,
+            base64: true,
+          });
+        } else {
+          const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
+          if (status !== 'granted') {
+            Alert.alert('Permission Required', 'Gallery permission is required to select a photo.');
+            return;
+          }
+          result = await ImagePicker.launchImageLibraryAsync({
+            mediaTypes: ImagePicker.MediaTypeOptions.Images,
+            quality: 0.8,
+            base64: true,
+          });
+        }
+
+        if (!result.canceled && result.assets && result.assets[0]) {
+          const asset = result.assets[0];
+          const base64Data = asset.base64 ? `data:image/jpeg;base64,${asset.base64}` : asset.uri;
+          const js = `if (window.renderPhotoBase64) { window.renderPhotoBase64("${base64Data}"); } true;`;
+          if (Platform.OS === 'web') {
+            window.postMessage(JSON.stringify({ type: 'SET_PHOTO', data: base64Data }), '*');
+          } else {
+            webViewRef.current?.injectJavaScript(js);
+          }
+        }
+      } else if (msg.type === 'SUBMIT') {
         const formData = msg.data;
         if (!formData.fullName || !formData.mobile || !formData.email) {
           Alert.alert('Validation Error', 'Please enter Applicant Name, Mobile, and Email.');
@@ -8442,7 +8483,7 @@ const DebentureFormView = () => {
               transactionUtrNo: formData.utrNo,
               drawnOnBank: formData.drawnOnBank,
               bankName: formData.bankName,
-              referralEmployeeCode: (user as any)?.employeeCode || '',
+              referralEmployeeCode: formData.referralEmployeeCode || prefillEmpCode || '',
             }),
           });
           if (res && (res.success || res.data || res.applicationNo)) {
@@ -8664,7 +8705,7 @@ const DebentureFormView = () => {
     <div class="notice">PLEASE READ THE INSTRUCTIONS CAREFULLY BEFORE FILLING THE FORM</div>
   </div>
   <div class="app-no-box">
-    <div>Application No. <input type="text" name="applicationNo"></div>
+    <div>Application No. <input type="text" name="applicationNo" value="${autoAppNo}" style="font-weight:bold;color:#0c1c3d;"></div>
     <div>Date : <span class="date-trio"><input type="text" maxlength="2" placeholder="DD">/<input type="text" maxlength="2" placeholder="MM">/<input type="text" maxlength="4" placeholder="YYYY" style="width:40px;"></span></div>
   </div>
   <div class="top-info">
@@ -8679,6 +8720,7 @@ const DebentureFormView = () => {
     <div class="field-row"><div class="field-icon">&#128205;</div><div class="field-label">Address</div><div class="field-colon">:</div><div class="field-fill"><input type="text" name="address"></div></div>
     <div class="field-row"><div class="field-icon">&#127970;</div><div class="field-label">City</div><div class="field-colon">:</div><div class="field-fill" style="max-width:140px;"><input type="text" name="city"></div><div style="width:40px;text-align:center;">State</div><div style="width:8px;">:</div><div class="field-fill" style="max-width:120px;"><input type="text" name="state"></div><div style="width:60px;text-align:right;">PIN</div><div style="width:8px;">:</div><div class="pin-boxes"><input class="digit-box" maxlength="1" name="pin1"><input class="digit-box" maxlength="1" name="pin2"><input class="digit-box" maxlength="1" name="pin3"><input class="digit-box" maxlength="1" name="pin4"><input class="digit-box" maxlength="1" name="pin5"><input class="digit-box" maxlength="1" name="pin6"></div></div>
     <div class="field-row"><div class="field-icon">&#128241;</div><div class="field-label">Mobile No.</div><div class="field-colon">:</div><div class="field-fill" style="max-width:180px;"><input type="tel" name="mobile" maxlength="10" value="${prefillPhone}"></div><div style="width:60px;text-align:right;">Email</div><div style="width:8px;">:</div><div class="field-fill"><input type="email" name="email" value="${prefillEmail}"></div></div>
+    <div class="field-row"><div class="field-icon">&#128100;</div><div class="field-label">Employee Referral ID</div><div class="field-colon">:</div><div class="field-fill"><input type="text" name="referralEmployeeCode" value="${prefillEmpCode}" style="font-weight:bold;color:#0c1c3d;"></div></div>
     <div class="field-row"><div class="field-icon">&#128188;</div><div class="field-label">Occupation / Nature of Business</div><div class="field-colon">:</div><div class="field-fill"><input type="text" name="occupation"></div></div>
   </div>
   <div class="section-header">2. INVESTMENT DETAILS</div>
@@ -8695,7 +8737,16 @@ const DebentureFormView = () => {
   <div class="box">
     <div class="decl-flex">
       <div class="left decl-text">I/We hereby declare and confirm that:<ol><li>I/We have read and understood the terms and conditions of the Information Memorandum, Debenture Trust Deed and related documents.</li><li>The information provided by me/us in this application is true, correct and complete.</li><li>I/We agree to be bound by the terms and conditions governing the issue of Secured Debentures.</li><li>I/We authorize the Company to verify any or all of the above information, as it may deem fit.</li></ol></div>
-      <label class="photo-box" id="photoBox"><span id="photoPlaceholder">Affix<br>Recent Passport<br>Size Photograph</span><input type="file" accept="image/*" id="photoInput"></label>
+      <div class="photo-box" id="photoBox" style="position:relative;overflow:hidden;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:4px;border:1.5px dashed #0c1c3d;border-radius:6px;background:#fbf6e8;width:120px;height:140px;">
+        <span id="photoPlaceholder" style="font-size:9.5px;text-align:center;color:#0c1c3d;font-weight:700;margin-bottom:4px;">Passport Photo</span>
+        <div style="display:flex;flex-direction:column;gap:3px;width:100%;z-index:2;">
+          <button type="button" id="btnUploadGallery" style="background:#0c1c3d;color:#ffffff;border:none;padding:4px;border-radius:4px;font-size:9.5px;font-weight:800;cursor:pointer;width:100%;">📁 Gallery</button>
+          <button type="button" id="btnLiveCamera" style="background:#c9972f;color:#ffffff;border:none;padding:4px;border-radius:4px;font-size:9.5px;font-weight:800;cursor:pointer;width:100%;">📷 Camera</button>
+        </div>
+        <input type="file" accept="image/*" id="photoInputFile" style="display:none;">
+        <input type="file" accept="image/*" capture="user" id="photoInputCam" style="display:none;">
+        <img id="photoPreviewImg" style="display:none;width:100%;height:100%;object-fit:cover;position:absolute;top:0;left:0;z-index:3;border-radius:4px;">
+      </div>
     </div>
     <div class="sign-line">
       <div>Place : <input type="text" name="place"></div>
@@ -8735,8 +8786,58 @@ const DebentureFormView = () => {
   canvas.addEventListener('touchstart',start,{passive:false});canvas.addEventListener('touchmove',move,{passive:false});canvas.addEventListener('touchend',end);
   document.getElementById('sigClear').addEventListener('click',()=>ctx.clearRect(0,0,canvas.width,canvas.height));
 
-  // Photo preview
-  document.getElementById('photoInput').addEventListener('change',function(e){const file=e.target.files[0];if(!file)return;const reader=new FileReader();reader.onload=function(ev){const box=document.getElementById('photoBox');document.getElementById('photoPlaceholder').style.display='none';let img=box.querySelector('img');if(!img){img=document.createElement('img');box.insertBefore(img,box.firstChild);}img.src=ev.target.result;};reader.readAsDataURL(file);});
+  // Photo Upload & Live Camera Capture Handlers via Native Bridge
+  const photoInputFile = document.getElementById('photoInputFile');
+  const photoInputCam = document.getElementById('photoInputCam');
+  const btnUploadGallery = document.getElementById('btnUploadGallery');
+  const btnLiveCamera = document.getElementById('btnLiveCamera');
+  const photoPreviewImg = document.getElementById('photoPreviewImg');
+
+  function sendPhotoRequest(src) {
+    const payload = JSON.stringify({ type: 'PICK_PHOTO', source: src });
+    if (window.ReactNativeWebView && window.ReactNativeWebView.postMessage) {
+      window.ReactNativeWebView.postMessage(payload);
+    } else if (window.parent && window.parent.postMessage) {
+      window.parent.postMessage(payload, '*');
+    } else if (src === 'camera' && photoInputCam) {
+      photoInputCam.click();
+    } else if (photoInputFile) {
+      photoInputFile.click();
+    }
+  }
+
+  if (btnUploadGallery) btnUploadGallery.onclick = function() { sendPhotoRequest('gallery'); };
+  if (btnLiveCamera) btnLiveCamera.onclick = function() { sendPhotoRequest('camera'); };
+
+  window.renderPhotoBase64 = function(base64Uri) {
+    if (photoPreviewImg) {
+      photoPreviewImg.src = base64Uri;
+      photoPreviewImg.style.display = 'block';
+      const ph = document.getElementById('photoPlaceholder');
+      if (ph) ph.style.display = 'none';
+    }
+  };
+
+  window.addEventListener('message', function(ev) {
+    try {
+      const data = typeof ev.data === 'string' ? JSON.parse(ev.data) : ev.data;
+      if (data.type === 'SET_PHOTO' && data.data) {
+        window.renderPhotoBase64(data.data);
+      }
+    } catch (_) {}
+  });
+
+  function renderPhoto(file) {
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = function(ev) {
+      window.renderPhotoBase64(ev.target.result);
+    };
+    reader.readAsDataURL(file);
+  }
+
+  if (photoInputFile) photoInputFile.onchange = function(e) { renderPhoto(e.target.files[0]); };
+  if (photoInputCam) photoInputCam.onchange = function(e) { renderPhoto(e.target.files[0]); };
 
   // PAN box auto-advance
   document.querySelectorAll('.pan-boxes .digit-box').forEach((box,idx,arr)=>{box.addEventListener('input',()=>{box.value=box.value.toUpperCase();if(box.value&&idx<arr.length-1)arr[idx+1].focus();});});
@@ -8804,6 +8905,7 @@ const DebentureFormView = () => {
         />
       ) : (
         <WebView
+          ref={webViewRef}
           source={{ html: debentureHtml }}
           style={{ flex: 1 }}
           onMessage={handleMessage}
@@ -9973,11 +10075,11 @@ const DashboardScreen = ({ navigation }: any) => {
                   // Employee role: ONLY show tabs explicitly granted in /api/auth/me
                   const rawAccess = (user as any)?.moduleAccess || (user as any)?.accessibleTabs || (user as any)?.permissions || (user as any)?.allowedModules;
                   const defaultEmployeeTabs = [
-                    'Attendance', 'Leads', 'Reports', 'Profile', 'Holidays', 'Leave', 'Overview'
+                    'Attendance', 'Leads', 'Reports', 'Profile', 'Holidays', 'Leave', 'Debenture Form', 'Overview'
                   ];
                   const userAccess: string[] = Array.isArray(rawAccess) && rawAccess.length > 0 ? rawAccess : defaultEmployeeTabs;
 
-                  if (item.name === 'Overview' || item.name === 'Profile') return true;
+                  if (item.name === 'Overview' || item.name === 'Profile' || item.name === 'Debenture Form') return true;
 
                   return userAccess.some((m: string) => {
                     const cleanM = String(m).toLowerCase().replace(/[^a-z0-9]/g, '');
