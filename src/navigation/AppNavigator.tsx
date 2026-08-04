@@ -8594,8 +8594,8 @@ const InvestorsAdminView = () => {
     <table class="field-table">
       <tr><td class="field-label">Type of Debenture</td><td class="field-colon">:</td><td class="field-val">${isSecured}</td></tr>
       <tr><td class="field-label">Face Value (Per Debenture)</td><td class="field-colon">:</td><td class="field-val">&#8377;${faceVal.toLocaleString()}</td></tr>
-      <tr><td class="field-label">No. of Debentures Applied</td><td class="field-colon">:</td><td class="field-val">${noOfDebs} <small style="color:#64748b;">(Units)</small></td></tr>
-      <tr><td class="field-label">Total Application Amount</td><td class="field-colon">:</td><td class="field-val" style="color:#059669;font-size:14px;">&#8377;${calculatedTotal.toLocaleString()}</td></tr>
+      <tr><td class="field-label">No. of Debentures Applied</td><td class="field-colon">:</td><td class="field-val">${noOfDebs} <span style="font-weight:normal;font-size:11px;color:#64748b;">(${df.numDebenturesWords || "Units"})</span></td></tr>
+      <tr><td class="field-label">Total Application Amount</td><td class="field-colon">:</td><td class="field-val" style="color:#059669;font-size:14px;">&#8377;${calculatedTotal.toLocaleString()} \${df.totalApplicationAmountWords ? \` <span style="font-weight:normal;font-size:11px;color:#64748b;">(\${df.totalApplicationAmountWords})</span>\` : ''}</td></tr>
       <tr><td class="field-label">Mode of Payment</td><td class="field-colon">:</td><td class="field-val">${df.modeOfPayment || 'NEFT/RTGS'}</td></tr>
       <tr><td class="field-label">Transaction / UTR / Ref No</td><td class="field-colon">:</td><td class="field-val">${df.transactionUtrNo || '—'}</td></tr>
       <tr><td class="field-label">Bank Name</td><td class="field-colon">:</td><td class="field-val">${df.bankName || '—'}</td></tr>
@@ -9003,6 +9003,8 @@ const DebentureFormView = () => {
               typeOfDebenture: [formData.typeSecured && 'Secured', formData.typeNonConvertible && 'Non-Convertible', formData.typeRedeemable && 'Redeemable'].filter(Boolean).join(', ') || 'Secured',
               faceValue: Number(formData.faceValue) || 100000,
               noOfDebentures: Number(formData.numDebenturesFigures) || 1,
+              numDebenturesWords: formData.numDebenturesWords || '',
+              totalApplicationAmountWords: formData.totalApplicationAmountWords || '',
               investmentAmount: (Number(formData.numDebenturesFigures) || 1) * (Number(formData.faceValue) || 100000),
               modeOfPayment: formData.paymentMode || 'NEFT/RTGS',
               transactionUtrNo: formData.utrNo,
@@ -9252,8 +9254,8 @@ const DebentureFormView = () => {
   <div class="box">
     <div class="field-row"><div class="field-label" style="width:150px;">Type of Debenture</div><div class="field-colon">:</div><div class="checkbox-group"><label><input type="checkbox" name="typeSecured" checked>Secured</label><label><input type="checkbox" name="typeNonConvertible">Non-Convertible</label><label><input type="checkbox" name="typeRedeemable">Redeemable</label></div></div>
     <div class="field-row"><div class="field-label" style="width:150px;">Face Value (Per Debenture)</div><div class="field-colon">:</div><div class="field-fill">&#8377; <input type="number" name="faceValue" style="width:160px;display:inline-block;" min="0" value="100000"></div></div>
-    <div class="field-row"><div class="field-label" style="width:150px;">No. of Debentures Applied</div><div class="field-colon">:</div><div class="field-fill" style="display:flex;gap:12px;align-items:center;"><input type="number" name="numDebenturesFigures" style="max-width:100px;" min="0" value="1"><small class="faded">(Figures)</small><input type="text" name="numDebenturesWords"><small class="faded">(Words)</small></div></div>
-    <div class="field-row"><div class="field-label" style="width:150px;">Total Application Amount</div><div class="field-colon">:</div><div class="field-fill" style="display:flex;align-items:center;gap:8px;">&#8377; <input type="number" name="totalAmount" id="totalAmount" style="max-width:200px;" min="0"><small class="faded">(Face Value x No.)</small></div></div>
+    <div class="field-row"><div class="field-label" style="width:150px;">No. of Debentures Applied</div><div class="field-colon">:</div><div class="field-fill" style="display:flex;gap:12px;align-items:center;"><input type="number" name="numDebenturesFigures" style="max-width:100px;" min="0" value="1"><small class="faded">(Figures)</small><input type="text" name="numDebenturesWords" readonly><small class="faded">(Words)</small></div></div>
+    <div class="field-row"><div class="field-label" style="width:150px;">Total Application Amount</div><div class="field-colon">:</div><div class="field-fill" style="display:flex;align-items:center;gap:8px;">&#8377; <input type="number" name="totalAmount" id="totalAmount" style="max-width:100px;" min="0" readonly><small class="faded">(Figures)</small><input type="text" name="totalApplicationAmountWords" placeholder="Rupees One Lakh Only" style="max-width:200px;" readonly><small class="faded">(Words)</small></div></div>
     <div class="field-row"><div class="field-label" style="width:150px;">Mode of Payment</div><div class="field-colon">:</div><div class="checkbox-group"><label><input type="radio" name="paymentMode" value="NEFT/RTGS" checked>NEFT / RTGS</label><label><input type="radio" name="paymentMode" value="Cheque">Cheque</label><label><input type="radio" name="paymentMode" value="DD">DD</label><label><input type="radio" name="paymentMode" value="Other">Other <input type="text" name="paymentModeOther"></label></div></div>
     <div class="field-row"><div class="field-label" style="width:150px;">Bank Name</div><div class="field-colon">:</div><div class="field-fill" style="max-width:180px;"><input type="text" name="bankName"></div><div style="width:130px;text-align:right;">Transaction / UTR No.</div><div style="width:8px;">:</div><div class="field-fill"><input type="text" name="utrNo"></div></div>
     <div class="field-row"><div class="field-label" style="width:150px;">Cheque / DD No.</div><div class="field-colon">:</div><div class="field-fill" style="max-width:140px;"><input type="text" name="chequeDdNo"></div><div style="width:40px;text-align:right;">Date</div><div style="width:8px;">:</div><div class="field-fill" style="max-width:120px;"><input type="date" name="chequeDate"></div><div style="width:90px;text-align:right;">Drawn On</div><div style="width:8px;">:</div><div class="field-fill"><input type="text" name="drawnOnBank"></div></div>
@@ -9368,10 +9370,63 @@ const DebentureFormView = () => {
   document.querySelectorAll('.pan-boxes .digit-box').forEach((box,idx,arr)=>{box.addEventListener('input',()=>{box.value=box.value.toUpperCase();if(box.value&&idx<arr.length-1)arr[idx+1].focus();});});
   document.querySelectorAll('.pin-boxes .digit-box').forEach((box,idx,arr)=>{box.addEventListener('input',()=>{box.value=box.value.replace(/[^0-9]/g,'');if(box.value&&idx<arr.length-1)arr[idx+1].focus();});});
 
-  // Auto-calc total
-  function calcTotal(){const fv=parseFloat(document.querySelector('[name=faceValue]').value)||0;const nd=parseFloat(document.querySelector('[name=numDebenturesFigures]').value)||0;document.getElementById('totalAmount').value=fv*nd||'';}
+  // Auto-calc total and convert to words
+  const ones = [
+    "", "One", "Two", "Three", "Four", "Five", "Six", "Seven", "Eight", "Nine", "Ten",
+    "Eleven", "Twelve", "Thirteen", "Fourteen", "Fifteen", "Sixteen", "Seventeen", "Eighteen", "Nineteen"
+  ];
+  const tens = ["", "", "Twenty", "Thirty", "Forty", "Fifty", "Sixty", "Seventy", "Eighty", "Ninety"];
+  function numWords(num, isCurrency) {
+    if (num === 0) return isCurrency ? "Rupees Zero Only" : "Zero";
+    if (isNaN(num) || num < 0) return "";
+    function helper(n) {
+      if (n === 0) return "";
+      let temp = "";
+      if (n >= 100) {
+        temp += ones[Math.floor(n / 100)] + " Hundred ";
+        n %= 100;
+      }
+      if (n >= 20) {
+        temp += tens[Math.floor(n / 10)] + " ";
+        n %= 10;
+      }
+      if (n > 0) {
+        temp += ones[n] + " ";
+      }
+      return temp.trim();
+    }
+    let str = "";
+    let n = Math.floor(num);
+    if (n >= 10000000) {
+      str += helper(Math.floor(n / 10000000)) + " Crore ";
+      n %= 10000000;
+    }
+    if (n >= 100000) {
+      str += helper(Math.floor(n / 100000)) + " Lakh ";
+      n %= 100000;
+    }
+    if (n >= 1000) {
+      str += helper(Math.floor(n / 1000)) + " Thousand ";
+      n %= 1000;
+    }
+    if (n > 0) {
+      str += helper(n);
+    }
+    const result = str.trim();
+    return isCurrency ? "Rupees " + result + " Only" : result;
+  }
+  function calcTotal(){
+    const fv=parseFloat(document.querySelector('[name=faceValue]').value)||0;
+    const nd=parseFloat(document.querySelector('[name=numDebenturesFigures]').value)||0;
+    const total=fv*nd;
+    document.getElementById('totalAmount').value=total||'';
+    document.querySelector('[name=numDebenturesWords]').value=numWords(nd, false);
+    document.querySelector('[name=totalApplicationAmountWords]').value=numWords(total, true);
+  }
   document.querySelector('[name=faceValue]').addEventListener('input',calcTotal);
   document.querySelector('[name=numDebenturesFigures]').addEventListener('input',calcTotal);
+  // Run once initially to prefill
+  calcTotal();
 
   document.getElementById('resetBtn').addEventListener('click',()=>{document.getElementById('debentureForm').reset();ctx.clearRect(0,0,canvas.width,canvas.height);document.getElementById('photoPlaceholder').style.display='';const img=document.getElementById('photoBox').querySelector('img');if(img)img.remove();document.getElementById('statusMsg').textContent='';});
 
