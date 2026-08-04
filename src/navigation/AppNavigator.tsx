@@ -438,45 +438,119 @@ const AboutCompanyScreen = ({ navigation }: any) => {
 // --- Login Screen ---
 const LoginScreen = ({ navigation }: any) => {
   const insets = useSafeAreaInsets();
+  const [loginMethod, setLoginMethod] = useState<'password' | 'otp'>('password');
+  
+  // Password login states
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
+
+  // OTP login states
+  const [phone, setPhone] = useState('');
+  const [otp, setOtp] = useState('');
+  const [otpSent, setOtpSent] = useState(false);
+  const [debugOtp, setDebugOtp] = useState('');
+
   const [rememberMe, setRememberMe] = useState(true);
   const [loading, setLoading] = useState(false);
   const [errorMsg, setErrorMsg] = useState('');
   const setAuth = useAuthStore((state) => state.setAuth);
 
-  const handleLogin = async () => {
-    if (!email || !password) {
-      setErrorMsg('Please enter both email and password.');
+  const handleSendOtp = async () => {
+    if (!phone) {
+      setErrorMsg('Please enter your mobile number.');
       return;
     }
-
     setLoading(true);
     setErrorMsg('');
-
+    setDebugOtp('');
     try {
-      const response = await apiCall('/api/auth/login', {
+      const response = await apiCall('/api/auth/otp/send', {
         method: 'POST',
-        body: JSON.stringify({
-          email: email.trim(),
-          password,
-          rememberMe,
-          deviceInfo: `${Platform.OS} ${Platform.Version || ''}`.trim(),
-        }),
+        body: JSON.stringify({ phone: phone.trim() }),
       });
 
       if (response.success && response.data) {
-        const { user, token, accessToken, role } = response.data;
-        const actualToken = token || accessToken || (response.data as any).token || (response as any).token || 'valid-session-token';
-        setAuth(user || { email, role }, actualToken);
+        setOtpSent(true);
+        Alert.alert('OTP Sent', 'OTP has been sent to your mobile number.');
+        if (response.data.debugOtp) {
+          setDebugOtp(response.data.debugOtp);
+        }
       } else {
-        setErrorMsg(response.error || 'Invalid credentials or login failed.');
+        setErrorMsg(response.error || 'Failed to send OTP.');
       }
     } catch (err: any) {
       setErrorMsg(err.message || 'An unexpected error occurred.');
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleLogin = async () => {
+    if (loginMethod === 'otp') {
+      if (!phone || !otp) {
+        setErrorMsg('Please enter both mobile number and OTP.');
+        return;
+      }
+
+      setLoading(true);
+      setErrorMsg('');
+
+      try {
+        const response = await apiCall('/api/auth/login-otp', {
+          method: 'POST',
+          body: JSON.stringify({
+            phone: phone.trim(),
+            otp: otp.trim(),
+            rememberMe,
+            deviceInfo: `${Platform.OS} ${Platform.Version || ''}`.trim(),
+          }),
+        });
+
+        if (response.success && response.data) {
+          const { user, token, accessToken } = response.data;
+          const actualToken = token || accessToken || 'valid-session-token';
+          setAuth(user, actualToken);
+        } else {
+          setErrorMsg(response.error || 'Invalid OTP or login failed.');
+        }
+      } catch (err: any) {
+        setErrorMsg(err.message || 'An unexpected error occurred.');
+      } finally {
+        setLoading(false);
+      }
+    } else {
+      if (!email || !password) {
+        setErrorMsg('Please enter both email and password.');
+        return;
+      }
+
+      setLoading(true);
+      setErrorMsg('');
+
+      try {
+        const response = await apiCall('/api/auth/login', {
+          method: 'POST',
+          body: JSON.stringify({
+            email: email.trim(),
+            password,
+            rememberMe,
+            deviceInfo: `${Platform.OS} ${Platform.Version || ''}`.trim(),
+          }),
+        });
+
+        if (response.success && response.data) {
+          const { user, token, accessToken } = response.data;
+          const actualToken = token || accessToken || 'valid-session-token';
+          setAuth(user, actualToken);
+        } else {
+          setErrorMsg(response.error || 'Invalid credentials or login failed.');
+        }
+      } catch (err: any) {
+        setErrorMsg(err.message || 'An unexpected error occurred.');
+      } finally {
+        setLoading(false);
+      }
     }
   };
 
@@ -507,7 +581,7 @@ const LoginScreen = ({ navigation }: any) => {
           {/* Heading & Subtitle */}
           <Text style={loginStyles.welcomeTitle}>Welcome back</Text>
           <Text style={loginStyles.welcomeSubtitle}>
-            Enter your email and password to access your account.
+            Choose your login method and access your account.
           </Text>
 
           {errorMsg ? (
@@ -516,55 +590,162 @@ const LoginScreen = ({ navigation }: any) => {
             </View>
           ) : null}
 
-          {/* Email Field */}
-          <View style={loginStyles.fieldGroup}>
-            <Text style={loginStyles.fieldLabel}>Email</Text>
-            <View style={loginStyles.inputContainer}>
-              <TextInput
-                style={loginStyles.textInput}
-                placeholder="keyadmin@gmail.com"
-                placeholderTextColor={colors.textMuted}
-                value={email}
-                onChangeText={setEmail}
-                autoCapitalize="none"
-                keyboardType="email-address"
-              />
-            </View>
+          {/* Toggle Login Method Tabs */}
+          <View style={{ flexDirection: 'row', borderBottomWidth: 1, borderColor: colors.border, marginBottom: 20 }}>
+            <TouchableOpacity
+              style={{
+                flex: 1,
+                paddingBottom: 10,
+                alignItems: 'center',
+                borderBottomWidth: loginMethod === 'password' ? 2 : 0,
+                borderColor: colors.accent,
+              }}
+              onPress={() => {
+                setLoginMethod('password');
+                setErrorMsg('');
+              }}
+            >
+              <Text style={{ fontSize: 14, fontWeight: 'bold', color: loginMethod === 'password' ? colors.accent : colors.textMuted }}>
+                Password Login
+              </Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={{
+                flex: 1,
+                paddingBottom: 10,
+                alignItems: 'center',
+                borderBottomWidth: loginMethod === 'otp' ? 2 : 0,
+                borderColor: colors.accent,
+              }}
+              onPress={() => {
+                setLoginMethod('otp');
+                setErrorMsg('');
+              }}
+            >
+              <Text style={{ fontSize: 14, fontWeight: 'bold', color: loginMethod === 'otp' ? colors.accent : colors.textMuted }}>
+                OTP Login
+              </Text>
+            </TouchableOpacity>
           </View>
 
-          {/* Password Field with Eye Icon */}
-          <View style={loginStyles.fieldGroup}>
-            <View style={loginStyles.passwordLabelRow}>
-              <Text style={loginStyles.fieldLabel}>Password</Text>
-              <TouchableOpacity onPress={() => Alert.alert('Reset Password', 'Please contact system administrator to reset your password.')}>
-                <Text style={loginStyles.forgotText}>Forgot password?</Text>
-              </TouchableOpacity>
-            </View>
-            <View style={loginStyles.inputContainer}>
-              <TextInput
-                style={[loginStyles.textInput, { flex: 1 }]}
-                placeholder="••••••••"
-                placeholderTextColor={colors.textMuted}
-                value={password}
-                onChangeText={setPassword}
-                secureTextEntry={!showPassword}
-                autoCapitalize="none"
-                returnKeyType="go"
-                onSubmitEditing={handleLogin}
-              />
-              <TouchableOpacity
-                style={loginStyles.eyeIconButton}
-                onPress={() => setShowPassword(!showPassword)}
-                hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
-              >
-                {showPassword ? (
-                  <EyeOff size={20} color={colors.textMuted} />
-                ) : (
-                  <Eye size={20} color={colors.textMuted} />
-                )}
-              </TouchableOpacity>
-            </View>
-          </View>
+          {loginMethod === 'password' ? (
+            <>
+              {/* Email Field */}
+              <View style={loginStyles.fieldGroup}>
+                <Text style={loginStyles.fieldLabel}>Email</Text>
+                <View style={loginStyles.inputContainer}>
+                  <TextInput
+                    style={loginStyles.textInput}
+                    placeholder="keyadmin@gmail.com"
+                    placeholderTextColor={colors.textMuted}
+                    value={email}
+                    onChangeText={setEmail}
+                    autoCapitalize="none"
+                    keyboardType="email-address"
+                  />
+                </View>
+              </View>
+
+              {/* Password Field with Eye Icon */}
+              <View style={loginStyles.fieldGroup}>
+                <View style={loginStyles.passwordLabelRow}>
+                  <Text style={loginStyles.fieldLabel}>Password</Text>
+                  <TouchableOpacity onPress={() => Alert.alert('Reset Password', 'Please contact system administrator to reset your password.')}>
+                    <Text style={loginStyles.forgotText}>Forgot password?</Text>
+                  </TouchableOpacity>
+                </View>
+                <View style={loginStyles.inputContainer}>
+                  <TextInput
+                    style={[loginStyles.textInput, { flex: 1 }]}
+                    placeholder="••••••••"
+                    placeholderTextColor={colors.textMuted}
+                    value={password}
+                    onChangeText={setPassword}
+                    secureTextEntry={!showPassword}
+                    autoCapitalize="none"
+                    returnKeyType="go"
+                    onSubmitEditing={handleLogin}
+                  />
+                  <TouchableOpacity
+                    style={loginStyles.eyeIconButton}
+                    onPress={() => setShowPassword(!showPassword)}
+                    hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+                  >
+                    {showPassword ? (
+                      <EyeOff size={20} color={colors.textMuted} />
+                    ) : (
+                      <Eye size={20} color={colors.textMuted} />
+                    )}
+                  </TouchableOpacity>
+                </View>
+              </View>
+            </>
+          ) : (
+            <>
+              {/* Phone Field */}
+              <View style={loginStyles.fieldGroup}>
+                <Text style={loginStyles.fieldLabel}>Mobile Number</Text>
+                <View style={{ flexDirection: 'row', gap: 8 }}>
+                  <View style={[loginStyles.inputContainer, { flex: 1 }]}>
+                    <TextInput
+                      style={loginStyles.textInput}
+                      placeholder="+919876543210"
+                      placeholderTextColor={colors.textMuted}
+                      value={phone}
+                      onChangeText={setPhone}
+                      keyboardType="phone-pad"
+                      autoCapitalize="none"
+                    />
+                  </View>
+                  <TouchableOpacity
+                    style={{
+                      backgroundColor: colors.accent,
+                      borderRadius: 8,
+                      paddingHorizontal: 16,
+                      justifyContent: 'center',
+                      alignItems: 'center',
+                    }}
+                    onPress={handleSendOtp}
+                    disabled={loading || !phone}
+                  >
+                    <Text style={{ color: colors.background, fontWeight: 'bold', fontSize: 12 }}>
+                      {otpSent ? 'Resend' : 'Send'}
+                    </Text>
+                  </TouchableOpacity>
+                </View>
+              </View>
+
+              {/* Debug OTP Banner */}
+              {debugOtp ? (
+                <View style={{ backgroundColor: 'rgba(59, 130, 246, 0.1)', padding: 10, borderRadius: 8, marginBottom: 16, alignItems: 'center' }}>
+                  <Text style={{ color: colors.info, fontFamily: Platform.OS === 'ios' ? 'Courier' : 'monospace', fontSize: 13 }}>
+                    DEBUG OTP: <Text style={{ fontWeight: 'bold' }}>{debugOtp}</Text>
+                  </Text>
+                </View>
+              ) : null}
+
+              {/* OTP Code Field */}
+              {otpSent ? (
+                <View style={loginStyles.fieldGroup}>
+                  <Text style={loginStyles.fieldLabel}>Enter 6-Digit OTP</Text>
+                  <View style={loginStyles.inputContainer}>
+                    <TextInput
+                      style={loginStyles.textInput}
+                      placeholder="123456"
+                      placeholderTextColor={colors.textMuted}
+                      value={otp}
+                      onChangeText={setOtp}
+                      keyboardType="number-pad"
+                      maxLength={6}
+                      autoCapitalize="none"
+                      returnKeyType="go"
+                      onSubmitEditing={handleLogin}
+                    />
+                  </View>
+                </View>
+              ) : null}
+            </>
+          )}
 
           {/* Remember Me Checkbox */}
           <TouchableOpacity
@@ -582,7 +763,7 @@ const LoginScreen = ({ navigation }: any) => {
           <TouchableOpacity
             style={[loginStyles.signInBtn, loading && { opacity: 0.7 }]}
             onPress={handleLogin}
-            disabled={loading}
+            disabled={loading || (loginMethod === 'otp' && !otpSent)}
           >
             {loading ? (
               <ActivityIndicator color={colors.background} />
@@ -619,9 +800,54 @@ const InvestorRegisterScreen = ({ navigation }: any) => {
   const [errorMsg, setErrorMsg] = useState('');
   const setAuth = useAuthStore((state) => state.setAuth);
 
+  // OTP Verification States
+  const [otp, setOtp] = useState('');
+  const [otpSent, setOtpSent] = useState(false);
+  const [debugOtp, setDebugOtp] = useState('');
+
+  const handleSendOtp = async () => {
+    if (!phone || !email) {
+      setErrorMsg('Please enter Email Address and Phone Number first.');
+      return;
+    }
+    setLoading(true);
+    setErrorMsg('');
+    setDebugOtp('');
+    try {
+      const response = await apiCall('/api/auth/otp/send-registration', {
+        method: 'POST',
+        body: JSON.stringify({ phone: phone.trim(), email: email.trim() }),
+      });
+
+      if (response.success && response.data) {
+        setOtpSent(true);
+        Alert.alert('OTP Sent', 'Verification OTP has been sent to your mobile number.');
+        if (response.data.debugOtp) {
+          setDebugOtp(response.data.debugOtp);
+        }
+      } else {
+        setErrorMsg(response.error || 'Failed to send verification OTP.');
+      }
+    } catch (err: any) {
+      setErrorMsg(err.message || 'An unexpected error occurred.');
+    } finally {
+      setLoading(false);
+    }
+  };
+
   const handleRegister = async () => {
     if (!fullName.trim() || !email.trim() || !phone.trim() || !password) {
       setErrorMsg('Please fill in all required fields.');
+      return;
+    }
+
+    if (!otpSent) {
+      setErrorMsg('Please request and verify OTP first.');
+      return;
+    }
+
+    if (!otp) {
+      setErrorMsg('Please enter the verification OTP.');
       return;
     }
 
@@ -641,6 +867,7 @@ const InvestorRegisterScreen = ({ navigation }: any) => {
           email: email.trim(),
           phone: phone.trim(),
           password,
+          otp: otp.trim(),
         }),
       });
 
@@ -652,6 +879,7 @@ const InvestorRegisterScreen = ({ navigation }: any) => {
             email: email.trim(),
             phone: phone.trim(),
             password,
+            otp: otp.trim(),
           }),
         });
       }
@@ -746,18 +974,64 @@ const InvestorRegisterScreen = ({ navigation }: any) => {
 
           <View style={registerStyles.fieldGroup}>
             <Text style={registerStyles.fieldLabel}>Phone Number *</Text>
-            <View style={registerStyles.inputContainer}>
-              <Briefcase size={18} color={colors.textMuted} style={{ marginRight: 10 }} />
-              <TextInput
-                style={registerStyles.textInput}
-                placeholder="+91 9876543210"
-                placeholderTextColor={colors.textMuted}
-                value={phone}
-                onChangeText={setPhone}
-                keyboardType="phone-pad"
-              />
+            <View style={{ flexDirection: 'row', gap: 8 }}>
+              <View style={[registerStyles.inputContainer, { flex: 1 }]}>
+                <Briefcase size={18} color={colors.textMuted} style={{ marginRight: 10 }} />
+                <TextInput
+                  style={registerStyles.textInput}
+                  placeholder="+91 9876543210"
+                  placeholderTextColor={colors.textMuted}
+                  value={phone}
+                  onChangeText={setPhone}
+                  keyboardType="phone-pad"
+                />
+              </View>
+              <TouchableOpacity
+                style={{
+                  backgroundColor: colors.accent,
+                  borderRadius: 8,
+                  paddingHorizontal: 16,
+                  justifyContent: 'center',
+                  alignItems: 'center',
+                }}
+                onPress={handleSendOtp}
+                disabled={loading || !phone || !email}
+              >
+                <Text style={{ color: colors.background, fontWeight: 'bold', fontSize: 12 }}>
+                  {otpSent ? 'Resend' : 'Send'}
+                </Text>
+              </TouchableOpacity>
             </View>
           </View>
+
+          {/* Debug OTP Banner */}
+          {debugOtp ? (
+            <View style={{ backgroundColor: 'rgba(59, 130, 246, 0.1)', padding: 10, borderRadius: 8, marginBottom: 16, alignItems: 'center' }}>
+              <Text style={{ color: colors.info, fontFamily: Platform.OS === 'ios' ? 'Courier' : 'monospace', fontSize: 13 }}>
+                DEBUG OTP: <Text style={{ fontWeight: 'bold' }}>{debugOtp}</Text>
+              </Text>
+            </View>
+          ) : null}
+
+          {/* OTP Input Field */}
+          {otpSent ? (
+            <View style={registerStyles.fieldGroup}>
+              <Text style={registerStyles.fieldLabel}>Verification OTP Code *</Text>
+              <View style={registerStyles.inputContainer}>
+                <KeyRound size={18} color={colors.textMuted} style={{ marginRight: 10 }} />
+                <TextInput
+                  style={registerStyles.textInput}
+                  placeholder="123456"
+                  placeholderTextColor={colors.textMuted}
+                  value={otp}
+                  onChangeText={setOtp}
+                  keyboardType="number-pad"
+                  maxLength={6}
+                  autoCapitalize="none"
+                />
+              </View>
+            </View>
+          ) : null}
 
           <View style={registerStyles.fieldGroup}>
             <Text style={registerStyles.fieldLabel}>Password *</Text>
@@ -795,9 +1069,9 @@ const InvestorRegisterScreen = ({ navigation }: any) => {
           </View>
 
           <TouchableOpacity
-            style={[registerStyles.submitBtn, loading && { opacity: 0.7 }]}
+            style={[registerStyles.submitBtn, (loading || !otpSent) && { opacity: 0.7 }]}
             onPress={handleRegister}
-            disabled={loading}
+            disabled={loading || !otpSent}
           >
             {loading ? (
               <ActivityIndicator color={colors.background} />

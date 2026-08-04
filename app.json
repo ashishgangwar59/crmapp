@@ -1,7 +1,7 @@
 {
   "expo": {
-    "name": "CRMNiventra",
-    "slug": "crmniventra",
+    "name": "Niventra Capital",
+    "slug": "niventracapital",
     "owner": "ashish7869s-team",
     "version": "1.0.0",
     "orientation": "portrait",
@@ -9,7 +9,7 @@
     "userInterfaceStyle": "light",
     "ios": {
       "supportsTablet": true,
-      "bundleIdentifier": "com.niventra.crm",
+      "bundleIdentifier": "com.niventracapitaladvisory.app",
       "infoPlist": {
         "ITSAppUsesNonExemptEncryption": false
       }
@@ -22,7 +22,7 @@
         "monochromeImage": "./assets/android-icon-monochrome.png"
       },
       "predictiveBackGestureEnabled": false,
-      "package": "com.niventra.crm"
+      "package": "com.niventracapitaladvisory.app"
     },
     "web": {
       "favicon": "./assets/favicon.png"
