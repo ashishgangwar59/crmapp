@@ -1,7 +1,7 @@
 {
   "expo": {
     "name": "Niventra Capital",
-    "slug": "niventracapital",
+    "slug": "niventra-capital",
     "owner": "ashish7869s-team",
     "version": "1.0.0",
     "orientation": "portrait",
@@ -29,7 +29,7 @@
     },
     "extra": {
       "eas": {
-        "projectId": "87157252-0a43-40db-bd9a-c593b220ae8f"
+        "projectId": "e2f547b7-ec08-4dc0-b68b-34e0e7b81f41"
       }
     },
     "plugins": [
