@@ -111,6 +111,8 @@ import {
   EyeOff,
   FileText,
   Printer,
+  UserPlus,
+  Landmark,
 } from 'lucide-react-native';
 
 // Types
@@ -126,11 +128,21 @@ const Stack = createNativeStackNavigator<RootStackParamList>();
 // --- About Company Screen (Landing Page) ---
 const AboutCompanyScreen = ({ navigation }: any) => {
   const insets = useSafeAreaInsets();
-  const topGap = Platform.OS === 'android' ? (StatusBar.currentHeight || insets.top || 24) : 0;
+  const topGap = Platform.OS === 'android' ? (StatusBar.currentHeight || 24) : insets.top;
 
   const themeMode = useAuthStore((state) => state.themeMode);
   const setThemeMode = useAuthStore((state) => state.setThemeMode);
   const [activeTab, setActiveTab] = useState<'corporate' | 'investment' | 'services' | 'features'>('corporate');
+
+  // Premium Simple Interest Calculator States matching user screenshot
+  const [calcPrincipal, setCalcPrincipal] = useState('25000');
+  const [calcInterestType, setCalcInterestType] = useState<'rupees' | 'percentage'>('rupees');
+  const [calcRate, setCalcRate] = useState('16');
+  const [calcShowEquivalent, setCalcShowEquivalent] = useState(true);
+  const [calcFromDate, setCalcFromDate] = useState('06-08-2026');
+  const [calcToDate, setCalcToDate] = useState('06-09-2026');
+  const [calcShowResults, setCalcShowResults] = useState(true);
+  const [showCalculator, setShowCalculator] = useState(false);
 
   const toggleTheme = () => {
     let currentIsDark = false;
@@ -184,36 +196,43 @@ const AboutCompanyScreen = ({ navigation }: any) => {
     }
   };
 
+  const colorScheme = useColorScheme();
+  const isDark = themeMode === 'system' ? colorScheme === 'dark' : themeMode === 'dark';
+
   return (
-    <SafeAreaView style={[styles.safeArea, { paddingTop: topGap }]}>
-      <ScrollView contentContainerStyle={styles.aboutScrollContent} showsVerticalScrollIndicator={false}>
-        {/* Top Bar with Login Action Link */}
-        <View style={styles.aboutHeaderBar}>
-          <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+    <View style={[styles.safeArea, { paddingTop: topGap }]}>
+      <StatusBar barStyle={isDark ? 'light-content' : 'dark-content'} backgroundColor={colors.background} translucent={true} />
+      {/* Sticky Header Bar */}
+      <View style={[styles.aboutHeaderBar, { paddingHorizontal: spacing.m, marginBottom: 0, backgroundColor: colors.background, paddingBottom: spacing.s }]}>
+        <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+          <View style={{ backgroundColor: isDark ? '#ffffff' : 'transparent', borderRadius: 8, paddingHorizontal: 6, paddingVertical: 4, marginRight: 8 }}>
             <Image
               source={require('../../assets/icon.png')}
-              style={{ width: 35, height: 53, marginRight: 2, borderRadius: 2 }}
+              style={{ width: 45, height: 68 }}
               resizeMode="contain"
             />
-            <Text style={styles.aboutHeaderLogo}>
-              Niventra
-            </Text>
           </View>
-
-          <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-            <TouchableOpacity style={{ marginRight: 12, padding: 6 }} onPress={toggleTheme}>
-              <Eye size={20} color={colors.accent} />
-            </TouchableOpacity>
-
-            <TouchableOpacity
-              style={styles.aboutHeaderLoginBtn}
-              onPress={() => navigation.navigate('Login')}
-            >
-              <Text style={styles.aboutHeaderLoginText}>Login to Portal</Text>
-              <ArrowUpRight size={16} color={colors.accent} style={{ marginLeft: 4 }} />
-            </TouchableOpacity>
-          </View>
+          <Text style={styles.aboutHeaderLogo}>
+            Niventra
+          </Text>
         </View>
+
+        <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+          <TouchableOpacity style={{ marginRight: 12, padding: 6 }} onPress={toggleTheme}>
+            <Eye size={20} color={colors.accent} />
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            style={styles.aboutHeaderLoginBtn}
+            onPress={() => navigation.navigate('Login')}
+          >
+            <Text style={styles.aboutHeaderLoginText}>Login to Portal</Text>
+            <ArrowUpRight size={16} color={colors.accent} style={{ marginLeft: 4 }} />
+          </TouchableOpacity>
+        </View>
+      </View>
+
+      <ScrollView contentContainerStyle={styles.aboutScrollContent} showsVerticalScrollIndicator={false}>
 
         {/* Hero Section */}
         <View style={styles.aboutHeroCard}>
@@ -228,6 +247,34 @@ const AboutCompanyScreen = ({ navigation }: any) => {
             Build long-term wealth with personalized investment strategies, expert financial guidance, and transparent advisory services. Start your journey towards financial freedom today.
           </Text>
         </View>
+
+        {/* Live Advisory Stats Ticker */}
+        <ScrollView
+          horizontal
+          showsHorizontalScrollIndicator={false}
+          style={{ marginBottom: spacing.m, maxHeight: 40 }}
+          contentContainerStyle={{ gap: 8, paddingHorizontal: 2 }}
+        >
+          <View style={{ flexDirection: 'row', alignItems: 'center', backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.borderGold, borderRadius: 20, paddingHorizontal: 12, paddingVertical: 6 }}>
+            <TrendingUp size={14} color={colors.accent} style={{ marginRight: 6 }} />
+            <Text style={{ fontSize: 11, fontWeight: 'bold', color: colors.text }}>🔥 High-Yield NCDs: 11.5% p.a.</Text>
+          </View>
+
+          <View style={{ flexDirection: 'row', alignItems: 'center', backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.border, borderRadius: 20, paddingHorizontal: 12, paddingVertical: 6 }}>
+            <Building size={14} color={colors.success} style={{ marginRight: 6 }} />
+            <Text style={{ fontSize: 11, fontWeight: 'bold', color: colors.text }}>📈 Real Estate: +14.2% Growth</Text>
+          </View>
+
+          <View style={{ flexDirection: 'row', alignItems: 'center', backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.border, borderRadius: 20, paddingHorizontal: 12, paddingVertical: 6 }}>
+            <ShieldCheck size={14} color={colors.info} style={{ marginRight: 6 }} />
+            <Text style={{ fontSize: 11, fontWeight: 'bold', color: colors.text }}>🛡️ 100% Asset-Backed Security</Text>
+          </View>
+
+          <View style={{ flexDirection: 'row', alignItems: 'center', backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.borderGold, borderRadius: 20, paddingHorizontal: 12, paddingVertical: 6 }}>
+            <Wallet size={14} color={colors.accent} style={{ marginRight: 6 }} />
+            <Text style={{ fontSize: 11, fontWeight: 'bold', color: colors.text }}>💼 Managed: ₹150+ Cr Assets</Text>
+          </View>
+        </ScrollView>
 
         {/* Horizontal Scrollable Tabs */}
         <ScrollView
@@ -254,24 +301,16 @@ const AboutCompanyScreen = ({ navigation }: any) => {
             style={[styles.settingsTabPill, activeTab === 'services' && styles.settingsTabPillActive]}
             onPress={() => setActiveTab('services')}
           >
-            <Text style={[styles.settingsTabText, activeTab === 'services' && styles.settingsTabTextActive]}>💼 Services & Flow</Text>
+            <Text style={[styles.settingsTabText, activeTab === 'services' && styles.settingsTabTextActive]}>💼 Premium Services</Text>
           </TouchableOpacity>
 
           <TouchableOpacity
             style={[styles.settingsTabPill, activeTab === 'features' && styles.settingsTabPillActive]}
             onPress={() => setActiveTab('features')}
           >
-            <Text style={[styles.settingsTabText, activeTab === 'features' && styles.settingsTabTextActive]}>🔒 Tech & Security</Text>
+            <Text style={[styles.settingsTabText, activeTab === 'features' && styles.settingsTabTextActive]}>⚡ Platform Features</Text>
           </TouchableOpacity>
         </ScrollView>
-
-        {/* Dynamic Service Grid rendering based on activeTab */}
-        <Text style={styles.aboutSectionHeading}>
-          {activeTab === 'corporate' && 'Corporate & Values'}
-          {activeTab === 'investment' && 'Advisory & Investment Benefits'}
-          {activeTab === 'services' && 'Ecosystem Services & Flows'}
-          {activeTab === 'features' && 'Compliance, App & Tech Features'}
-        </Text>
 
         <View style={styles.aboutServicesGrid}>
           {activeTab === 'corporate' && (
@@ -377,6 +416,357 @@ const AboutCompanyScreen = ({ navigation }: any) => {
           )}
         </View>
 
+        {/* Toggle Calculator Button */}
+        <TouchableOpacity
+          style={{
+            backgroundColor: '#0c1c3d',
+            borderWidth: 1.5,
+            borderColor: colors.borderGold,
+            borderRadius: 12,
+            paddingVertical: 14,
+            alignItems: 'center',
+            justifyContent: 'center',
+            marginBottom: spacing.l,
+            flexDirection: 'row',
+          }}
+          onPress={() => setShowCalculator(!showCalculator)}
+        >
+          <TrendingUp size={18} color={colors.accent} style={{ marginRight: 8 }} />
+          <Text style={{ color: '#fff', fontWeight: 'bold', fontSize: 13, letterSpacing: 0.5 }}>
+            {showCalculator ? 'Hide Simple Interest Calculator' : 'Open Simple Interest Calculator'}
+          </Text>
+        </TouchableOpacity>
+
+        {showCalculator && (
+          <>
+            {/* Branded Title Header */}
+            <View style={{ backgroundColor: '#0c1c3d', borderRadius: 8, paddingVertical: 12, alignItems: 'center', marginBottom: 12, borderWidth: 1, borderColor: colors.borderGold }}>
+              <Text style={{ color: '#fff', fontWeight: 'bold', fontSize: 14, letterSpacing: 0.5 }}>Simple Interest</Text>
+            </View>
+
+            {/* Form Card */}
+            <View style={{
+              backgroundColor: colors.surface,
+              borderWidth: 1,
+              borderColor: colors.border,
+              borderTopWidth: 6,
+              borderTopColor: '#c9972f',
+              borderRadius: 16,
+              padding: 16,
+              marginBottom: spacing.l,
+            }}>
+              {/* Principal Amount */}
+              <Text style={{ fontSize: 12, fontWeight: 'bold', color: colors.text, marginBottom: 8, letterSpacing: 0.3 }}>PRINCIPAL AMOUNT <Text style={{ color: colors.accent }}>₹</Text></Text>
+              <View style={{
+                backgroundColor: colors.surfaceLight,
+                borderRadius: 8,
+                borderWidth: 1,
+                borderColor: colors.border,
+                paddingHorizontal: 12,
+                paddingVertical: 8,
+                marginBottom: 6,
+              }}>
+                <TextInput
+                  style={{ color: colors.text, fontSize: 15, fontWeight: 'bold', padding: 0 }}
+                  value={calcPrincipal}
+                  onChangeText={(txt) => setCalcPrincipal(txt.replace(/[^0-9]/g, ''))}
+                  keyboardType="number-pad"
+                  placeholder="25000"
+                  placeholderTextColor={colors.textMuted}
+                />
+              </View>
+              <Text style={{ fontSize: 11, fontStyle: 'italic', color: '#c9972f', marginBottom: 16, fontWeight: '600' }}>
+                {(() => {
+                  const num = Number(calcPrincipal) || 0;
+                  if (num === 0) return 'Zero Rupees';
+                  const a = ['', 'One ', 'Two ', 'Three ', 'Four ', 'Five ', 'Six ', 'Seven ', 'Eight ', 'Nine ', 'Ten ', 'Eleven ', 'Twelve ', 'Thirteen ', 'Fourteen ', 'Fifteen ', 'Sixteen ', 'Seventeen ', 'Eighteen ', 'Nineteen '];
+                  const b = ['', '', 'Twenty', 'Thirty', 'Forty', 'Fifty', 'Sixty', 'Seventy', 'Eighty', 'Ninety'];
+                  const numToWordsLessThanThousand = (n: number) => {
+                    let str = '';
+                    if (n >= 100) {
+                      str += a[Math.floor(n / 100)] + 'Hundred ';
+                      n %= 100;
+                    }
+                    if (n > 0) {
+                      if (str !== '') str += 'and ';
+                      if (n < 20) {
+                        str += a[n];
+                      } else {
+                        str += b[Math.floor(n / 10)] + ' ' + a[n % 10];
+                      }
+                    }
+                    return str;
+                  };
+                  let result = '';
+                  let temp = num;
+                  const crore = Math.floor(temp / 10000000);
+                  temp %= 10000000;
+                  if (crore > 0) result += numToWordsLessThanThousand(crore) + 'Crore ';
+                  const lakh = Math.floor(temp / 100000);
+                  temp %= 100000;
+                  if (lakh > 0) result += numToWordsLessThanThousand(lakh) + 'Lakh ';
+                  const thousand = Math.floor(temp / 1000);
+                  temp %= 1000;
+                  if (thousand > 0) result += numToWordsLessThanThousand(thousand) + 'Thousand ';
+                  if (temp > 0) result += numToWordsLessThanThousand(temp);
+                  return result.trim() + ' Rupees';
+                })()}
+              </Text>
+
+              {/* Interest Type */}
+              <Text style={{ fontSize: 12, fontWeight: 'bold', color: colors.text, marginBottom: 8, letterSpacing: 0.3 }}>INTEREST TYPE</Text>
+              <View style={{ flexDirection: 'row', borderWidth: 1, borderColor: colors.border, borderRadius: 8, overflow: 'hidden', marginBottom: 16, padding: 2, backgroundColor: colors.surfaceLight }}>
+                <TouchableOpacity
+                  style={{
+                    flex: 1,
+                    paddingVertical: 8,
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    backgroundColor: calcInterestType === 'rupees' ? '#0c1c3d' : 'transparent',
+                    borderRadius: 6,
+                  }}
+                  onPress={() => setCalcInterestType('rupees')}
+                >
+                  <Text style={{ fontSize: 12, fontWeight: 'bold', color: calcInterestType === 'rupees' ? '#fff' : colors.text }}>₹ Rupees</Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  style={{
+                    flex: 1,
+                    paddingVertical: 8,
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    backgroundColor: calcInterestType === 'percentage' ? '#0c1c3d' : 'transparent',
+                    borderRadius: 6,
+                  }}
+                  onPress={() => setCalcInterestType('percentage')}
+                >
+                  <Text style={{ fontSize: 12, fontWeight: 'bold', color: calcInterestType === 'percentage' ? '#fff' : colors.text }}>% Percentage</Text>
+                </TouchableOpacity>
+              </View>
+
+              {/* Interest Rate */}
+              <Text style={{ fontSize: 12, fontWeight: 'bold', color: colors.text, marginBottom: 8, letterSpacing: 0.3 }}>
+                {calcInterestType === 'rupees' ? 'INTEREST RATE (₹ per ₹100 / month)' : 'INTEREST RATE (% per annum)'}
+              </Text>
+              <View style={{
+                backgroundColor: colors.surfaceLight,
+                borderRadius: 8,
+                borderWidth: 1,
+                borderColor: colors.border,
+                paddingHorizontal: 12,
+                paddingVertical: 8,
+                marginBottom: 10,
+              }}>
+                <TextInput
+                  style={{ color: colors.text, fontSize: 15, fontWeight: 'bold', padding: 0 }}
+                  value={calcRate}
+                  onChangeText={setCalcRate}
+                  keyboardType="numeric"
+                  placeholder={calcInterestType === 'rupees' ? '16' : '11.5'}
+                  placeholderTextColor={colors.textMuted}
+                />
+              </View>
+
+              {/* Show equivalent Toggle */}
+              <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 }}>
+                <Text style={{ fontSize: 12, fontWeight: 'bold', color: colors.text }}>Show equivalent</Text>
+                <TouchableOpacity
+                  activeOpacity={0.8}
+                  onPress={() => setCalcShowEquivalent(!calcShowEquivalent)}
+                  style={{
+                    width: 44,
+                    height: 24,
+                    borderRadius: 12,
+                    backgroundColor: calcShowEquivalent ? colors.success : colors.border,
+                    padding: 2,
+                    justifyContent: 'center',
+                    alignItems: calcShowEquivalent ? 'flex-end' : 'flex-start',
+                  }}
+                >
+                  <View style={{ width: 20, height: 20, borderRadius: 10, backgroundColor: '#fff' }} />
+                </TouchableOpacity>
+              </View>
+
+              {calcShowEquivalent && (
+                <Text style={{ fontSize: 11, fontWeight: 'bold', color: '#c9972f', marginBottom: 16 }}>
+                  {calcInterestType === 'rupees'
+                    ? `Equivalent: ${(Number(calcRate) || 0) * 12}.00% per annum`
+                    : `Equivalent: ₹${((Number(calcRate) || 0) / 12).toFixed(2)} per ₹100 / month`}
+                </Text>
+              )}
+
+              {/* Duration Dates */}
+              <Text style={{ fontSize: 12, fontWeight: 'bold', color: colors.text, marginBottom: 8, letterSpacing: 0.3 }}>DURATION</Text>
+              <View style={{ flexDirection: 'row', gap: 12, marginBottom: 20 }}>
+                <View style={{ flex: 1 }}>
+                  <Text style={{ fontSize: 11, color: colors.textMuted, marginBottom: 4 }}>From Date</Text>
+                  <View style={{ flexDirection: 'row', alignItems: 'center', backgroundColor: colors.surfaceLight, borderWidth: 1, borderColor: colors.border, borderRadius: 8, paddingHorizontal: 10, paddingVertical: 8 }}>
+                    <TextInput
+                      style={{ flex: 1, color: colors.text, fontSize: 13, fontWeight: 'bold', padding: 0 }}
+                      value={calcFromDate}
+                      onChangeText={setCalcFromDate}
+                      placeholder="DD-MM-YYYY"
+                      placeholderTextColor={colors.textMuted}
+                    />
+                    <Calendar size={14} color={colors.textMuted} />
+                  </View>
+                </View>
+                <View style={{ flex: 1 }}>
+                  <Text style={{ fontSize: 11, color: colors.textMuted, marginBottom: 4 }}>To Date</Text>
+                  <View style={{ flexDirection: 'row', alignItems: 'center', backgroundColor: colors.surfaceLight, borderWidth: 1, borderColor: colors.border, borderRadius: 8, paddingHorizontal: 10, paddingVertical: 8 }}>
+                    <TextInput
+                      style={{ flex: 1, color: colors.text, fontSize: 13, fontWeight: 'bold', padding: 0 }}
+                      value={calcToDate}
+                      onChangeText={setCalcToDate}
+                      placeholder="DD-MM-YYYY"
+                      placeholderTextColor={colors.textMuted}
+                    />
+                    <Calendar size={14} color={colors.textMuted} />
+                  </View>
+                </View>
+              </View>
+
+              {/* Calculate Button */}
+              <TouchableOpacity
+                style={{ backgroundColor: '#0c1c3d', borderRadius: 8, paddingVertical: 12, alignItems: 'center', justifyContent: 'center', marginBottom: 12 }}
+                onPress={() => setCalcShowResults(true)}
+              >
+                <Text style={{ color: '#fff', fontWeight: 'bold', fontSize: 14 }}>Calculate Interest</Text>
+              </TouchableOpacity>
+
+              {/* Clear Link */}
+              <TouchableOpacity
+                style={{ alignItems: 'center' }}
+                onPress={() => {
+                  setCalcPrincipal('25000');
+                  setCalcRate('16');
+                  setCalcFromDate('06-08-2026');
+                  setCalcToDate('06-09-2026');
+                  setCalcShowResults(false);
+                }}
+              >
+                <Text style={{ fontSize: 12, color: colors.textMuted, textDecorationLine: 'underline' }}>Clear all fields</Text>
+              </TouchableOpacity>
+            </View>
+
+            {/* Results Card */}
+            {calcShowResults && (
+              <View style={{
+                backgroundColor: colors.surface,
+                borderWidth: 1,
+                borderStyle: 'dashed',
+                borderColor: '#c9972f',
+                borderRadius: 16,
+                padding: 16,
+                marginBottom: spacing.l,
+              }}>
+                <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
+                  <Text style={{ fontSize: 15, fontWeight: '900', color: colors.text, letterSpacing: 0.5 }}>Results</Text>
+                  <View style={{ borderWidth: 1.5, borderColor: '#c9972f', borderRadius: 12, paddingHorizontal: 10, paddingVertical: 2 }}>
+                    <Text style={{ fontSize: 9, fontWeight: '900', color: '#c9972f', letterSpacing: 1 }}>RECKONED</Text>
+                  </View>
+                </View>
+
+                {/* Calculations logic */}
+                {(() => {
+                  const parseDate = (str: string) => {
+                    const p = str.split('-');
+                    if (p.length === 3) return new Date(Number(p[2]), Number(p[1]) - 1, Number(p[0]));
+                    return new Date();
+                  };
+
+                  const d1 = parseDate(calcFromDate);
+                  const d2 = parseDate(calcToDate);
+
+                  // Duration calc
+                  let years = d2.getFullYear() - d1.getFullYear();
+                  let months = d2.getMonth() - d1.getMonth();
+                  let days = d2.getDate() - d1.getDate();
+                  if (days < 0) {
+                    months--;
+                    const prevMonth = new Date(d2.getFullYear(), d2.getMonth(), 0);
+                    days += prevMonth.getDate();
+                  }
+                  if (months < 0) {
+                    years--;
+                    months += 12;
+                  }
+                  years = Math.max(0, years);
+                  months = Math.max(0, months);
+                  days = Math.max(0, days);
+
+                  const principal = Number(calcPrincipal) || 0;
+                  const rate = Number(calcRate) || 0;
+                  let totalInterest = 0;
+                  let monthlyInterestVal = 0;
+
+                  if (calcInterestType === 'rupees') {
+                    // Rate R per 100 per month means R% per month
+                    // Calculate total elapsed months
+                    const totalMonths = (years * 12) + months + (days / 30.4375);
+                    monthlyInterestVal = principal * (rate / 100);
+                    totalInterest = Math.round(monthlyInterestVal * totalMonths);
+                  } else {
+                    // Percentage per annum
+                    const totalYears = years + (months / 12) + (days / 365);
+                    monthlyInterestVal = (principal * (rate / 100)) / 12;
+                    totalInterest = Math.round(principal * (rate / 100) * totalYears);
+                  }
+
+                  const totalAmount = principal + totalInterest;
+                  const dailyInterest = totalInterest / Math.max(1, Math.round(((d2.getTime() - d1.getTime()) / (1000 * 60 * 60 * 24))));
+                  const yearlyInterest = monthlyInterestVal * 12;
+
+                  return (
+                    <>
+                      <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginBottom: 12 }}>
+                        <View>
+                          <Text style={{ fontSize: 10, fontWeight: 'bold', color: colors.textMuted, letterSpacing: 0.3 }}>TOTAL DURATION</Text>
+                          <Text style={{ fontSize: 14, fontWeight: 'bold', color: colors.text, marginTop: 2 }}>{years}y {months}m {days}d</Text>
+                        </View>
+                        <View style={{ alignItems: 'flex-end' }}>
+                          <Text style={{ fontSize: 10, fontWeight: 'bold', color: colors.textMuted, letterSpacing: 0.3 }}>INTEREST RATE</Text>
+                          <Text style={{ fontSize: 14, fontWeight: 'bold', color: colors.text, marginTop: 2 }}>
+                            {calcInterestType === 'rupees' ? `₹${rate} /100/mo` : `${rate.toFixed(2)}% /yr`}
+                          </Text>
+                        </View>
+                      </View>
+
+                      <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginBottom: 16 }}>
+                        <View>
+                          <Text style={{ fontSize: 10, fontWeight: 'bold', color: colors.textMuted, letterSpacing: 0.3 }}>PRINCIPAL AMOUNT</Text>
+                          <Text style={{ fontSize: 14, fontWeight: 'bold', color: colors.text, marginTop: 2 }}>₹{principal.toLocaleString('en-IN')}</Text>
+                        </View>
+                        <View style={{ alignItems: 'flex-end' }}>
+                          <Text style={{ fontSize: 10, fontWeight: 'bold', color: colors.textMuted, letterSpacing: 0.3 }}>MONTHLY INTEREST</Text>
+                          <Text style={{ fontSize: 14, fontWeight: 'bold', color: colors.text, marginTop: 2 }}>₹{Math.round(monthlyInterestVal).toLocaleString('en-IN')}</Text>
+                        </View>
+                      </View>
+
+                      <View style={{ flexDirection: 'row', gap: 10 }}>
+                        {/* Interest Amount Card */}
+                        <View style={{ flex: 1, backgroundColor: 'rgba(201, 151, 47, 0.06)', borderWidth: 1, borderColor: 'rgba(201, 151, 47, 0.3)', borderRadius: 12, padding: 10 }}>
+                          <Text style={{ fontSize: 10, fontWeight: 'bold', color: '#c9972f', letterSpacing: 0.3 }}>INTEREST AMOUNT</Text>
+                          <Text style={{ fontSize: 18, fontWeight: 'bold', color: '#c9972f', marginVertical: 4 }}>₹{totalInterest.toLocaleString('en-IN')}</Text>
+                          <Text style={{ fontSize: 9, color: colors.textMuted }}>Daily: ₹{dailyInterest.toFixed(2)}</Text>
+                          <Text style={{ fontSize: 9, color: colors.textMuted }}>Yearly: ₹{Math.round(yearlyInterest).toLocaleString('en-IN')}</Text>
+                        </View>
+
+                        {/* Total Amount Card */}
+                        <View style={{ flex: 1, backgroundColor: 'rgba(74, 189, 137, 0.06)', borderWidth: 1, borderColor: 'rgba(74, 189, 137, 0.3)', borderRadius: 12, padding: 10 }}>
+                          <Text style={{ fontSize: 10, fontWeight: 'bold', color: colors.success, letterSpacing: 0.3 }}>TOTAL AMOUNT</Text>
+                          <Text style={{ fontSize: 18, fontWeight: 'bold', color: colors.success, marginVertical: 4 }}>₹{totalAmount.toLocaleString('en-IN')}</Text>
+                          <Text style={{ fontSize: 9, color: colors.textMuted, marginTop: 12 }}>Principal + Interest</Text>
+                        </View>
+                      </View>
+                    </>
+                  );
+                })()}
+              </View>
+            )}
+          </>
+        )}
+
         {/* Call to Action Grid */}
         <Text style={styles.aboutSectionHeading}>Advisory Actions</Text>
         <View style={styles.aboutServicesGrid}>
@@ -431,7 +821,7 @@ const AboutCompanyScreen = ({ navigation }: any) => {
           <ArrowUpRight size={18} color={colors.background} style={{ marginLeft: 8 }} />
         </TouchableOpacity>
       </ScrollView>
-    </SafeAreaView>
+    </View>
   );
 };
 
@@ -439,7 +829,7 @@ const AboutCompanyScreen = ({ navigation }: any) => {
 const LoginScreen = ({ navigation }: any) => {
   const insets = useSafeAreaInsets();
   const [loginMethod, setLoginMethod] = useState<'password' | 'otp'>('password');
-  
+
   // Password login states
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -554,10 +944,15 @@ const LoginScreen = ({ navigation }: any) => {
     }
   };
 
-  const topGap = Platform.OS === 'android' ? (StatusBar.currentHeight || insets.top || 24) : 0;
+  const topGap = Platform.OS === 'android' ? (StatusBar.currentHeight || 24) : insets.top;
+
+  const themeMode = useAuthStore((state) => state.themeMode);
+  const colorScheme = useColorScheme();
+  const isDark = themeMode === 'system' ? colorScheme === 'dark' : themeMode === 'dark';
 
   return (
-    <SafeAreaView style={[styles.safeArea, { paddingTop: topGap, backgroundColor: colors.background }]}>
+    <View style={[styles.safeArea, { paddingTop: topGap, backgroundColor: colors.background }]}>
+      <StatusBar barStyle={isDark ? 'light-content' : 'dark-content'} backgroundColor={colors.background} translucent={true} />
       <ScrollView contentContainerStyle={{ flexGrow: 1, paddingHorizontal: 20, paddingVertical: 16, justifyContent: 'center' }} showsVerticalScrollIndicator={false}>
         {/* Navigation link back to About Company */}
         <TouchableOpacity
@@ -570,18 +965,22 @@ const LoginScreen = ({ navigation }: any) => {
 
         {/* Card Container matching Screenshot */}
         <View style={loginStyles.cardContainer}>
-          {/* Logo Emblem */}
+          {/* Logo Badge Wrapper */}
           <View style={loginStyles.logoBadgeWrapper}>
-            <View style={loginStyles.logoBadgeCircle}>
-              <Text style={loginStyles.logoTextNC}>NC</Text>
-              <TrendingUp size={14} color={colors.textGold} style={loginStyles.logoArrow} />
+            <View style={[loginStyles.logoBadgeCircle, { width: 80, height: 80, borderRadius: 40, backgroundColor: isDark ? '#ffffff' : 'transparent', borderColor: isDark ? '#c9972f' : 'transparent' }]}>
+              <Image
+                source={require('../../assets/icon.png')}
+                style={{ width: 38, height: 57 }}
+                resizeMode="contain"
+              />
             </View>
           </View>
 
           {/* Heading & Subtitle */}
-          <Text style={loginStyles.welcomeTitle}>Welcome back</Text>
+          <Text style={loginStyles.welcomeTitle}>Welcome Back</Text>
           <Text style={loginStyles.welcomeSubtitle}>
-            Choose your login method and access your account.
+            Niventra Capital Advisory India Pvt. Ltd.{'\n'}
+            Enter your credentials to access the investor portal
           </Text>
 
           {errorMsg ? (
@@ -590,41 +989,38 @@ const LoginScreen = ({ navigation }: any) => {
             </View>
           ) : null}
 
-          {/* Toggle Login Method Tabs */}
-          <View style={{ flexDirection: 'row', borderBottomWidth: 1, borderColor: colors.border, marginBottom: 20 }}>
+          {/* Tab buttons to switch login method */}
+          <View style={{ flexDirection: 'row', marginBottom: 20, backgroundColor: colors.surfaceLight, borderRadius: 10, padding: 4 }}>
             <TouchableOpacity
               style={{
                 flex: 1,
-                paddingBottom: 10,
+                paddingVertical: 8,
+                borderRadius: 8,
+                backgroundColor: loginMethod === 'password' ? colors.surface : 'transparent',
                 alignItems: 'center',
-                borderBottomWidth: loginMethod === 'password' ? 2 : 0,
-                borderColor: colors.accent,
+                justifyContent: 'center',
+                flexDirection: 'row',
               }}
-              onPress={() => {
-                setLoginMethod('password');
-                setErrorMsg('');
-              }}
+              onPress={() => { setLoginMethod('password'); setErrorMsg(''); }}
             >
-              <Text style={{ fontSize: 14, fontWeight: 'bold', color: loginMethod === 'password' ? colors.accent : colors.textMuted }}>
-                Password Login
-              </Text>
+              <Lock size={14} color={loginMethod === 'password' ? colors.accent : colors.textMuted} style={{ marginRight: 6 }} />
+              <Text style={{ fontSize: 13, fontWeight: 'bold', color: loginMethod === 'password' ? colors.text : colors.textMuted }}>Password</Text>
             </TouchableOpacity>
+
             <TouchableOpacity
               style={{
                 flex: 1,
-                paddingBottom: 10,
+                paddingVertical: 8,
+                borderRadius: 8,
+                backgroundColor: loginMethod === 'otp' ? colors.surface : 'transparent',
                 alignItems: 'center',
-                borderBottomWidth: loginMethod === 'otp' ? 2 : 0,
-                borderColor: colors.accent,
+                justifyContent: 'center',
+                flexDirection: 'row',
               }}
-              onPress={() => {
-                setLoginMethod('otp');
-                setErrorMsg('');
-              }}
+              onPress={() => { setLoginMethod('otp'); setErrorMsg(''); }}
             >
-              <Text style={{ fontSize: 14, fontWeight: 'bold', color: loginMethod === 'otp' ? colors.accent : colors.textMuted }}>
-                OTP Login
-              </Text>
+              <RadioTower size={14} color={loginMethod === 'otp' ? colors.accent : colors.textMuted} style={{ marginRight: 6 }} />
+              <Text style={{ fontSize: 13, fontWeight: 'bold', color: loginMethod === 'otp' ? colors.text : colors.textMuted }}>Mobile OTP</Text>
             </TouchableOpacity>
           </View>
 
@@ -632,50 +1028,46 @@ const LoginScreen = ({ navigation }: any) => {
             <>
               {/* Email Field */}
               <View style={loginStyles.fieldGroup}>
-                <Text style={loginStyles.fieldLabel}>Email</Text>
+                <Text style={loginStyles.fieldLabel}>Email Address</Text>
                 <View style={loginStyles.inputContainer}>
+                  <Mail size={18} color={colors.textMuted} style={{ marginRight: 10 }} />
                   <TextInput
                     style={loginStyles.textInput}
-                    placeholder="keyadmin@gmail.com"
+                    placeholder="name@niventracapitaladvisory.com"
                     placeholderTextColor={colors.textMuted}
                     value={email}
                     onChangeText={setEmail}
-                    autoCapitalize="none"
                     keyboardType="email-address"
+                    autoCapitalize="none"
+                    autoCorrect={false}
                   />
                 </View>
               </View>
 
-              {/* Password Field with Eye Icon */}
+              {/* Password Field */}
               <View style={loginStyles.fieldGroup}>
                 <View style={loginStyles.passwordLabelRow}>
                   <Text style={loginStyles.fieldLabel}>Password</Text>
-                  <TouchableOpacity onPress={() => Alert.alert('Reset Password', 'Please contact system administrator to reset your password.')}>
+                  <TouchableOpacity onPress={() => Alert.alert('Reset Password', 'Please contact admin to reset your password.')}>
                     <Text style={loginStyles.forgotText}>Forgot password?</Text>
                   </TouchableOpacity>
                 </View>
                 <View style={loginStyles.inputContainer}>
+                  <KeyRound size={18} color={colors.textMuted} style={{ marginRight: 10 }} />
                   <TextInput
-                    style={[loginStyles.textInput, { flex: 1 }]}
+                    style={loginStyles.textInput}
                     placeholder="••••••••"
                     placeholderTextColor={colors.textMuted}
                     value={password}
                     onChangeText={setPassword}
                     secureTextEntry={!showPassword}
                     autoCapitalize="none"
+                    autoCorrect={false}
                     returnKeyType="go"
                     onSubmitEditing={handleLogin}
                   />
-                  <TouchableOpacity
-                    style={loginStyles.eyeIconButton}
-                    onPress={() => setShowPassword(!showPassword)}
-                    hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
-                  >
-                    {showPassword ? (
-                      <EyeOff size={20} color={colors.textMuted} />
-                    ) : (
-                      <Eye size={20} color={colors.textMuted} />
-                    )}
+                  <TouchableOpacity style={loginStyles.eyeIconButton} onPress={() => setShowPassword(!showPassword)}>
+                    {showPassword ? <EyeOff size={18} color={colors.textMuted} /> : <Eye size={18} color={colors.textMuted} />}
                   </TouchableOpacity>
                 </View>
               </View>
@@ -684,17 +1076,17 @@ const LoginScreen = ({ navigation }: any) => {
             <>
               {/* Phone Field */}
               <View style={loginStyles.fieldGroup}>
-                <Text style={loginStyles.fieldLabel}>Mobile Number</Text>
+                <Text style={loginStyles.fieldLabel}>Registered Mobile Number</Text>
                 <View style={{ flexDirection: 'row', gap: 8 }}>
                   <View style={[loginStyles.inputContainer, { flex: 1 }]}>
+                    <Phone size={18} color={colors.textMuted} style={{ marginRight: 10 }} />
                     <TextInput
                       style={loginStyles.textInput}
-                      placeholder="+919876543210"
+                      placeholder="9876543210"
                       placeholderTextColor={colors.textMuted}
                       value={phone}
                       onChangeText={setPhone}
                       keyboardType="phone-pad"
-                      autoCapitalize="none"
                     />
                   </View>
                   <TouchableOpacity
@@ -783,11 +1175,9 @@ const LoginScreen = ({ navigation }: any) => {
           </View>
         </View>
       </ScrollView>
-    </SafeAreaView>
+    </View>
   );
 };
-
-// --- Investor Registration Screen ---
 const InvestorRegisterScreen = ({ navigation }: any) => {
   const insets = useSafeAreaInsets();
   const [fullName, setFullName] = useState('');
@@ -914,10 +1304,10 @@ const InvestorRegisterScreen = ({ navigation }: any) => {
     }
   };
 
-  const topGap = Platform.OS === 'android' ? (StatusBar.currentHeight || insets.top || 24) : 0;
+  const topGap = Platform.OS === 'android' ? (StatusBar.currentHeight || 24) : insets.top;
 
   return (
-    <SafeAreaView style={[styles.safeArea, { paddingTop: topGap, backgroundColor: colors.background }]}>
+    <View style={[styles.safeArea, { paddingTop: topGap, backgroundColor: colors.background }]}>
       <ScrollView contentContainerStyle={{ flexGrow: 1, paddingHorizontal: 20, paddingVertical: 20, justifyContent: 'center' }} showsVerticalScrollIndicator={false}>
         <TouchableOpacity
           style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 16, alignSelf: 'flex-start' }}
@@ -1093,7 +1483,7 @@ const InvestorRegisterScreen = ({ navigation }: any) => {
           </View>
         </View>
       </ScrollView>
-    </SafeAreaView>
+    </View>
   );
 };
 
@@ -2747,138 +3137,138 @@ const PayrollView = () => {
                     </Text>
                   </View>
 
-                <Text style={[styles.sectionHeading, { color: '#059669', fontSize: 14, fontWeight: '800', marginTop: 4, marginBottom: 8 }]}>Earnings</Text>
-                <View style={styles.formRow2Col}>
-                  <View style={styles.formCol}>
-                    <Text style={styles.formLabel}>Basic Salary (₹)</Text>
-                    <TextInput
-                      style={styles.modalTextInput}
-                      keyboardType="numeric"
-                      value={structFormData.basic === 0 ? '' : String(structFormData.basic)}
-                      placeholder="0"
-                      placeholderTextColor={colors.textMuted}
-                      onChangeText={(val) => setStructFormData({ ...structFormData, basic: val === '' ? 0 : Number(val) || 0 })}
-                    />
+                  <Text style={[styles.sectionHeading, { color: '#059669', fontSize: 14, fontWeight: '800', marginTop: 4, marginBottom: 8 }]}>Earnings</Text>
+                  <View style={styles.formRow2Col}>
+                    <View style={styles.formCol}>
+                      <Text style={styles.formLabel}>Basic Salary (₹)</Text>
+                      <TextInput
+                        style={styles.modalTextInput}
+                        keyboardType="numeric"
+                        value={structFormData.basic === 0 ? '' : String(structFormData.basic)}
+                        placeholder="0"
+                        placeholderTextColor={colors.textMuted}
+                        onChangeText={(val) => setStructFormData({ ...structFormData, basic: val === '' ? 0 : Number(val) || 0 })}
+                      />
+                    </View>
+                    <View style={styles.formCol}>
+                      <Text style={styles.formLabel}>HRA (₹)</Text>
+                      <TextInput
+                        style={styles.modalTextInput}
+                        keyboardType="numeric"
+                        value={structFormData.hra === 0 ? '' : String(structFormData.hra)}
+                        placeholder="0"
+                        placeholderTextColor={colors.textMuted}
+                        onChangeText={(val) => setStructFormData({ ...structFormData, hra: val === '' ? 0 : Number(val) || 0 })}
+                      />
+                    </View>
                   </View>
-                  <View style={styles.formCol}>
-                    <Text style={styles.formLabel}>HRA (₹)</Text>
-                    <TextInput
-                      style={styles.modalTextInput}
-                      keyboardType="numeric"
-                      value={structFormData.hra === 0 ? '' : String(structFormData.hra)}
-                      placeholder="0"
-                      placeholderTextColor={colors.textMuted}
-                      onChangeText={(val) => setStructFormData({ ...structFormData, hra: val === '' ? 0 : Number(val) || 0 })}
-                    />
-                  </View>
-                </View>
 
-                <View style={styles.formRow2Col}>
-                  <View style={styles.formCol}>
-                    <Text style={styles.formLabel}>Travel Allowance (₹)</Text>
-                    <TextInput
-                      style={styles.modalTextInput}
-                      keyboardType="numeric"
-                      value={structFormData.travelAllowance === 0 ? '' : String(structFormData.travelAllowance)}
-                      placeholder="0"
-                      placeholderTextColor={colors.textMuted}
-                      onChangeText={(val) => setStructFormData({ ...structFormData, travelAllowance: val === '' ? 0 : Number(val) || 0 })}
-                    />
+                  <View style={styles.formRow2Col}>
+                    <View style={styles.formCol}>
+                      <Text style={styles.formLabel}>Travel Allowance (₹)</Text>
+                      <TextInput
+                        style={styles.modalTextInput}
+                        keyboardType="numeric"
+                        value={structFormData.travelAllowance === 0 ? '' : String(structFormData.travelAllowance)}
+                        placeholder="0"
+                        placeholderTextColor={colors.textMuted}
+                        onChangeText={(val) => setStructFormData({ ...structFormData, travelAllowance: val === '' ? 0 : Number(val) || 0 })}
+                      />
+                    </View>
+                    <View style={styles.formCol}>
+                      <Text style={styles.formLabel}>Incentive (₹)</Text>
+                      <TextInput
+                        style={styles.modalTextInput}
+                        keyboardType="numeric"
+                        value={structFormData.incentive === 0 ? '' : String(structFormData.incentive)}
+                        placeholder="0"
+                        placeholderTextColor={colors.textMuted}
+                        onChangeText={(val) => setStructFormData({ ...structFormData, incentive: val === '' ? 0 : Number(val) || 0 })}
+                      />
+                    </View>
                   </View>
-                  <View style={styles.formCol}>
-                    <Text style={styles.formLabel}>Incentive (₹)</Text>
-                    <TextInput
-                      style={styles.modalTextInput}
-                      keyboardType="numeric"
-                      value={structFormData.incentive === 0 ? '' : String(structFormData.incentive)}
-                      placeholder="0"
-                      placeholderTextColor={colors.textMuted}
-                      onChangeText={(val) => setStructFormData({ ...structFormData, incentive: val === '' ? 0 : Number(val) || 0 })}
-                    />
-                  </View>
-                </View>
 
-                <Text style={[styles.sectionHeading, { color: '#dc2626', fontSize: 14, fontWeight: '800', marginTop: 14, marginBottom: 8 }]}>Fixed Deductions</Text>
-                <View style={styles.formRow2Col}>
-                  <View style={styles.formCol}>
-                    <Text style={styles.formLabel}>PF Amount (₹)</Text>
-                    <TextInput
-                      style={styles.modalTextInput}
-                      keyboardType="numeric"
-                      value={structFormData.pf === 0 ? '' : String(structFormData.pf)}
-                      placeholder="0"
-                      placeholderTextColor={colors.textMuted}
-                      onChangeText={(val) => setStructFormData({ ...structFormData, pf: val === '' ? 0 : Number(val) || 0 })}
-                    />
+                  <Text style={[styles.sectionHeading, { color: '#dc2626', fontSize: 14, fontWeight: '800', marginTop: 14, marginBottom: 8 }]}>Fixed Deductions</Text>
+                  <View style={styles.formRow2Col}>
+                    <View style={styles.formCol}>
+                      <Text style={styles.formLabel}>PF Amount (₹)</Text>
+                      <TextInput
+                        style={styles.modalTextInput}
+                        keyboardType="numeric"
+                        value={structFormData.pf === 0 ? '' : String(structFormData.pf)}
+                        placeholder="0"
+                        placeholderTextColor={colors.textMuted}
+                        onChangeText={(val) => setStructFormData({ ...structFormData, pf: val === '' ? 0 : Number(val) || 0 })}
+                      />
+                    </View>
+                    <View style={styles.formCol}>
+                      <Text style={styles.formLabel}>ESI Amount (₹)</Text>
+                      <TextInput
+                        style={styles.modalTextInput}
+                        keyboardType="numeric"
+                        value={structFormData.esi === 0 ? '' : String(structFormData.esi)}
+                        placeholder="0"
+                        placeholderTextColor={colors.textMuted}
+                        onChangeText={(val) => setStructFormData({ ...structFormData, esi: val === '' ? 0 : Number(val) || 0 })}
+                      />
+                    </View>
                   </View>
-                  <View style={styles.formCol}>
-                    <Text style={styles.formLabel}>ESI Amount (₹)</Text>
-                    <TextInput
-                      style={styles.modalTextInput}
-                      keyboardType="numeric"
-                      value={structFormData.esi === 0 ? '' : String(structFormData.esi)}
-                      placeholder="0"
-                      placeholderTextColor={colors.textMuted}
-                      onChangeText={(val) => setStructFormData({ ...structFormData, esi: val === '' ? 0 : Number(val) || 0 })}
-                    />
-                  </View>
-                </View>
 
-                <View style={styles.formRow2Col}>
-                  <View style={styles.formCol}>
-                    <Text style={styles.formLabel}>Professional Tax (₹)</Text>
-                    <TextInput
-                      style={styles.modalTextInput}
-                      keyboardType="numeric"
-                      value={structFormData.professionalTax === 0 ? '' : String(structFormData.professionalTax)}
-                      placeholder="0"
-                      placeholderTextColor={colors.textMuted}
-                      onChangeText={(val) => setStructFormData({ ...structFormData, professionalTax: val === '' ? 0 : Number(val) || 0 })}
-                    />
+                  <View style={styles.formRow2Col}>
+                    <View style={styles.formCol}>
+                      <Text style={styles.formLabel}>Professional Tax (₹)</Text>
+                      <TextInput
+                        style={styles.modalTextInput}
+                        keyboardType="numeric"
+                        value={structFormData.professionalTax === 0 ? '' : String(structFormData.professionalTax)}
+                        placeholder="0"
+                        placeholderTextColor={colors.textMuted}
+                        onChangeText={(val) => setStructFormData({ ...structFormData, professionalTax: val === '' ? 0 : Number(val) || 0 })}
+                      />
+                    </View>
+                    <View style={styles.formCol}>
+                      <Text style={styles.formLabel}>Income Tax / TDS (₹)</Text>
+                      <TextInput
+                        style={styles.modalTextInput}
+                        keyboardType="numeric"
+                        value={structFormData.incomeTax === 0 ? '' : String(structFormData.incomeTax)}
+                        placeholder="0"
+                        placeholderTextColor={colors.textMuted}
+                        onChangeText={(val) => setStructFormData({ ...structFormData, incomeTax: val === '' ? 0 : Number(val) || 0 })}
+                      />
+                    </View>
                   </View>
-                  <View style={styles.formCol}>
-                    <Text style={styles.formLabel}>Income Tax / TDS (₹)</Text>
-                    <TextInput
-                      style={styles.modalTextInput}
-                      keyboardType="numeric"
-                      value={structFormData.incomeTax === 0 ? '' : String(structFormData.incomeTax)}
-                      placeholder="0"
-                      placeholderTextColor={colors.textMuted}
-                      onChangeText={(val) => setStructFormData({ ...structFormData, incomeTax: val === '' ? 0 : Number(val) || 0 })}
-                    />
+
+                  {/* Gross Summary Box matching screenshot */}
+                  <View style={styles.grossSummaryBox}>
+                    <Text style={styles.grossSummaryLabel}>Gross Monthly Salary</Text>
+                    <Text style={styles.grossSummaryVal}>
+                      ₹ {(structFormData.basic + structFormData.hra + structFormData.travelAllowance + structFormData.incentive + structFormData.specialAllowance).toLocaleString()}
+                    </Text>
+                  </View>
+
+                  {/* Action Buttons matching screenshot */}
+                  <View style={styles.structFormActions}>
+                    <TouchableOpacity style={styles.cancelBtn} onPress={() => setSelectedEmp(null)}>
+                      <Text style={styles.cancelBtnText}>Cancel</Text>
+                    </TouchableOpacity>
+                    <TouchableOpacity
+                      style={[styles.saveBtn, saveLoading && styles.disabledButton]}
+                      onPress={handleSaveStructure}
+                      disabled={saveLoading}
+                    >
+                      {saveLoading ? (
+                        <ActivityIndicator color="#ffffff" />
+                      ) : (
+                        <Text style={styles.saveBtnText}>Save Structure</Text>
+                      )}
+                    </TouchableOpacity>
                   </View>
                 </View>
-
-                {/* Gross Summary Box matching screenshot */}
-                <View style={styles.grossSummaryBox}>
-                  <Text style={styles.grossSummaryLabel}>Gross Monthly Salary</Text>
-                  <Text style={styles.grossSummaryVal}>
-                    ₹ {(structFormData.basic + structFormData.hra + structFormData.travelAllowance + structFormData.incentive + structFormData.specialAllowance).toLocaleString()}
-                  </Text>
-                </View>
-
-                {/* Action Buttons matching screenshot */}
-                <View style={styles.structFormActions}>
-                  <TouchableOpacity style={styles.cancelBtn} onPress={() => setSelectedEmp(null)}>
-                    <Text style={styles.cancelBtnText}>Cancel</Text>
-                  </TouchableOpacity>
-                  <TouchableOpacity
-                    style={[styles.saveBtn, saveLoading && styles.disabledButton]}
-                    onPress={handleSaveStructure}
-                    disabled={saveLoading}
-                  >
-                    {saveLoading ? (
-                      <ActivityIndicator color="#ffffff" />
-                    ) : (
-                      <Text style={styles.saveBtnText}>Save Structure</Text>
-                    )}
-                  </TouchableOpacity>
-                </View>
-              </View>
-            );
-          })()}
-        </View>
-      </ScrollView>
+              );
+            })()}
+          </View>
+        </ScrollView>
       )}
 
       {/* Floating Bulk Action Bar */}
@@ -8752,7 +9142,7 @@ const InvestorsAdminView = () => {
                           if (data.type === 'VIEW_DOC' && data.url) {
                             setPreviewDocModal({ title: data.title, url: data.url });
                           }
-                        } catch (_) {}
+                        } catch (_) { }
                       }}
                     />
                   )}
@@ -9795,15 +10185,15 @@ const InvestorPortalView = () => {
       <View style={[styles.settingsCard, { backgroundColor: colors.surface, marginBottom: 16 }]}>
         <Text style={[styles.settingsCardTitle, { color: colors.text, fontSize: 16 }]}>📄 2. KYC PDF Document Uploads</Text>
         <Text style={{ fontSize: 12, color: colors.textMuted, marginVertical: 6 }}>
-          Only PDF documents up to 15MB are accepted. Mandatory: Aadhar, PAN, 10th & 12th Marksheets, and Bank Passbook.
+          Only PDF documents up to 15MB are accepted. Mandatory: Aadhar, PAN, and Bank Passbook. 10th & 12th Marksheets are optional.
         </Text>
 
         <View style={{ gap: 12, marginTop: 8 }}>
           {[
             { key: 'aadhar', label: 'Aadhar Card Document', req: true, numKey: 'aadharNumber', numVal: aadharNumber, setNum: setAadharNumber, placeholder: 'Enter Aadhar Number' },
             { key: 'pan', label: 'PAN Card Document', req: true, numKey: 'panNumber', numVal: panNumber, setNum: setPanNumber, placeholder: 'Enter PAN Number' },
-            { key: 'marksheet10th', label: '10th Marksheet PDF', req: true },
-            { key: 'marksheet12th', label: '12th Marksheet PDF', req: true },
+            { key: 'marksheet10th', label: '10th Marksheet PDF (Optional)', req: false },
+            { key: 'marksheet12th', label: '12th Marksheet PDF (Optional)', req: false },
             { key: 'graduation', label: 'Graduation Marksheet (Optional)', req: false },
             { key: 'postGraduation', label: 'Post Graduation Marksheet (Optional)', req: false },
           ].map((item) => {
@@ -9968,6 +10358,9 @@ const DashboardScreen = ({ navigation }: any) => {
   const themeMode = useAuthStore((state) => state.themeMode);
   const setThemeMode = useAuthStore((state) => state.setThemeMode);
 
+  const colorScheme = useColorScheme();
+  const isDark = themeMode === 'system' ? colorScheme === 'dark' : themeMode === 'dark';
+
   const toggleTheme = () => {
     let currentIsDark = false;
     if (themeMode === 'system') {
@@ -10016,6 +10409,7 @@ const DashboardScreen = ({ navigation }: any) => {
       const response = await apiCall('/api/dashboard/admin');
       if (response.success && response.data) {
         const dData = response.data.data || response.data;
+        console.log('[Dashboard API] Full response data:', JSON.stringify(dData, null, 2));
         setData(dData);
         if (dData && Array.isArray(dData.todaysAttendanceList)) {
           setOverviewAttRecords(dData.todaysAttendanceList);
@@ -10076,18 +10470,25 @@ const DashboardScreen = ({ navigation }: any) => {
     attendanceStats: { present: 0, absent: 0, late: 0, leave: 0 },
     openLeads: 0,
     wonLeads: 0,
+    totalInvestors: 0,
+    totalInvestments: 0,
   };
+
+  // Resolve investor stats from multiple possible API response paths
+  const totalInvestors = k.totalInvestors ?? data?.totalInvestors ?? data?.investors?.total ?? data?.investorCount ?? 0;
+  const totalInvestments = k.totalInvestments ?? data?.totalInvestments ?? data?.investmentAmount ?? data?.totalInvestmentAmount ?? 0;
 
   const wonPercentage = k.openLeads + k.wonLeads > 0
     ? Math.round((k.wonLeads / (k.openLeads + k.wonLeads)) * 100)
     : 0;
 
-  const topGap = Platform.OS === 'android' ? (StatusBar.currentHeight || insets.top || 24) : 0;
-  const sidebarTopGap = Platform.OS === 'android' ? (StatusBar.currentHeight || insets.top || 24) : Math.max(insets.top, 16);
+  const topGap = Platform.OS === 'android' ? (StatusBar.currentHeight || 24) : insets.top;
+  const sidebarTopGap = Platform.OS === 'android' ? (StatusBar.currentHeight || 24) : Math.max(insets.top, 16);
   const sidebarBottomGap = Math.max(insets.bottom, 16);
 
   return (
-    <SafeAreaView style={[styles.safeArea, { paddingTop: topGap }]}>
+    <View style={[styles.safeArea, { paddingTop: topGap }]}>
+      <StatusBar barStyle={isDark ? 'light-content' : 'dark-content'} backgroundColor={colors.background} translucent={true} />
       {/* Header bar */}
       <View style={styles.header}>
         <TouchableOpacity style={styles.menuButton} onPress={() => setSidebarOpen(true)}>
@@ -10248,332 +10649,350 @@ const DashboardScreen = ({ navigation }: any) => {
         ) : (
           <ScrollView style={{ flex: 1 }} contentContainerStyle={[styles.scrollContent, { flexGrow: 1, paddingBottom: 60 }]} nestedScrollEnabled={true} keyboardShouldPersistTaps="handled">
             {/* Row 1: Global KPIs */}
-          <View style={styles.kpiGrid}>
-            {/* Card 1: Total Employees */}
-            <View style={[styles.dashboardCard, { backgroundColor: colors.surface }]}>
-              <View style={styles.cardHeader}>
-                <Text style={styles.cardLabel}>Total Employees</Text>
-                <Users size={20} color={colors.accent} />
-              </View>
-              <Text style={styles.cardValueLarge}>{k.totalEmployees}</Text>
-            </View>
-
-            {/* Card 2: Wallet Balance */}
-            <View style={[styles.dashboardCard, { backgroundColor: colors.surface }]}>
-              <View style={styles.cardHeader}>
-                <Text style={[styles.cardLabel, { color: colors.accent }]}>Wallet Balance</Text>
-                <Wallet size={20} color={colors.accent} />
-              </View>
-              <Text style={styles.cardValueLarge}>₹{k.walletBalance.toLocaleString()}</Text>
-            </View>
-
-            {/* Card 3: Revenue */}
-            <View style={[styles.dashboardCard, { backgroundColor: colors.surface }]}>
-              <View style={styles.cardHeader}>
-                <Text style={styles.cardLabel}>Revenue (Won Leads)</Text>
-                <TrendingUp size={20} color={colors.success} />
-              </View>
-              <Text style={[styles.cardValueLarge, { color: colors.success }]}>
-                ₹{k.revenue.toLocaleString()}
-              </Text>
-            </View>
-
-            {/* Card 4: Salary Status */}
-            <View style={[styles.dashboardCard, { backgroundColor: colors.surface }]}>
-              <Text style={[styles.cardLabel, { marginBottom: spacing.s }]}>
-                Monthly Salary Status
-              </Text>
-              <View style={styles.salaryRow}>
-                <Text style={styles.salaryStatusPaid}>Paid</Text>
-                <Text style={styles.salaryAmt}>₹{k.salaryPaid.toLocaleString()}</Text>
-              </View>
-              <View style={styles.salaryBarContainer}>
-                <View
-                  style={[
-                    styles.salaryBarPaid,
-                    { width: `${(k.salaryPaid / (k.salaryPaid + k.salaryPending || 1)) * 100}%` }
-                  ]}
-                />
-              </View>
-              <View style={styles.salaryRow}>
-                <Text style={styles.salaryStatusPending}>Pending</Text>
-                <Text style={styles.salaryAmt}>₹{k.salaryPending.toLocaleString()}</Text>
-              </View>
-            </View>
-          </View>
-
-          {/* Row 2: Today's Attendance Operations */}
-          <Text style={styles.sectionTitle}>Today's Attendance</Text>
-          <View style={styles.attendanceGrid}>
-            {/* Main info card */}
-            <View style={styles.attendanceMainCard}>
-              <Clock size={24} color={colors.textMuted} style={{ marginBottom: 4 }} />
-              <Text style={styles.attendanceMainText}>Today's Attendance</Text>
-            </View>
-
-            {/* present */}
-            <View style={styles.attendanceStatCard}>
-              <View style={[styles.iconBadge, { backgroundColor: 'rgba(16, 185, 129, 0.1)' }]}>
-                <UserCheck size={16} color={colors.success} />
-              </View>
-              <Text style={styles.attendanceStatLabel}>Present</Text>
-              <Text style={styles.attendanceStatVal}>{k.attendanceStats.present}</Text>
-            </View>
-
-            {/* absent */}
-            <View style={styles.attendanceStatCard}>
-              <View style={[styles.iconBadge, { backgroundColor: 'rgba(239, 68, 68, 0.1)' }]}>
-                <UserX size={16} color={colors.danger} />
-              </View>
-              <Text style={styles.attendanceStatLabel}>Absent</Text>
-              <Text style={styles.attendanceStatVal}>{k.attendanceStats.absent}</Text>
-            </View>
-
-            {/* late */}
-            <View style={styles.attendanceStatCard}>
-              <View style={[styles.iconBadge, { backgroundColor: 'rgba(245, 158, 11, 0.1)' }]}>
-                <AlertCircle size={16} color={colors.warning} />
-              </View>
-              <Text style={styles.attendanceStatLabel}>Late</Text>
-              <Text style={styles.attendanceStatVal}>{k.attendanceStats.late}</Text>
-            </View>
-
-            {/* on leave */}
-            <View style={styles.attendanceStatCard}>
-              <View style={[styles.iconBadge, { backgroundColor: 'rgba(59, 130, 246, 0.1)' }]}>
-                <CalendarDays size={16} color={colors.info} />
-              </View>
-              <Text style={styles.attendanceStatLabel}>On Leave</Text>
-              <Text style={styles.attendanceStatVal}>{k.attendanceStats.leave}</Text>
-            </View>
-          </View>
-
-          {/* Row 2b: Live Employee Attendance List (Admin & Key Admin only) */}
-          {isAdminOrKeyAdmin && (
-            <View style={[styles.chartCard, { marginTop: spacing.m }]}>
-              <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: spacing.s }}>
-                <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-                  <Users size={18} color={colors.accent} style={{ marginRight: 8 }} />
-                  <Text style={styles.chartTitle}>Employee Punch Status</Text>
+            <View style={styles.kpiGrid}>
+              {/* Card 1: Total Employees */}
+              <View style={[styles.dashboardCard, { backgroundColor: colors.surface }]}>
+                <View style={styles.cardHeader}>
+                  <Text style={styles.cardLabel}>Total Employees</Text>
+                  <Users size={20} color={colors.accent} />
                 </View>
-                <TouchableOpacity
-                  onPress={fetchOverviewAttendance}
-                  style={{ paddingHorizontal: 10, paddingVertical: 4, backgroundColor: 'rgba(99,102,241,0.12)', borderRadius: 6 }}
-                >
-                  <Text style={{ color: colors.accent, fontSize: 12, fontWeight: '600' }}>Refresh</Text>
-                </TouchableOpacity>
+                <Text style={styles.cardValueLarge}>{k.totalEmployees}</Text>
               </View>
 
-              {overviewAttLoading ? (
-                <View style={{ paddingVertical: 20, alignItems: 'center' }}>
-                  <ActivityIndicator size="small" color={colors.accent} />
-                  <Text style={{ color: colors.textMuted, fontSize: 12, marginTop: 6 }}>Loading live data...</Text>
+              {/* Card 2: Wallet Balance */}
+              <View style={[styles.dashboardCard, { backgroundColor: colors.surface }]}>
+                <View style={styles.cardHeader}>
+                  <Text style={[styles.cardLabel, { color: colors.accent }]}>Wallet Balance</Text>
+                  <Wallet size={20} color={colors.accent} />
                 </View>
-              ) : overviewAttRecords.length === 0 ? (
-                <Text style={{ color: colors.textMuted, fontSize: 13, textAlign: 'center', paddingVertical: 16 }}>
-                  No employee attendance records found for today.
+                <Text style={styles.cardValueLarge}>₹{k.walletBalance.toLocaleString()}</Text>
+              </View>
+
+              {/* Card 3: Revenue */}
+              <View style={[styles.dashboardCard, { backgroundColor: colors.surface }]}>
+                <View style={styles.cardHeader}>
+                  <Text style={styles.cardLabel}>Revenue (Won Leads)</Text>
+                  <TrendingUp size={20} color={colors.success} />
+                </View>
+                <Text style={[styles.cardValueLarge, { color: colors.success }]}>
+                  ₹{k.revenue.toLocaleString()}
                 </Text>
-              ) : (
-                <ScrollView horizontal showsHorizontalScrollIndicator={false}>
-                  <View>
-                    {/* Table Header */}
-                    <View style={{
-                      flexDirection: 'row',
-                      backgroundColor: 'rgba(99,102,241,0.08)',
-                      borderRadius: 6,
-                      paddingVertical: 8,
-                      paddingHorizontal: 6,
-                      marginBottom: 4,
-                    }}>
-                      <Text style={{ width: 140, fontSize: 11, fontWeight: '700', color: colors.accent, textTransform: 'uppercase' }}>Employee</Text>
-                      <Text style={{ width: 90, fontSize: 11, fontWeight: '700', color: colors.accent, textTransform: 'uppercase' }}>Department</Text>
-                      <Text style={{ width: 80, fontSize: 11, fontWeight: '700', color: colors.accent, textTransform: 'uppercase' }}>Status</Text>
-                      <Text style={{ width: 80, fontSize: 11, fontWeight: '700', color: colors.accent, textTransform: 'uppercase', textAlign: 'center' }}>Punch In</Text>
-                      <Text style={{ width: 80, fontSize: 11, fontWeight: '700', color: colors.accent, textTransform: 'uppercase', textAlign: 'center' }}>Punch Out</Text>
-                      <Text style={{ width: 100, fontSize: 11, fontWeight: '700', color: colors.accent, textTransform: 'uppercase' }}>Location / IP</Text>
-                      <Text style={{ width: 60, fontSize: 11, fontWeight: '700', color: colors.accent, textTransform: 'uppercase', textAlign: 'center' }}>Hours</Text>
-                    </View>
+              </View>
 
-                    {/* Table Rows */}
-                    {overviewAttRecords.map((record: any, index: number) => {
-                      const empName = record.name || 'Unknown';
-                      const empCode = record.employeeCode || '-';
-                      const empDept = record.department || '-';
-                      const status = record.status || 'Absent';
-                      const punchInTime = record.punchIn || '-';
-                      const punchOutTime = record.punchOut || '-';
-                      const location = record.location || '-';
-                      const hours = record.workingHours || '-';
+              {/* Card 4: Salary Status */}
+              <View style={[styles.dashboardCard, { backgroundColor: colors.surface }]}>
+                <Text style={[styles.cardLabel, { marginBottom: spacing.s }]}>
+                  Monthly Salary Status
+                </Text>
+                <View style={styles.salaryRow}>
+                  <Text style={styles.salaryStatusPaid}>Paid</Text>
+                  <Text style={styles.salaryAmt}>₹{k.salaryPaid.toLocaleString()}</Text>
+                </View>
+                <View style={styles.salaryBarContainer}>
+                  <View
+                    style={[
+                      styles.salaryBarPaid,
+                      { width: `${(k.salaryPaid / (k.salaryPaid + k.salaryPending || 1)) * 100}%` }
+                    ]}
+                  />
+                </View>
+                <View style={styles.salaryRow}>
+                  <Text style={styles.salaryStatusPending}>Pending</Text>
+                  <Text style={styles.salaryAmt}>₹{k.salaryPending.toLocaleString()}</Text>
+                </View>
+              </View>
 
-                      const isPresent = status.toLowerCase() === 'present';
-                      const isAbsent = status.toLowerCase() === 'absent';
-                      const isLate = record.isLate || status.toLowerCase() === 'late';
+              {/* Card 5: Total Investors */}
+              <View style={[styles.dashboardCard, { backgroundColor: colors.surface }]}>
+                <View style={styles.cardHeader}>
+                  <Text style={[styles.cardLabel, { color: colors.accent }]}>Total Investors</Text>
+                  <UserPlus size={20} color={colors.accent} />
+                </View>
+                <Text style={[styles.cardValueLarge, { color: colors.accent }]}>{totalInvestors}</Text>
+              </View>
 
-                      let badgeBg = 'rgba(239,68,68,0.15)';
-                      let badgeTextColor = colors.danger;
+              {/* Card 6: Total Investments */}
+              <View style={[styles.dashboardCard, { backgroundColor: colors.surface }]}>
+                <View style={styles.cardHeader}>
+                  <Text style={[styles.cardLabel, { color: colors.warning }]}>Total Investments</Text>
+                  <Landmark size={20} color={colors.warning} />
+                </View>
+                <Text style={[styles.cardValueLarge, { color: colors.warning }]}>₹{Number(totalInvestments).toLocaleString()}</Text>
+              </View>
+            </View>
 
-                      if (isPresent) {
-                        badgeBg = 'rgba(16,185,129,0.15)';
-                        badgeTextColor = colors.success;
-                      } else if (status.toLowerCase().includes('half') || isLate) {
-                        badgeBg = 'rgba(245,158,11,0.15)';
-                        badgeTextColor = colors.warning;
-                      }
+            {/* Row 2: Today's Attendance Operations */}
+            <Text style={styles.sectionTitle}>Today's Attendance</Text>
+            <View style={styles.attendanceGrid}>
+              {/* Main info card */}
+              <View style={styles.attendanceMainCard}>
+                <Clock size={24} color={colors.textMuted} style={{ marginBottom: 4 }} />
+                <Text style={styles.attendanceMainText}>Today's Attendance</Text>
+              </View>
 
-                      return (
-                        <View
-                          key={record.id || index}
-                          style={{
-                            flexDirection: 'row',
-                            paddingVertical: 10,
-                            paddingHorizontal: 6,
-                            borderBottomWidth: 1,
-                            borderBottomColor: 'rgba(255,255,255,0.05)',
-                            alignItems: 'center',
-                          }}
-                        >
-                          <View style={{ width: 140 }}>
-                            <Text style={{ fontSize: 13, fontWeight: '600', color: colors.text }} numberOfLines={1}>
-                              {empName}
-                            </Text>
-                            <Text style={{ fontSize: 11, color: colors.textMuted, marginTop: 2 }}>
-                              {empCode}
-                            </Text>
-                          </View>
+              {/* present */}
+              <View style={styles.attendanceStatCard}>
+                <View style={[styles.iconBadge, { backgroundColor: 'rgba(16, 185, 129, 0.1)' }]}>
+                  <UserCheck size={16} color={colors.success} />
+                </View>
+                <Text style={styles.attendanceStatLabel}>Present</Text>
+                <Text style={styles.attendanceStatVal}>{k.attendanceStats.present}</Text>
+              </View>
 
-                          <Text style={{ width: 90, fontSize: 12, color: colors.textMuted }} numberOfLines={1}>
-                            {empDept}
-                          </Text>
+              {/* absent */}
+              <View style={styles.attendanceStatCard}>
+                <View style={[styles.iconBadge, { backgroundColor: 'rgba(239, 68, 68, 0.1)' }]}>
+                  <UserX size={16} color={colors.danger} />
+                </View>
+                <Text style={styles.attendanceStatLabel}>Absent</Text>
+                <Text style={styles.attendanceStatVal}>{k.attendanceStats.absent}</Text>
+              </View>
 
-                          <View style={{ width: 80, flexDirection: 'row', alignItems: 'center' }}>
-                            <View style={{
-                              paddingHorizontal: 8,
-                              paddingVertical: 3,
-                              borderRadius: 10,
-                              backgroundColor: badgeBg,
-                            }}>
-                              <Text style={{
-                                fontSize: 11,
-                                fontWeight: '600',
-                                color: badgeTextColor,
-                              }}>
-                                {status}
+              {/* late */}
+              <View style={styles.attendanceStatCard}>
+                <View style={[styles.iconBadge, { backgroundColor: 'rgba(245, 158, 11, 0.1)' }]}>
+                  <AlertCircle size={16} color={colors.warning} />
+                </View>
+                <Text style={styles.attendanceStatLabel}>Late</Text>
+                <Text style={styles.attendanceStatVal}>{k.attendanceStats.late}</Text>
+              </View>
+
+              {/* on leave */}
+              <View style={styles.attendanceStatCard}>
+                <View style={[styles.iconBadge, { backgroundColor: 'rgba(59, 130, 246, 0.1)' }]}>
+                  <CalendarDays size={16} color={colors.info} />
+                </View>
+                <Text style={styles.attendanceStatLabel}>On Leave</Text>
+                <Text style={styles.attendanceStatVal}>{k.attendanceStats.leave}</Text>
+              </View>
+            </View>
+
+            {/* Row 2b: Live Employee Attendance List (Admin & Key Admin only) */}
+            {isAdminOrKeyAdmin && (
+              <View style={[styles.chartCard, { marginTop: spacing.m }]}>
+                <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: spacing.s }}>
+                  <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                    <Users size={18} color={colors.accent} style={{ marginRight: 8 }} />
+                    <Text style={styles.chartTitle}>Employee Punch Status</Text>
+                  </View>
+                  <TouchableOpacity
+                    onPress={fetchOverviewAttendance}
+                    style={{ paddingHorizontal: 10, paddingVertical: 4, backgroundColor: 'rgba(99,102,241,0.12)', borderRadius: 6 }}
+                  >
+                    <Text style={{ color: colors.accent, fontSize: 12, fontWeight: '600' }}>Refresh</Text>
+                  </TouchableOpacity>
+                </View>
+
+                {overviewAttLoading ? (
+                  <View style={{ paddingVertical: 20, alignItems: 'center' }}>
+                    <ActivityIndicator size="small" color={colors.accent} />
+                    <Text style={{ color: colors.textMuted, fontSize: 12, marginTop: 6 }}>Loading live data...</Text>
+                  </View>
+                ) : overviewAttRecords.length === 0 ? (
+                  <Text style={{ color: colors.textMuted, fontSize: 13, textAlign: 'center', paddingVertical: 16 }}>
+                    No employee attendance records found for today.
+                  </Text>
+                ) : (
+                  <ScrollView horizontal showsHorizontalScrollIndicator={false}>
+                    <View>
+                      {/* Table Header */}
+                      <View style={{
+                        flexDirection: 'row',
+                        backgroundColor: 'rgba(99,102,241,0.08)',
+                        borderRadius: 6,
+                        paddingVertical: 8,
+                        paddingHorizontal: 6,
+                        marginBottom: 4,
+                      }}>
+                        <Text style={{ width: 140, fontSize: 11, fontWeight: '700', color: colors.accent, textTransform: 'uppercase' }}>Employee</Text>
+                        <Text style={{ width: 90, fontSize: 11, fontWeight: '700', color: colors.accent, textTransform: 'uppercase' }}>Department</Text>
+                        <Text style={{ width: 80, fontSize: 11, fontWeight: '700', color: colors.accent, textTransform: 'uppercase' }}>Status</Text>
+                        <Text style={{ width: 80, fontSize: 11, fontWeight: '700', color: colors.accent, textTransform: 'uppercase', textAlign: 'center' }}>Punch In</Text>
+                        <Text style={{ width: 80, fontSize: 11, fontWeight: '700', color: colors.accent, textTransform: 'uppercase', textAlign: 'center' }}>Punch Out</Text>
+                        <Text style={{ width: 100, fontSize: 11, fontWeight: '700', color: colors.accent, textTransform: 'uppercase' }}>Location / IP</Text>
+                        <Text style={{ width: 60, fontSize: 11, fontWeight: '700', color: colors.accent, textTransform: 'uppercase', textAlign: 'center' }}>Hours</Text>
+                      </View>
+
+                      {/* Table Rows */}
+                      {overviewAttRecords.map((record: any, index: number) => {
+                        const empName = record.name || 'Unknown';
+                        const empCode = record.employeeCode || '-';
+                        const empDept = record.department || '-';
+                        const status = record.status || 'Absent';
+                        const punchInTime = record.punchIn || '-';
+                        const punchOutTime = record.punchOut || '-';
+                        const location = record.location || '-';
+                        const hours = record.workingHours || '-';
+
+                        const isPresent = status.toLowerCase() === 'present';
+                        const isAbsent = status.toLowerCase() === 'absent';
+                        const isLate = record.isLate || status.toLowerCase() === 'late';
+
+                        let badgeBg = 'rgba(239,68,68,0.15)';
+                        let badgeTextColor = colors.danger;
+
+                        if (isPresent) {
+                          badgeBg = 'rgba(16,185,129,0.15)';
+                          badgeTextColor = colors.success;
+                        } else if (status.toLowerCase().includes('half') || isLate) {
+                          badgeBg = 'rgba(245,158,11,0.15)';
+                          badgeTextColor = colors.warning;
+                        }
+
+                        return (
+                          <View
+                            key={record.id || index}
+                            style={{
+                              flexDirection: 'row',
+                              paddingVertical: 10,
+                              paddingHorizontal: 6,
+                              borderBottomWidth: 1,
+                              borderBottomColor: 'rgba(255,255,255,0.05)',
+                              alignItems: 'center',
+                            }}
+                          >
+                            <View style={{ width: 140 }}>
+                              <Text style={{ fontSize: 13, fontWeight: '600', color: colors.text }} numberOfLines={1}>
+                                {empName}
+                              </Text>
+                              <Text style={{ fontSize: 11, color: colors.textMuted, marginTop: 2 }}>
+                                {empCode}
                               </Text>
                             </View>
-                          </View>
 
-                          <Text style={{ width: 80, fontSize: 12, color: colors.textMuted, textAlign: 'center', fontWeight: '500' }}>
-                            {punchInTime}
-                          </Text>
-                          <Text style={{ width: 80, fontSize: 12, color: colors.textMuted, textAlign: 'center', fontWeight: '500' }}>
-                            {punchOutTime}
-                          </Text>
-                          <Text style={{ width: 100, fontSize: 12, color: colors.textMuted }} numberOfLines={1}>
-                            {location}
-                          </Text>
-                          <Text style={{ width: 60, fontSize: 12, color: colors.textMuted, textAlign: 'center', fontWeight: '500' }}>
-                            {hours}
-                          </Text>
-                        </View>
-                      );
-                    })}
+                            <Text style={{ width: 90, fontSize: 12, color: colors.textMuted }} numberOfLines={1}>
+                              {empDept}
+                            </Text>
+
+                            <View style={{ width: 80, flexDirection: 'row', alignItems: 'center' }}>
+                              <View style={{
+                                paddingHorizontal: 8,
+                                paddingVertical: 3,
+                                borderRadius: 10,
+                                backgroundColor: badgeBg,
+                              }}>
+                                <Text style={{
+                                  fontSize: 11,
+                                  fontWeight: '600',
+                                  color: badgeTextColor,
+                                }}>
+                                  {status}
+                                </Text>
+                              </View>
+                            </View>
+
+                            <Text style={{ width: 80, fontSize: 12, color: colors.textMuted, textAlign: 'center', fontWeight: '500' }}>
+                              {punchInTime}
+                            </Text>
+                            <Text style={{ width: 80, fontSize: 12, color: colors.textMuted, textAlign: 'center', fontWeight: '500' }}>
+                              {punchOutTime}
+                            </Text>
+                            <Text style={{ width: 100, fontSize: 12, color: colors.textMuted }} numberOfLines={1}>
+                              {location}
+                            </Text>
+                            <Text style={{ width: 60, fontSize: 12, color: colors.textMuted, textAlign: 'center', fontWeight: '500' }}>
+                              {hours}
+                            </Text>
+                          </View>
+                        );
+                      })}
+                    </View>
+                  </ScrollView>
+                )}
+              </View>
+            )}
+
+            {/* Row 3: Visual Mockup Charts */}
+            <View style={styles.chartsGrid}>
+              {/* 6-Month Trend */}
+              <View style={styles.chartCard}>
+                <Text style={styles.chartTitle}>6-Month Trend: Attendance & Salary</Text>
+                <View style={styles.barChartContainer}>
+                  {data?.charts?.monthlyData?.map((item: any, index: number) => (
+                    <View key={index} style={styles.barCol}>
+                      <View style={styles.barWrapper}>
+                        {/* Salary line representation */}
+                        <View
+                          style={[
+                            styles.salaryLineIndicator,
+                            { height: `${Math.min(100, (item.salary / 800000) * 100)}%` }
+                          ]}
+                        />
+                        {/* Attendance representation */}
+                        <View
+                          style={[
+                            styles.attendanceBar,
+                            { height: `${Math.min(100, (item.present / 15) * 100)}%` }
+                          ]}
+                        />
+                      </View>
+                      <Text style={styles.barLabel}>{item.name}</Text>
+                    </View>
+                  ))}
+                </View>
+                <View style={styles.chartLegend}>
+                  <View style={styles.legendItem}>
+                    <View style={[styles.legendColor, { backgroundColor: colors.accent }]} />
+                    <Text style={styles.legendText}>Avg Present</Text>
                   </View>
-                </ScrollView>
+                  <View style={styles.legendItem}>
+                    <View style={[styles.legendColor, { backgroundColor: colors.success }]} />
+                    <Text style={styles.legendText}>Salary Payout</Text>
+                  </View>
+                </View>
+              </View>
+
+              {/* Lead Conversion */}
+              <View style={styles.chartCard}>
+                <Text style={styles.chartTitle}>Lead Conversion Rate</Text>
+                <View style={styles.circularContainer}>
+                  <View style={styles.donutPlaceholder}>
+                    <Text style={styles.donutVal}>{wonPercentage}%</Text>
+                    <Text style={styles.donutSub}>WON</Text>
+                  </View>
+                </View>
+                <View style={styles.chartLegend}>
+                  <View style={styles.legendItem}>
+                    <View style={[styles.legendColor, { backgroundColor: colors.danger }]} />
+                    <Text style={styles.legendText}>Lost</Text>
+                  </View>
+                  <View style={styles.legendItem}>
+                    <View style={[styles.legendColor, { backgroundColor: colors.info }]} />
+                    <Text style={styles.legendText}>Open</Text>
+                  </View>
+                  <View style={styles.legendItem}>
+                    <View style={[styles.legendColor, { backgroundColor: colors.success }]} />
+                    <Text style={styles.legendText}>Won</Text>
+                  </View>
+                </View>
+              </View>
+            </View>
+
+            {/* Row 4: Upcoming Birthdays */}
+            <View style={[styles.chartCard, { marginBottom: spacing.xl }]}>
+              <View style={styles.birthdayHeader}>
+                <Gift size={18} color={colors.danger} style={{ marginRight: 8 }} />
+                <Text style={styles.chartTitle}>Upcoming Birthdays (Next 30 Days)</Text>
+              </View>
+              {data?.upcomingBirthdays && data.upcomingBirthdays.length > 0 ? (
+                <View style={styles.birthdayList}>
+                  {data.upcomingBirthdays.map((bday: any, index: number) => (
+                    <View key={index} style={styles.birthdayRow}>
+                      <Text style={styles.birthdayName}>{bday.name}</Text>
+                      <Text style={styles.birthdayDate}>
+                        {new Date(bday.date).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}
+                      </Text>
+                    </View>
+                  ))}
+                </View>
+              ) : (
+                <Text style={styles.noBirthdays}>No upcoming birthdays in the next 30 days.</Text>
               )}
             </View>
-          )}
-
-          {/* Row 3: Visual Mockup Charts */}
-          <View style={styles.chartsGrid}>
-            {/* 6-Month Trend */}
-            <View style={styles.chartCard}>
-              <Text style={styles.chartTitle}>6-Month Trend: Attendance & Salary</Text>
-              <View style={styles.barChartContainer}>
-                {data?.charts?.monthlyData?.map((item: any, index: number) => (
-                  <View key={index} style={styles.barCol}>
-                    <View style={styles.barWrapper}>
-                      {/* Salary line representation */}
-                      <View
-                        style={[
-                          styles.salaryLineIndicator,
-                          { height: `${Math.min(100, (item.salary / 800000) * 100)}%` }
-                        ]}
-                      />
-                      {/* Attendance representation */}
-                      <View
-                        style={[
-                          styles.attendanceBar,
-                          { height: `${Math.min(100, (item.present / 15) * 100)}%` }
-                        ]}
-                      />
-                    </View>
-                    <Text style={styles.barLabel}>{item.name}</Text>
-                  </View>
-                ))}
-              </View>
-              <View style={styles.chartLegend}>
-                <View style={styles.legendItem}>
-                  <View style={[styles.legendColor, { backgroundColor: colors.accent }]} />
-                  <Text style={styles.legendText}>Avg Present</Text>
-                </View>
-                <View style={styles.legendItem}>
-                  <View style={[styles.legendColor, { backgroundColor: colors.success }]} />
-                  <Text style={styles.legendText}>Salary Payout</Text>
-                </View>
-              </View>
-            </View>
-
-            {/* Lead Conversion */}
-            <View style={styles.chartCard}>
-              <Text style={styles.chartTitle}>Lead Conversion Rate</Text>
-              <View style={styles.circularContainer}>
-                <View style={styles.donutPlaceholder}>
-                  <Text style={styles.donutVal}>{wonPercentage}%</Text>
-                  <Text style={styles.donutSub}>WON</Text>
-                </View>
-              </View>
-              <View style={styles.chartLegend}>
-                <View style={styles.legendItem}>
-                  <View style={[styles.legendColor, { backgroundColor: colors.danger }]} />
-                  <Text style={styles.legendText}>Lost</Text>
-                </View>
-                <View style={styles.legendItem}>
-                  <View style={[styles.legendColor, { backgroundColor: colors.info }]} />
-                  <Text style={styles.legendText}>Open</Text>
-                </View>
-                <View style={styles.legendItem}>
-                  <View style={[styles.legendColor, { backgroundColor: colors.success }]} />
-                  <Text style={styles.legendText}>Won</Text>
-                </View>
-              </View>
-            </View>
-          </View>
-
-          {/* Row 4: Upcoming Birthdays */}
-          <View style={[styles.chartCard, { marginBottom: spacing.xl }]}>
-            <View style={styles.birthdayHeader}>
-              <Gift size={18} color={colors.danger} style={{ marginRight: 8 }} />
-              <Text style={styles.chartTitle}>Upcoming Birthdays (Next 30 Days)</Text>
-            </View>
-            {data?.upcomingBirthdays && data.upcomingBirthdays.length > 0 ? (
-              <View style={styles.birthdayList}>
-                {data.upcomingBirthdays.map((bday: any, index: number) => (
-                  <View key={index} style={styles.birthdayRow}>
-                    <Text style={styles.birthdayName}>{bday.name}</Text>
-                    <Text style={styles.birthdayDate}>
-                      {new Date(bday.date).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}
-                    </Text>
-                  </View>
-                ))}
-              </View>
-            ) : (
-              <Text style={styles.noBirthdays}>No upcoming birthdays in the next 30 days.</Text>
-            )}
-          </View>
-        </ScrollView>
-      )
-    ) : (
-      <View style={{ flex: 1 }}>
+          </ScrollView>
+        )
+      ) : (
+        <View style={{ flex: 1 }}>
           {activeSection === 'Employees' ? (
             <EmployeesView />
           ) : activeSection === 'Wallet' ? (
@@ -10699,7 +11118,7 @@ const DashboardScreen = ({ navigation }: any) => {
           </View>
         </View>
       )}
-    </SafeAreaView>
+    </View>
   );
 };
 
@@ -10708,9 +11127,103 @@ export const AppNavigator = () => {
   const isAuthenticated = useAuthStore((state) => state.isAuthenticated);
   const colorScheme = useColorScheme(); // Subscribes the navigation component to system theme updates
   const themeMode = useAuthStore((state) => state.themeMode);
+  const [showSplash, setShowSplash] = useState(true);
 
   const isDark = themeMode === 'system' ? colorScheme === 'dark' : themeMode === 'dark';
   const themeKey = isDark ? 'dark' : 'light';
+
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setShowSplash(false);
+    }, 5000);
+    return () => clearTimeout(timer);
+  }, []);
+
+  if (showSplash) {
+    return (
+      <View style={{
+        flex: 1,
+        backgroundColor: '#0c1c3d',
+        alignItems: 'center',
+        justifyContent: 'center',
+        padding: 24,
+      }}>
+        <StatusBar barStyle="light-content" backgroundColor="#0c1c3d" translucent={false} />
+        {/* Animated-like circular emblem */}
+        <View style={{
+          width: 130,
+          height: 130,
+          borderRadius: 65,
+          backgroundColor: 'rgba(255, 255, 255, 0.08)',
+          alignItems: 'center',
+          justifyContent: 'center',
+          borderWidth: 3,
+          borderColor: '#c9972f',
+          marginBottom: 32,
+          shadowColor: '#c9972f',
+          shadowOffset: { width: 0, height: 8 },
+          shadowOpacity: 0.35,
+          shadowRadius: 16,
+          elevation: 8,
+        }}>
+          <Image
+            source={require('../../assets/icon.png')}
+            style={{ width: 85, height: 85, borderRadius: 12 }}
+            resizeMode="contain"
+          />
+        </View>
+
+        <Text style={{
+          fontSize: 30,
+          fontWeight: '900',
+          color: '#ffffff',
+          letterSpacing: 2,
+          textAlign: 'center',
+          marginBottom: 4,
+          textTransform: 'uppercase',
+        }}>
+          Niventra <Text style={{ color: '#c9972f' }}>Capital</Text>
+        </Text>
+        <Text style={{
+          fontSize: 12,
+          fontWeight: 'bold',
+          color: '#e8b84b',
+          letterSpacing: 4,
+          textAlign: 'center',
+          marginBottom: 40,
+          textTransform: 'uppercase',
+        }}>
+          Advisory India Pvt. Ltd.
+        </Text>
+
+        {/* Compound Growth Visual */}
+        <View style={{
+          flexDirection: 'row',
+          alignItems: 'flex-end',
+          justifyContent: 'center',
+          gap: 6,
+          marginBottom: 48,
+          height: 40,
+        }}>
+          <View style={{ width: 8, height: 10, backgroundColor: 'rgba(201, 151, 47, 0.4)', borderRadius: 2 }} />
+          <View style={{ width: 8, height: 18, backgroundColor: 'rgba(201, 151, 47, 0.6)', borderRadius: 2 }} />
+          <View style={{ width: 8, height: 26, backgroundColor: 'rgba(201, 151, 47, 0.8)', borderRadius: 2 }} />
+          <View style={{ width: 8, height: 35, backgroundColor: '#c9972f', borderRadius: 2 }} />
+        </View>
+
+        <ActivityIndicator size="large" color="#c9972f" />
+        <Text style={{
+          color: '#e8b84b',
+          fontSize: 13,
+          fontWeight: '600',
+          marginTop: 16,
+          letterSpacing: 1,
+        }}>
+          Securely loading portal...
+        </Text>
+      </View>
+    );
+  }
 
   return (
     <NavigationContainer key={themeKey}>
@@ -13289,6 +13802,9 @@ const loginStyles = createDynamicStyleSheet(() => ({
   },
   signInBtnText: {
     textAlign: 'center',
+    color: '#ffffff',
+    fontWeight: 'bold',
+    fontSize: 16,
   },
   footerLink: {
     color: colors.accent,
