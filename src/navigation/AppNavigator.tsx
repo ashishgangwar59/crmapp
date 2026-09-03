@@ -26,11 +26,15 @@ import * as MailComposer from 'expo-mail-composer';
 import { WebView } from 'react-native-webview';
 import { NavigationContainer } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
-import { colors, spacing, borderRadius, setForcedScheme } from '../theme/colors';
+import { colors, spacing, borderRadius, setForcedScheme, cardStyles } from '../theme/colors';
 import { apiCall, getApiBaseUrl } from '../services/api';
 import { useAuthStore } from '../services/authStore';
+import { SkeletonBox, DashboardSkeleton } from '../components/SkeletonLoader';
+import { MobileCard } from '../components/MobileCard';
+import { NativeHeader } from '../components/NativeHeader';
+import { NativeBottomBar } from '../components/NativeBottomBar';
 
-const createDynamicStyleSheet = <T extends Record<string, any>>(styleBuilder: () => T): T => {
+const createDynamicStyleSheet = <T extends Record<string, any>>(styleBuilder: () => T): any => {
   let lightCache: any = null;
   let darkCache: any = null;
 
@@ -47,7 +51,7 @@ const createDynamicStyleSheet = <T extends Record<string, any>>(styleBuilder: ()
             setForcedScheme(null);
           }
         }
-        return darkCache[prop];
+        return darkCache[prop as string] || {};
       } else {
         if (!lightCache) {
           setForcedScheme('light');
@@ -57,7 +61,7 @@ const createDynamicStyleSheet = <T extends Record<string, any>>(styleBuilder: ()
             setForcedScheme(null);
           }
         }
-        return lightCache[prop];
+        return lightCache[prop as string] || {};
       }
     }
   }) as any;
@@ -113,6 +117,7 @@ import {
   Printer,
   UserPlus,
   Landmark,
+  ChevronRight,
 } from 'lucide-react-native';
 
 // Types
@@ -5514,7 +5519,7 @@ const LeadsView = () => {
                       marginBottom: 8,
                       flexDirection: 'row',
                       alignItems: 'center',
-                      justify: 'space-between',
+                      justifyContent: 'space-between',
                     }}
                     onPress={() => setSelectedAssignEE(empName)}
                   >
@@ -7037,7 +7042,7 @@ const EmployeeProfileView = () => {
       } as any);
 
       const token = useAuthStore.getState().token;
-      const uploadRes = await fetch(`${require('../services/api').API_BASE_URL}/api/employees/upload`, {
+      const uploadRes = await fetch(`${getApiBaseUrl()}/api/employees/upload`, {
         method: 'POST',
         headers: {
           ...(token ? { Cookie: `accessToken=${token}`, Authorization: `Bearer ${token}` } : {}),
@@ -8254,9 +8259,8 @@ const InvestorsAdminView = () => {
                         <Text style={{ fontSize: 11, fontWeight: 'bold', color: '#4338ca', marginTop: 2 }}>{inv.investorCode || 'INV-0000'}</Text>
                       </View>
 
-                      {/* Contact Email / Phone */}
                       <View style={{ width: 180 }}>
-                        <Text style={{ fontSize: 12, color: '#374151', textBreakStrategy: 'simple' }}>{inv.email || '—'}</Text>
+                        <Text style={{ fontSize: 12, color: '#374151' }}>{inv.email || '—'}</Text>
                         <Text style={{ fontSize: 12, color: '#6b7280', marginTop: 1 }}>{inv.phone || '—'}</Text>
                       </View>
 
@@ -10409,7 +10413,6 @@ const DashboardScreen = ({ navigation }: any) => {
       const response = await apiCall('/api/dashboard/admin');
       if (response.success && response.data) {
         const dData = response.data.data || response.data;
-        console.log('[Dashboard API] Full response data:', JSON.stringify(dData, null, 2));
         setData(dData);
         if (dData && Array.isArray(dData.todaysAttendanceList)) {
           setOverviewAttRecords(dData.todaysAttendanceList);
@@ -10454,9 +10457,9 @@ const DashboardScreen = ({ navigation }: any) => {
 
   if (loading) {
     return (
-      <View style={styles.loadingContainer}>
-        <ActivityIndicator size="large" color={colors.accent} />
-        <Text style={styles.loadingText}>Loading Command Center...</Text>
+      <View style={[styles.safeArea, { backgroundColor: colors.background }]}>
+        <StatusBar barStyle={isDark ? 'light-content' : 'dark-content'} backgroundColor={colors.background} translucent={true} />
+        <DashboardSkeleton />
       </View>
     );
   }
@@ -10482,48 +10485,19 @@ const DashboardScreen = ({ navigation }: any) => {
     ? Math.round((k.wonLeads / (k.openLeads + k.wonLeads)) * 100)
     : 0;
 
-  const topGap = Platform.OS === 'android' ? (StatusBar.currentHeight || 24) : insets.top;
   const sidebarTopGap = Platform.OS === 'android' ? (StatusBar.currentHeight || 24) : Math.max(insets.top, 16);
   const sidebarBottomGap = Math.max(insets.bottom, 16);
 
   return (
-    <View style={[styles.safeArea, { paddingTop: topGap }]}>
+    <View style={[styles.safeArea, { backgroundColor: colors.background }]}>
       <StatusBar barStyle={isDark ? 'light-content' : 'dark-content'} backgroundColor={colors.background} translucent={true} />
-      {/* Header bar */}
-      <View style={styles.header}>
-        <TouchableOpacity style={styles.menuButton} onPress={() => setSidebarOpen(true)}>
-          <Menu size={24} color={colors.text} />
-        </TouchableOpacity>
-        <Image
-          source={require('../../assets/icon.png')}
-          style={{ width: 28, height: 28, marginLeft: spacing.s, borderRadius: 4 }}
-          resizeMode="contain"
-        />
-        <View style={{ flex: 1, marginLeft: spacing.s }}>
-          <Text style={styles.headerTitle}>
-            {activeSection === 'Overview' ? 'Command Center' : activeSection}
-          </Text>
-          <Text style={styles.headerSubtitle}>
-
-            {activeSection === 'Overview'
-              ? 'Overview of financials, HR, and sales'
-              : `CRM Hub - ${activeSection} panel`}
-          </Text>
-        </View>
-        <View style={styles.headerAvatarBadge}>
-          <Text style={styles.headerAvatarText}>
-            {(user as any)?.firstName
-              ? `${(user as any).firstName[0]}${(user as any).lastName ? (user as any).lastName[0] : ''}`.toUpperCase()
-              : (user?.email ? user.email[0].toUpperCase() : 'U')}
-          </Text>
-        </View>
-        <TouchableOpacity style={{ marginRight: 12, padding: 6, justifyContent: 'center', alignItems: 'center' }} onPress={toggleTheme}>
-          <Eye size={20} color={colors.textMuted} />
-        </TouchableOpacity>
-        <TouchableOpacity style={styles.logoutButton} onPress={handleLogout}>
-          <LogOut size={20} color={colors.textMuted} />
-        </TouchableOpacity>
-      </View>
+      {/* Executive Header Bar */}
+      <NativeHeader
+        title={activeSection === 'Overview' ? 'Command Center' : activeSection}
+        subtitle={activeSection === 'Overview' ? 'Financials, HR & Operations Hub' : `CRM Module - ${activeSection}`}
+        onOpenSidebar={() => setSidebarOpen(true)}
+        onLogout={handleLogout}
+      />
 
       {/* Conditional rendering of sections */}
       {activeSection === 'Overview' ? (
@@ -10793,111 +10767,42 @@ const DashboardScreen = ({ navigation }: any) => {
                     No employee attendance records found for today.
                   </Text>
                 ) : (
-                  <ScrollView horizontal showsHorizontalScrollIndicator={false}>
-                    <View>
-                      {/* Table Header */}
-                      <View style={{
-                        flexDirection: 'row',
-                        backgroundColor: 'rgba(99,102,241,0.08)',
-                        borderRadius: 6,
-                        paddingVertical: 8,
-                        paddingHorizontal: 6,
-                        marginBottom: 4,
-                      }}>
-                        <Text style={{ width: 140, fontSize: 11, fontWeight: '700', color: colors.accent, textTransform: 'uppercase' }}>Employee</Text>
-                        <Text style={{ width: 90, fontSize: 11, fontWeight: '700', color: colors.accent, textTransform: 'uppercase' }}>Department</Text>
-                        <Text style={{ width: 80, fontSize: 11, fontWeight: '700', color: colors.accent, textTransform: 'uppercase' }}>Status</Text>
-                        <Text style={{ width: 80, fontSize: 11, fontWeight: '700', color: colors.accent, textTransform: 'uppercase', textAlign: 'center' }}>Punch In</Text>
-                        <Text style={{ width: 80, fontSize: 11, fontWeight: '700', color: colors.accent, textTransform: 'uppercase', textAlign: 'center' }}>Punch Out</Text>
-                        <Text style={{ width: 100, fontSize: 11, fontWeight: '700', color: colors.accent, textTransform: 'uppercase' }}>Location / IP</Text>
-                        <Text style={{ width: 60, fontSize: 11, fontWeight: '700', color: colors.accent, textTransform: 'uppercase', textAlign: 'center' }}>Hours</Text>
-                      </View>
+                  <View style={{ gap: 10 }}>
+                    {overviewAttRecords.map((record: any, index: number) => {
+                      const empName = record.name || 'Unknown';
+                      const empCode = record.employeeCode || '-';
+                      const empDept = record.department || '-';
+                      const status = record.status || 'Absent';
+                      const punchInTime = record.punchIn || '-';
+                      const punchOutTime = record.punchOut || '-';
+                      const location = record.location || '-';
+                      const hours = record.workingHours || '-';
 
-                      {/* Table Rows */}
-                      {overviewAttRecords.map((record: any, index: number) => {
-                        const empName = record.name || 'Unknown';
-                        const empCode = record.employeeCode || '-';
-                        const empDept = record.department || '-';
-                        const status = record.status || 'Absent';
-                        const punchInTime = record.punchIn || '-';
-                        const punchOutTime = record.punchOut || '-';
-                        const location = record.location || '-';
-                        const hours = record.workingHours || '-';
+                      const isPresent = status.toLowerCase() === 'present';
+                      const isLate = record.isLate || status.toLowerCase() === 'late';
 
-                        const isPresent = status.toLowerCase() === 'present';
-                        const isAbsent = status.toLowerCase() === 'absent';
-                        const isLate = record.isLate || status.toLowerCase() === 'late';
+                      let badgeVariant: 'success' | 'warning' | 'danger' = 'danger';
+                      if (isPresent) badgeVariant = 'success';
+                      else if (isLate || status.toLowerCase().includes('half')) badgeVariant = 'warning';
 
-                        let badgeBg = 'rgba(239,68,68,0.15)';
-                        let badgeTextColor = colors.danger;
-
-                        if (isPresent) {
-                          badgeBg = 'rgba(16,185,129,0.15)';
-                          badgeTextColor = colors.success;
-                        } else if (status.toLowerCase().includes('half') || isLate) {
-                          badgeBg = 'rgba(245,158,11,0.15)';
-                          badgeTextColor = colors.warning;
-                        }
-
-                        return (
-                          <View
-                            key={record.id || index}
-                            style={{
-                              flexDirection: 'row',
-                              paddingVertical: 10,
-                              paddingHorizontal: 6,
-                              borderBottomWidth: 1,
-                              borderBottomColor: 'rgba(255,255,255,0.05)',
-                              alignItems: 'center',
-                            }}
-                          >
-                            <View style={{ width: 140 }}>
-                              <Text style={{ fontSize: 13, fontWeight: '600', color: colors.text }} numberOfLines={1}>
-                                {empName}
-                              </Text>
-                              <Text style={{ fontSize: 11, color: colors.textMuted, marginTop: 2 }}>
-                                {empCode}
-                              </Text>
-                            </View>
-
-                            <Text style={{ width: 90, fontSize: 12, color: colors.textMuted }} numberOfLines={1}>
-                              {empDept}
-                            </Text>
-
-                            <View style={{ width: 80, flexDirection: 'row', alignItems: 'center' }}>
-                              <View style={{
-                                paddingHorizontal: 8,
-                                paddingVertical: 3,
-                                borderRadius: 10,
-                                backgroundColor: badgeBg,
-                              }}>
-                                <Text style={{
-                                  fontSize: 11,
-                                  fontWeight: '600',
-                                  color: badgeTextColor,
-                                }}>
-                                  {status}
-                                </Text>
-                              </View>
-                            </View>
-
-                            <Text style={{ width: 80, fontSize: 12, color: colors.textMuted, textAlign: 'center', fontWeight: '500' }}>
-                              {punchInTime}
-                            </Text>
-                            <Text style={{ width: 80, fontSize: 12, color: colors.textMuted, textAlign: 'center', fontWeight: '500' }}>
-                              {punchOutTime}
-                            </Text>
-                            <Text style={{ width: 100, fontSize: 12, color: colors.textMuted }} numberOfLines={1}>
-                              {location}
-                            </Text>
-                            <Text style={{ width: 60, fontSize: 12, color: colors.textMuted, textAlign: 'center', fontWeight: '500' }}>
-                              {hours}
-                            </Text>
-                          </View>
-                        );
-                      })}
-                    </View>
-                  </ScrollView>
+                      return (
+                        <MobileCard
+                          key={record.id || index}
+                          title={empName}
+                          subtitle={`${empCode} • ${empDept}`}
+                          badgeText={status}
+                          badgeVariant={badgeVariant}
+                          avatarText={empName}
+                          details={[
+                            { label: 'Punch In / Out', value: `${punchInTime}  →  ${punchOutTime}`, highlight: true },
+                            { label: 'Location / IP', value: location },
+                            { label: 'Working Hours', value: hours },
+                          ]}
+                          style={{ marginBottom: 0 }}
+                        />
+                      );
+                    })}
+                  </View>
                 )}
               </View>
             )}
@@ -10992,7 +10897,7 @@ const DashboardScreen = ({ navigation }: any) => {
           </ScrollView>
         )
       ) : (
-        <View style={{ flex: 1 }}>
+        <View style={{ flex: 1, paddingBottom: 60 + insets.bottom }}>
           {activeSection === 'Employees' ? (
             <EmployeesView />
           ) : activeSection === 'Wallet' ? (
@@ -11021,6 +10926,106 @@ const DashboardScreen = ({ navigation }: any) => {
             <DebentureFormView />
           ) : activeSection === 'Profile' ? (
             <EmployeeProfileView />
+          ) : activeSection === 'Menu' ? (
+            <ScrollView style={{ flex: 1 }} contentContainerStyle={{ padding: 16, paddingBottom: 40 }} showsVerticalScrollIndicator={false}>
+              <Text style={{ fontSize: 24, fontWeight: '900', color: colors.text, marginBottom: 4 }}>App Menu</Text>
+              <Text style={{ fontSize: 12, color: colors.textMuted, marginBottom: 20 }}>Access all platform features and workspace utilities.</Text>
+
+              <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 12, justifyContent: 'space-between' }}>
+                {[
+                  { name: 'Overview', desc: 'Command Center & Stats', icon: LayoutGrid, roles: ['ADMIN', 'KEY_ADMIN', 'Employee'] },
+                  { name: 'Investor Details', desc: 'My Investments & KYC', icon: LayoutGrid, roles: ['INVESTOR'] },
+                  { name: 'Investors', desc: 'Manage Investor Accounts', icon: TrendingUp, roles: ['ADMIN', 'KEY_ADMIN'] },
+                  { name: 'Wallet', desc: 'Company Funds', icon: Wallet, roles: ['ADMIN', 'KEY_ADMIN'] },
+                  { name: 'Payroll', desc: 'Salaries & Payslips', icon: TrendingUp, roles: ['ADMIN', 'KEY_ADMIN', 'Employee'] },
+                  { name: 'Attendance', desc: 'Punches & Timesheets', icon: Clock, roles: ['ADMIN', 'KEY_ADMIN', 'Employee'] },
+                  { name: 'Leave', desc: 'Requests & Balance', icon: CalendarDays, roles: ['ADMIN', 'KEY_ADMIN', 'Employee'] },
+                  { name: 'Holidays', desc: 'Calendar Events', icon: Calendar, roles: ['ADMIN', 'KEY_ADMIN', 'Employee'] },
+                  { name: 'Employees', desc: 'Directory & Roles', icon: Users, roles: ['ADMIN', 'KEY_ADMIN'] },
+                  { name: 'Leads', desc: 'Sales Opportunities', icon: Target, roles: ['ADMIN', 'KEY_ADMIN', 'Employee'] },
+                  { name: 'Reports', desc: 'Analytics & Export', icon: BarChart2, roles: ['ADMIN', 'KEY_ADMIN', 'Employee'] },
+                  { name: 'Debenture Form', desc: 'KYC & Agreement', icon: ShieldCheck, roles: ['ADMIN', 'KEY_ADMIN', 'Employee'] },
+                  { name: 'Notifications', desc: 'Logs & Dispatches', icon: Bell, roles: ['ADMIN', 'KEY_ADMIN'] },
+                  { name: 'Settings', desc: 'System Constants', icon: Settings, roles: ['ADMIN', 'KEY_ADMIN'] },
+                  { name: 'Profile', desc: 'Account Credentials', icon: UserIcon, roles: ['Employee', 'INVESTOR'] },
+                ]
+                  .filter((item) => {
+                    if (userRole === 'INVESTOR') return item.roles?.includes('INVESTOR');
+                    if (userRole === 'KEY_ADMIN' || userRole === 'ADMIN') return true;
+
+                    const rawAccess = (user as any)?.moduleAccess || (user as any)?.accessibleTabs || (user as any)?.permissions || (user as any)?.allowedModules;
+                    const defaultEmployeeTabs = [
+                      'Attendance', 'Leads', 'Reports', 'Profile', 'Holidays', 'Leave', 'Debenture Form', 'Overview'
+                    ];
+                    const userAccess: string[] = Array.isArray(rawAccess) && rawAccess.length > 0 ? rawAccess : defaultEmployeeTabs;
+
+                    if (item.name === 'Overview' || item.name === 'Profile' || item.name === 'Debenture Form') return true;
+
+                    return userAccess.some((m: string) => {
+                      const cleanM = String(m).toLowerCase().replace(/[^a-z0-9]/g, '');
+                      const cleanItem = item.name.toLowerCase().replace(/[^a-z0-9]/g, '');
+                      return cleanM === cleanItem || cleanM.includes(cleanItem) || cleanItem.includes(cleanM);
+                    });
+                  })
+                  .map((item, idx) => {
+                    const Icon = item.icon;
+                    return (
+                      <TouchableOpacity
+                        key={idx}
+                        style={{
+                          width: '48%',
+                          backgroundColor: colors.surface,
+                          borderRadius: 14,
+                          padding: 16,
+                          borderWidth: 1,
+                          borderColor: colors.border,
+                          gap: 6,
+                          shadowColor: '#000',
+                          shadowOffset: { width: 0, height: 2 },
+                          shadowOpacity: 0.05,
+                          shadowRadius: 4,
+                          elevation: 2,
+                        }}
+                        onPress={() => {
+                          setActiveSection(item.name === 'Overview' ? 'Overview' : item.name);
+                        }}
+                      >
+                        <View style={{ width: 36, height: 36, borderRadius: 10, backgroundColor: 'rgba(214, 175, 55, 0.1)', alignItems: 'center', justifyContent: 'center', marginBottom: 2 }}>
+                          <Icon size={18} color={colors.accent} />
+                        </View>
+                        <Text style={{ fontSize: 13, fontWeight: '700', color: colors.text }}>
+                          {item.name}
+                        </Text>
+                        <Text style={{ fontSize: 10, color: colors.textMuted }} numberOfLines={2}>
+                          {item.desc}
+                        </Text>
+                      </TouchableOpacity>
+                    );
+                  })}
+              </View>
+
+              {/* Logout Button */}
+              <TouchableOpacity
+                style={{
+                  marginTop: 20,
+                  backgroundColor: 'rgba(239, 68, 68, 0.1)',
+                  borderRadius: 14,
+                  padding: 16,
+                  borderWidth: 1,
+                  borderColor: 'rgba(239, 68, 68, 0.2)',
+                  flexDirection: 'row',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  gap: 8,
+                }}
+                onPress={handleLogout}
+              >
+                <LogOut size={18} color={colors.danger} />
+                <Text style={{ fontSize: 14, fontWeight: '700', color: colors.danger }}>
+                  Log Out
+                </Text>
+              </TouchableOpacity>
+            </ScrollView>
           ) : (
             <View style={styles.placeholderSection}>
               <Text style={styles.placeholderTitle}>{activeSection} Module</Text>
@@ -11092,7 +11097,7 @@ const DashboardScreen = ({ navigation }: any) => {
                   return (
                     <TouchableOpacity
                       key={item.name}
-                      style={[styles.sidebarItem, isActive && styles.sidebarItemActive]}
+                      style={[styles.sidebarItem, isActive && styles.sidebarItemActive, { flexDirection: 'row' as const, justifyContent: 'space-between' as const, alignItems: 'center' as const }]}
                       onPress={() => {
                         setActiveSection(item.name === 'Overview' ? 'Overview' : item.name);
                         setSidebarOpen(false);
@@ -11102,10 +11107,13 @@ const DashboardScreen = ({ navigation }: any) => {
                         }
                       }}
                     >
-                      <IconComponent size={18} color={isActive ? colors.accent : colors.textMuted} style={{ marginRight: 12 }} />
-                      <Text style={[styles.sidebarItemText, isActive && styles.sidebarItemTextActive]}>
-                        {item.name}
-                      </Text>
+                      <View style={{ flexDirection: 'row' as const, alignItems: 'center' as const, flex: 1 }}>
+                        <IconComponent size={18} color={isActive ? colors.accent : colors.textMuted} style={{ marginRight: 12 }} />
+                        <Text style={[styles.sidebarItemText, isActive && styles.sidebarItemTextActive]}>
+                          {item.name}
+                        </Text>
+                      </View>
+                      <ChevronRight size={16} color={isActive ? colors.accent : colors.textMuted} />
                     </TouchableOpacity>
                   );
                 })}
@@ -11118,6 +11126,18 @@ const DashboardScreen = ({ navigation }: any) => {
           </View>
         </View>
       )}
+      {/* Executive Native Bottom Bar */}
+      <NativeBottomBar
+        activeSection={activeSection}
+        setActiveSection={(sec) => {
+          setActiveSection(sec);
+          if (sec === 'Overview') {
+            fetchDashboardData();
+            fetchOverviewAttendance();
+          }
+        }}
+        onOpenMenu={() => setSidebarOpen(true)}
+      />
     </View>
   );
 };
@@ -11670,18 +11690,16 @@ const styles = createDynamicStyleSheet(() => ({
     backgroundColor: 'rgba(0,0,0,0.6)',
   },
   sidebarContainer: {
-    width: '75%',
+    width: '100%' as const,
     backgroundColor: colors.surface,
-    height: '100%',
+    height: '100%' as const,
     padding: spacing.m,
-    borderRightWidth: 1,
-    borderRightColor: colors.border,
     zIndex: 1001,
   },
   sidebarHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
+    flexDirection: 'row' as const,
+    justifyContent: 'space-between' as const,
+    alignItems: 'center' as const,
     marginBottom: spacing.l,
     borderBottomWidth: 1,
     borderBottomColor: colors.border,
@@ -11689,15 +11707,15 @@ const styles = createDynamicStyleSheet(() => ({
   },
   sidebarLogoText: {
     fontSize: 20,
-    fontWeight: 'bold',
+    fontWeight: 'bold' as const,
     color: colors.accent,
   },
   sidebarItems: {
     flex: 1,
   },
   sidebarItem: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: 'row' as const,
+    alignItems: 'center' as const,
     paddingVertical: 12,
     paddingHorizontal: spacing.s,
     borderRadius: borderRadius.m,
@@ -11712,20 +11730,20 @@ const styles = createDynamicStyleSheet(() => ({
   },
   sidebarItemTextActive: {
     color: colors.accent,
-    fontWeight: 'bold',
+    fontWeight: 'bold' as const,
   },
   sidebarLogout: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: 'row' as const,
+    alignItems: 'center' as const,
     paddingVertical: 12,
     borderTopWidth: 1,
     borderTopColor: colors.border,
-    marginTop: 'auto',
+    marginTop: spacing.m,
   },
   sidebarLogoutText: {
     fontSize: 14,
     color: colors.danger,
-    fontWeight: 'bold',
+    fontWeight: 'bold' as const,
   },
   /* --- Placeholder Styles --- */
   placeholderSection: {

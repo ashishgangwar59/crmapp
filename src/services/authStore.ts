@@ -30,7 +30,9 @@ export const useAuthStore = create<AuthState>()(
       setAuth: (user, token) => set({ user, token, isAuthenticated: true }),
       setUser: (user) => set((state) => ({ user: state.user ? { ...state.user, ...user } : user })),
       clearAuth: () => set({ user: null, token: null, isAuthenticated: false }),
-      setThemeMode: (themeMode) => set({ themeMode }),
+      setThemeMode: (themeMode) => {
+        set({ themeMode });
+      },
     }),
     {
       name: 'crm-auth-storage',
