@@ -1,8 +1,8 @@
 import React from 'react';
-import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
+import { View, Text, TouchableOpacity } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { LayoutGrid, Clock, Wallet, Users, Target, User as UserIcon, Menu } from 'lucide-react-native';
-import { colors, spacing, borderRadius } from '../theme/colors';
+import { LayoutGrid, Clock, Wallet, Users, Target, User as UserIcon, Menu, CalendarDays } from 'lucide-react-native';
+import { useAppTheme, GOLD, BRAND_NAVY } from './DashboardUI';
 import { useAuthStore } from '../services/authStore';
 
 interface NativeBottomBarProps {
@@ -17,6 +17,7 @@ export const NativeBottomBar: React.FC<NativeBottomBarProps> = ({
   onOpenMenu,
 }) => {
   const insets = useSafeAreaInsets();
+  const { c, isDark, accent } = useAppTheme();
   const user = useAuthStore((state) => state.user);
   const userRole = (user?.role || 'Employee').toUpperCase();
 
@@ -41,7 +42,7 @@ export const NativeBottomBar: React.FC<NativeBottomBarProps> = ({
       id: 'leads',
       name: isAdmin ? 'Leads' : 'Leave',
       label: isAdmin ? 'Leads' : 'Leave',
-      icon: isAdmin ? Target : Clock,
+      icon: isAdmin ? Target : CalendarDays,
     },
     {
       id: 'menu',
@@ -58,29 +59,31 @@ export const NativeBottomBar: React.FC<NativeBottomBarProps> = ({
     },
   ];
 
+  const bottomPad = Math.max(insets.bottom, 8);
+
   return (
     <View
-      style={[
-        styles.container,
-        {
-          paddingBottom: Math.max(insets.bottom, spacing.s),
-          backgroundColor: colors.surface,
-          borderTopColor: colors.border,
-        },
-      ]}
+      style={{
+        position: 'absolute', left: 0, right: 0, bottom: 0,
+        flexDirection: 'row', paddingTop: 8, paddingBottom: bottomPad, paddingHorizontal: 6,
+        backgroundColor: c.surface, borderTopWidth: 1, borderTopColor: c.border,
+        shadowColor: '#000', shadowOffset: { width: 0, height: -4 }, shadowOpacity: isDark ? 0.3 : 0.06, shadowRadius: 12, elevation: 12,
+      }}
     >
       {tabs.map((tab) => {
         const IconComponent = tab.icon;
         const isActive =
           activeSection === tab.name ||
-          (tab.name === 'Overview' && activeSection === 'Overview') ||
           (tab.name === 'Debenture Form' && (activeSection === 'Debenture Form' || activeSection === 'Debenture'));
 
         return (
           <TouchableOpacity
             key={tab.id}
-            style={styles.tabBtn}
+            style={{ flex: 1, alignItems: 'center', justifyContent: 'center', paddingVertical: 2 }}
             activeOpacity={0.7}
+            accessibilityRole="tab"
+            accessibilityState={{ selected: isActive }}
+            accessibilityLabel={tab.label}
             onPress={() => {
               if (tab.isMenuTrigger) {
                 onOpenMenu();
@@ -90,23 +93,14 @@ export const NativeBottomBar: React.FC<NativeBottomBarProps> = ({
             }}
           >
             <View
-              style={[
-                styles.iconWrapper,
-                isActive && { backgroundColor: colors.cardGlow },
-              ]}
+              style={{
+                width: 52, height: 30, borderRadius: 15, alignItems: 'center', justifyContent: 'center', marginBottom: 3,
+                backgroundColor: isActive ? (isDark ? 'rgba(214,175,55,0.18)' : 'rgba(19,64,134,0.10)') : 'transparent',
+              }}
             >
-              <IconComponent
-                size={20}
-                color={isActive ? colors.accent : colors.textMuted}
-              />
+              <IconComponent size={20} color={isActive ? accent : c.textMuted} strokeWidth={isActive ? 2.4 : 2} />
             </View>
-            <Text
-              style={[
-                styles.tabLabel,
-                { color: isActive ? colors.accent : colors.textMuted },
-                isActive && { fontWeight: '700' },
-              ]}
-            >
+            <Text style={{ fontSize: 11, fontWeight: isActive ? '700' : '500', color: isActive ? (isDark ? GOLD : BRAND_NAVY) : c.textMuted }}>
               {tab.label}
             </Text>
           </TouchableOpacity>
@@ -115,37 +109,3 @@ export const NativeBottomBar: React.FC<NativeBottomBarProps> = ({
     </View>
   );
 };
-
-const styles = StyleSheet.create({
-  container: {
-    position: 'absolute',
-    bottom: 0,
-    left: 0,
-    right: 0,
-    height: 64,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-around',
-    borderTopWidth: 1,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: -4 },
-    shadowOpacity: 0.08,
-    shadowRadius: 8,
-    elevation: 8,
-  },
-  tabBtn: {
-    flex: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  iconWrapper: {
-    paddingHorizontal: 12,
-    paddingVertical: 4,
-    borderRadius: borderRadius.round,
-    marginBottom: 2,
-  },
-  tabLabel: {
-    fontSize: 10,
-    fontWeight: '500',
-  },
-});

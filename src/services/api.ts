@@ -8,29 +8,31 @@ export interface ApiResponse<T = any> {
   error?: string;
 }
 
+const LOCALHOST_RE = /^(https?:\/\/)(localhost|127\.0\.0\.1)(?=[:/]|$)/i;
+
+// On a phone/emulator "localhost" is the device itself, not the PC running the CRM server.
+// Find the PC's address: the LAN IP Expo's dev server is reachable on, or the Android emulator alias.
+function devMachineHost(): string {
+  const hostUri = Constants.expoConfig?.hostUri || (Constants as any).manifest?.debuggerHost || (Constants as any).manifest2?.extra?.expoGo?.developer?.extra?.hostUri;
+  const hostIp = hostUri ? String(hostUri).split(':')[0] : '';
+  // Only a real IP works here (a --tunnel hostname doesn't forward port 3000).
+  if (/^\d{1,3}(\.\d{1,3}){3}$/.test(hostIp) && hostIp !== '127.0.0.1') return hostIp;
+  return Platform.OS === 'android' ? '10.0.2.2' : 'localhost';
+}
+
 export function getApiBaseUrl(): string {
-  if (process.env.EXPO_PUBLIC_API_URL) {
-    return process.env.EXPO_PUBLIC_API_URL;
-  }
+  const envUrl = process.env.EXPO_PUBLIC_API_URL;
 
   if (Platform.OS === 'web') {
-    return process.env.EXPO_PUBLIC_API_URL || 'http://localhost:3000';
+    return envUrl || 'http://localhost:3000';
   }
 
-  // Dynamic host detection for Mobile (Android Emulator / Physical Device via Expo Go)
-  const hostUri = Constants.expoConfig?.hostUri || (Constants as any).manifest?.debuggerHost || (Constants as any).manifest2?.extra?.expoGo?.developer?.extra?.hostUri;
-  if (hostUri) {
-    const hostIp = hostUri.split(':')[0];
-    if (hostIp && hostIp !== 'localhost' && hostIp !== '127.0.0.1') {
-      return `http://${hostIp}:3000`;
-    }
+  if (envUrl) {
+    // e.g. .env.development's http://localhost:3000 → http://192.168.x.x:3000 on a device
+    return LOCALHOST_RE.test(envUrl) ? envUrl.replace(LOCALHOST_RE, `$1${devMachineHost()}`) : envUrl;
   }
 
-  if (Platform.OS === 'android') {
-    return 'http://10.0.2.2:3000';
-  }
-
-  return 'http://localhost:3000';
+  return `http://${devMachineHost()}:3000`;
 }
 
 export async function apiCall<T = any>(

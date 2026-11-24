@@ -1,9 +1,11 @@
 import React from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, Image, Platform, StatusBar } from 'react-native';
+import { View, Text, TouchableOpacity, Image, Platform, StatusBar } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { Menu, Eye, LogOut } from 'lucide-react-native';
-import { colors, spacing, borderRadius } from '../theme/colors';
+import { Menu, Sun, Moon, LogOut } from 'lucide-react-native';
 import { useAuthStore } from '../services/authStore';
+import { useAppTheme, GOLD } from './DashboardUI';
+
+const LOGO = require('../../assets/icon.png');
 
 interface NativeHeaderProps {
   title: string;
@@ -12,119 +14,52 @@ interface NativeHeaderProps {
   onLogout: () => void;
 }
 
-export const NativeHeader: React.FC<NativeHeaderProps> = ({
-  title,
-  subtitle,
-  onOpenSidebar,
-  onLogout,
-}) => {
+export const NativeHeader: React.FC<NativeHeaderProps> = ({ title, subtitle, onOpenSidebar, onLogout }) => {
   const insets = useSafeAreaInsets();
-  const topGap = Platform.OS === 'android' ? (StatusBar.currentHeight || 24) : insets.top;
+  const topGap = Platform.OS === 'android' ? StatusBar.currentHeight || 24 : insets.top;
+  const { c, isDark, accent } = useAppTheme();
+  const setThemeMode = useAuthStore((s) => s.setThemeMode);
 
-  const user = useAuthStore((state) => state.user);
-  const themeMode = useAuthStore((state) => state.themeMode);
-  const setThemeMode = useAuthStore((state) => state.setThemeMode);
-
-  const toggleTheme = () => {
-    setThemeMode(themeMode === 'dark' ? 'light' : 'dark');
-  };
-
-  const getInitials = () => {
-    if (!user) return 'U';
-    const uAny = user as any;
-    if (uAny.firstName) {
-      return `${uAny.firstName[0]}${uAny.lastName ? uAny.lastName[0] : ''}`.toUpperCase();
-    }
-    if (user.email) return user.email[0].toUpperCase();
-    return 'U';
+  const iconBtn = {
+    width: 38, height: 38, borderRadius: 19, alignItems: 'center' as const, justifyContent: 'center' as const,
+    backgroundColor: c.surface, borderWidth: 1, borderColor: c.border,
   };
 
   return (
-    <View style={[styles.container, { paddingTop: topGap + spacing.s, backgroundColor: colors.background, borderBottomColor: colors.border }]}>
-      <View style={styles.contentRow}>
-        <TouchableOpacity style={styles.menuBtn} onPress={onOpenSidebar} activeOpacity={0.7}>
-          <Menu size={22} color={colors.text} />
+    <View style={{ paddingTop: topGap + 6, paddingBottom: 10, paddingHorizontal: 16, backgroundColor: c.background }}>
+      <StatusBar barStyle={isDark ? 'light-content' : 'dark-content'} backgroundColor="transparent" translucent />
+      <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+        <TouchableOpacity style={iconBtn} onPress={onOpenSidebar} activeOpacity={0.7} accessibilityLabel="Open menu">
+          <Menu size={20} color={c.text} />
         </TouchableOpacity>
 
-        <View style={styles.titleCol}>
-          <Text style={[styles.title, { color: colors.text }]} numberOfLines={1}>
-            {title}
-          </Text>
+        <View style={{ width: 34, height: 34, borderRadius: 10, backgroundColor: '#fff', alignItems: 'center', justifyContent: 'center', marginLeft: 10, borderWidth: isDark ? 0 : 1, borderColor: c.border }}>
+          <Image source={LOGO} style={{ width: 26, height: 23 }} resizeMode="contain" />
+        </View>
+
+        <View style={{ flex: 1, marginLeft: 10 }}>
+          <Text style={{ fontSize: 17, fontWeight: '800', color: c.text }} numberOfLines={1}>{title}</Text>
           {subtitle ? (
-            <Text style={[styles.subtitle, { color: colors.textMuted }]} numberOfLines={1}>
+            <Text style={{ fontSize: 12, color: isDark ? GOLD : c.textMuted, marginTop: 1, fontWeight: '500' }} numberOfLines={1}>
               {subtitle}
             </Text>
           ) : null}
         </View>
 
-        <View style={styles.actionsGroup}>
-          <TouchableOpacity style={styles.actionIconBtn} onPress={toggleTheme} activeOpacity={0.7}>
-            <Eye size={19} color={colors.accent} />
+        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+          <TouchableOpacity
+            style={iconBtn}
+            onPress={() => setThemeMode(isDark ? 'light' : 'dark')}
+            activeOpacity={0.7}
+            accessibilityLabel={isDark ? 'Switch to light mode' : 'Switch to dark mode'}
+          >
+            {isDark ? <Sun size={18} color={GOLD} /> : <Moon size={18} color={accent} />}
           </TouchableOpacity>
-
-          <View style={[styles.avatarBadge, { backgroundColor: colors.cardGlow, borderColor: colors.accent }]}>
-            <Text style={[styles.avatarText, { color: colors.accent }]}>{getInitials()}</Text>
-          </View>
-
-          <TouchableOpacity style={styles.actionIconBtn} onPress={onLogout} activeOpacity={0.7}>
-            <LogOut size={19} color={colors.danger} />
+          <TouchableOpacity style={iconBtn} onPress={onLogout} activeOpacity={0.7} accessibilityLabel="Log out">
+            <LogOut size={17} color={c.danger} />
           </TouchableOpacity>
         </View>
       </View>
     </View>
   );
 };
-
-const styles = StyleSheet.create({
-  container: {
-    paddingHorizontal: spacing.m,
-    paddingBottom: spacing.s,
-    borderBottomWidth: 1,
-  },
-  contentRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-  },
-  menuBtn: {
-    padding: spacing.xs,
-    marginRight: spacing.s,
-  },
-  titleCol: {
-    flex: 1,
-  },
-  title: {
-    fontSize: 18,
-    fontWeight: '800',
-    letterSpacing: -0.2,
-  },
-  subtitle: {
-    fontSize: 11,
-    fontWeight: '500',
-    marginTop: 1,
-  },
-  actionsGroup: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-  },
-  actionIconBtn: {
-    width: 34,
-    height: 34,
-    borderRadius: borderRadius.m,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  avatarBadge: {
-    width: 34,
-    height: 34,
-    borderRadius: borderRadius.round,
-    borderWidth: 1.5,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  avatarText: {
-    fontSize: 12,
-    fontWeight: '800',
-  },
-});
