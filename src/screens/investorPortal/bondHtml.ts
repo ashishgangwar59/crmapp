@@ -16,8 +16,8 @@ export interface BondCompanyInfo {
 const DEFAULT_COMPANY: Required<BondCompanyInfo> = {
   name: 'Niventra Capital Advisory India Pvt Ltd',
   address: 'MEZZANINE LEVEL SHIVAJI STADIUM METRO STATION BABA KHARAK SINGH ROAD CONNAUGHT PLACE NEW DELHI 110001',
-  phone: '18008900818',
-  email: 'info@niventracapitaladvisory.com',
+  phone: '1800 8900 818',
+  email: 'info@niventracapitaladviasory.com',
   website: 'www.niventracapitaladvisory.com',
 };
 

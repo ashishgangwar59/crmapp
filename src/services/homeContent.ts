@@ -59,7 +59,7 @@ export const DEFAULT_HOME_DATA: HomeData = {
       { value: '11.5%', label: 'NCD yield p.a.' },
       { value: '+14.2%', label: 'Real estate growth' },
       { value: '100%', label: 'Asset-backed' },
-      { value: '₹150+ Cr', label: 'Assets managed' },
+      { value: '₹1+ Cr', label: 'Assets managed' },
     ],
     sections: [
       {
@@ -74,7 +74,7 @@ export const DEFAULT_HOME_DATA: HomeData = {
         title: 'Invest',
         cards: [
           { icon: 'trending', title: 'Investment Benefits', description: 'Attractive investment opportunities, capital appreciation, regular rental income potential, wealth preservation, passive income generation, and long-term value creation.' },
-          { icon: 'key', title: 'Why Invest in PPF', description: 'Invest in PPF with attractive interest rates and secure returns.' },
+          // { icon: 'key', title: 'Why Invest in PPF', description: 'Invest in PPF with attractive interest rates and secure returns.' },
           { icon: 'wallet', title: 'Why Invest in Debentures', description: 'Build long-term wealth with professionally managed investment strategies designed for sustainable growth.' },
           { icon: 'landmark', title: 'Why Invest in Real Estate', description: 'Tangible asset class offering robust inflation hedge, portfolio diversification, strong capital appreciation, and reliable long-term financial security.' },
           { icon: 'user', title: 'Who Can Invest', description: 'Salaried Professionals, Business Owners, NRIs, HNIs, Family Offices, Corporate Investors, First-Time and Experienced Investors.' },
@@ -104,7 +104,8 @@ export const DEFAULT_HOME_DATA: HomeData = {
   },
 };
 
-const CACHE_KEY = 'home-content-cache-v1';
+// Bump the version to drop copies saved on phones (e.g. after changing the defaults).
+const CACHE_KEY = 'home-content-cache-v2';
 
 function normalize(raw: any): HomeData | null {
   const d = raw?.data ?? raw;

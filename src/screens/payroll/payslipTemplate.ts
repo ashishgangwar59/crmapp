@@ -19,7 +19,7 @@ export interface PayslipCompany {
 export const DEFAULT_PAYSLIP_COMPANY: Required<PayslipCompany> = {
   name: 'Niventra Capital Advisory India Capital Pvt. Ltd.',
   address: 'MEZZANINE LEVEL SHIVAJI STADIUM METRO STATION BABA KHARAK SINGH ROAD CONNAUGHT PLACE NEW DELHI 110001',
-  phone: '18008900818',
+  phone: '1800 8900 818',
   email: 'info@niventracapitaladvisory.com',
   website: 'www.niventracapitaladvisory.com',
 };
